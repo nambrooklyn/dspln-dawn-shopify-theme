@@ -1,0 +1,20 @@
+{
+  "sections": {
+    "main": {
+      "type": "dspln-configurator-product",
+      "settings": {
+        "platform_origin": "http://127.0.0.1:3002",
+        "configurator_slug": "adult-grappling-short",
+        "product_family": "grappling-short",
+        "customization_mode": "sublimation",
+        "product_group_label": "Custom Adult Grappling Short",
+        "show_header": false,
+        "desktop_min_height": 860,
+        "mobile_min_height": 820
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

@@ -1,0 +1,86 @@
+<style>
+  #shopify-section-{{ section.id }} {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #shopify-section-{{ section.id }} .section,
+  #shopify-section-{{ section.id }} .Section,
+  #shopify-section-{{ section.id }} .container,
+  #shopify-section-{{ section.id }} .Container,
+  #shopify-section-{{ section.id }} .page-width {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .dspln-configurator-frame {
+    display: block;
+    width: 100%;
+    height: calc(100vh - 72px);
+    min-height: 820px;
+    border: 0;
+    background: #fff;
+  }
+
+  @media (max-width: 768px) {
+    .dspln-configurator-frame {
+      height: 1px;
+      min-height: 0;
+    }
+  }
+</style>
+
+<div id="dspln-configurator-embed">
+  {% assign dspln_design_id = request.params.design | default: '' %}
+  <iframe
+    id="dspln-configurator-frame"
+    class="dspln-configurator-frame"
+    title="DSPLN Women's Custom BJJ Gi Configurator"
+    src="http://127.0.0.1:3002/configurator/womens-gi?shopifyTest=1&amp;productId={{ product.id }}&amp;productHandle={{ product.handle | url_encode }}&amp;shop={{ shop.permanent_domain | url_encode }}&amp;customerId={{ customer.id | default: '' }}&amp;customerEmail={{ customer.email | default: '' | url_encode }}{% if dspln_design_id != blank %}&amp;design={{ dspln_design_id | url_encode }}{% endif %}"
+    loading="eager"
+    allow="clipboard-write; fullscreen"
+  ></iframe>
+</div>
+
+<script id="dspln-price-variants" type="application/json">
+{
+  {% assign dspln_price_variant_count = 0 %}
+  {% for variant in product.variants %}
+    {% assign price_option = variant.option1 | downcase %}
+    {% if price_option contains 'tda_price_' %}
+      {% assign price_total = price_option | remove: 'tda_price_' | plus: 0 %}
+      {% if dspln_price_variant_count > 0 %},{% endif %}
+      "{{ price_total }}": {{ variant.id }}
+      {% assign dspln_price_variant_count = dspln_price_variant_count | plus: 1 %}
+    {% endif %}
+  {% endfor %}
+}
+</script>
+
+<script>
+  (() => {
+    const frame = document.getElementById('dspln-configurator-frame');
+    if (!frame) return;
+
+    const designId = new URLSearchParams(window.location.search).get('design');
+    if (designId) {
+      const src = new URL(frame.getAttribute('src'), window.location.origin);
+      if (src.searchParams.get('design') !== designId) {
+        src.searchParams.set('design', designId);
+        frame.setAttribute('src', src.toString());
+      }
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.source !== frame.contentWindow) return;
+      const data = event.data;
+      if (!data || data.type !== 'dspln:configurator:height') return;
+      const height = Number(data.height);
+      if (!Number.isFinite(height) || height < 320) return;
+      frame.style.height = `${Math.ceil(height)}px`;
+    });
+  })();
+</script>
+
+<script src="http://127.0.0.1:3002/shopify/dspln-configurator-cart-bridge.js?v=20260610-womens-cart-2"></script>

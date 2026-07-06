@@ -1,0 +1,82 @@
+{{ 'dspln-home-3d-gi.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-home-3d-gi" aria-label="Design your gi in 3D">
+  <div class="dspln-home-3d-gi__inner">
+    <div class="dspln-home-3d-gi__copy">
+      <h2 class="dspln-home-3d-gi__heading">{{ section.settings.heading }}</h2>
+      <p class="dspln-home-3d-gi__text">{{ section.settings.text }}</p>
+
+      <div class="dspln-home-3d-gi__actions">
+        <a href="{{ section.settings.primary_link }}" class="dspln-home-3d-gi__button dspln-home-3d-gi__button--primary">
+          {{ section.settings.primary_label }}
+        </a>
+        <a href="{{ section.settings.secondary_link }}" class="dspln-home-3d-gi__button dspln-home-3d-gi__button--secondary">
+          {{ section.settings.secondary_label }}
+        </a>
+      </div>
+    </div>
+
+    <div class="dspln-home-3d-gi__viewer">
+      <img
+        src="{{ 'dspln-gi-turntable.gif' | asset_url }}"
+        alt="A spinning 3D preview of a custom Brazilian Jiu Jitsu gi"
+        width="520"
+        height="520"
+        loading="lazy"
+      >
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN 3D gi feature",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "CLICK AND MOVE THE 3D Gi"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "DESIGN YOUR GI IN 3D"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "Design your Brazilian Jiu Jitsu gi exactly how you envision it, with dynamic customization options that let you express your creativity effortlessly."
+    },
+    {
+      "type": "url",
+      "id": "primary_link",
+      "label": "Primary button link"
+    },
+    {
+      "type": "text",
+      "id": "primary_label",
+      "label": "Primary button label",
+      "default": "START DESIGNING"
+    },
+    {
+      "type": "url",
+      "id": "secondary_link",
+      "label": "Secondary button link"
+    },
+    {
+      "type": "text",
+      "id": "secondary_label",
+      "label": "Secondary button label",
+      "default": "HOW ITS DONE"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN 3D gi feature"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,113 @@
+<style>
+  #shopify-section-{{ section.id }} {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #shopify-section-{{ section.id }} .section,
+  #shopify-section-{{ section.id }} .Section,
+  #shopify-section-{{ section.id }} .container,
+  #shopify-section-{{ section.id }} .Container,
+  #shopify-section-{{ section.id }} .page-width {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .dspln-my-designs-frame {
+    display: block;
+    width: 100%;
+    min-height: 820px;
+    height: calc(100vh - 72px);
+    border: 0;
+    background: #fff;
+  }
+
+  .dspln-account-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    max-width: 1180px;
+    margin: 46px auto 0;
+    padding: 0 24px 18px;
+    border-bottom: 1px solid #dedede;
+  }
+
+  .dspln-account-tabs a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 22px;
+    border: 1px solid #d8d8d8;
+    color: #1c1b1b;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .dspln-account-tabs a[aria-current="page"] {
+    background: #1c1b1b;
+    border-color: #1c1b1b;
+    color: #fff;
+  }
+
+  .dspln-my-designs-login {
+    max-width: 760px;
+    margin: 120px auto;
+    padding: 0 24px;
+    text-align: center;
+  }
+
+  .dspln-my-designs-login h1 {
+    margin: 0 0 18px;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+
+  .dspln-my-designs-login p {
+    margin: 0 0 28px;
+    color: #666;
+  }
+
+  .dspln-my-designs-login a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 28px;
+    background: #1c1b1b;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+</style>
+
+{% if customer %}
+  <nav class="dspln-account-tabs" aria-label="Account sections">
+    <a href="{{ routes.account_url }}">Orders</a>
+    <a href="/pages/my-designs" aria-current="page">Saved Designs</a>
+    <a href="/pages/my-logos">Uploaded Logos</a>
+  </nav>
+  <iframe
+    id="dspln-my-designs-frame"
+    class="dspln-my-designs-frame"
+    title="My DSPLN Saved Designs"
+    src="http://127.0.0.1:3002/account/designs?shopifyTest=1&amp;shop={{ shop.permanent_domain | url_encode }}&amp;customerId={{ customer.id }}&amp;customerEmail={{ customer.email | url_encode }}"
+    loading="eager"
+    allow="clipboard-write; fullscreen"
+  ></iframe>
+{% else %}
+  <div class="dspln-my-designs-login">
+    <h1>My Designs</h1>
+    <p>Log in to view and reopen your saved DSPLN gi designs.</p>
+    <a href="{{ routes.account_login_url }}">Log In</a>
+  </div>
+{% endif %}

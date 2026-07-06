@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en" data-dspln-local-preview="true">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DSPLN Womens Gi Shopify Embed Preview</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #fff;
+        color: #171313;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      .preview-header {
+        display: flex;
+        min-height: 45px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        border-bottom: 1px solid #2b2828;
+        background: linear-gradient(#282525, #121111);
+        padding: 0 24px;
+        color: #fff;
+      }
+
+      .preview-menu {
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .preview-brand {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: 0.28em;
+      }
+
+      .preview-icons {
+        display: flex;
+        gap: 18px;
+        color: #d8d0c8;
+        font-size: 22px;
+      }
+
+      #shopify-section-local-womens-gi {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      .dspln-configurator-frame {
+        display: block;
+        width: 100%;
+        height: calc(100vh - 45px);
+        min-height: 0;
+        border: 0;
+        background: #fff;
+      }
+
+      @media (max-width: 768px) {
+        .preview-header {
+          min-height: 53px;
+          padding: 0 24px;
+        }
+
+        .dspln-configurator-frame {
+          height: calc(100svh - 53px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="preview-header" aria-label="Shopify theme header preview">
+      <div class="preview-menu">☰</div>
+      <div class="preview-brand">DSPLN</div>
+      <div class="preview-icons" aria-hidden="true">
+        <span>⌕</span>
+        <span>▢</span>
+      </div>
+    </header>
+
+    <main id="shopify-section-local-womens-gi">
+      <div id="dspln-configurator-embed">
+        <iframe
+          id="dspln-configurator-frame"
+          class="dspln-configurator-frame"
+          title="DSPLN Womens Custom Gi Configurator"
+          src="/configurator/womens-gi?shopifyTest=1&amp;productId=9049587810600&amp;productHandle=custom-womens-gi&amp;shop=dspln.com&amp;customerId=&amp;customerEmail="
+          loading="eager"
+          allow="clipboard-write; fullscreen"
+        ></iframe>
+      </div>
+    </main>
+
+    <script>
+      (() => {
+        const frame = document.getElementById('dspln-configurator-frame');
+        if (!frame) return;
+        const params = new URLSearchParams(window.location.search);
+        const designId = params.get('design');
+        const version = params.get('v') || Date.now().toString();
+        const src = new URL(frame.getAttribute('src'), window.location.origin);
+        if (designId) {
+          src.searchParams.set('design', designId);
+        }
+        src.searchParams.set('previewVersion', version);
+        frame.setAttribute('src', src.toString());
+      })();
+
+      (() => {
+        const frame = document.getElementById('dspln-configurator-frame');
+        if (!frame) return;
+
+        window.addEventListener('message', (event) => {
+          if (event.source !== frame.contentWindow) return;
+          const data = event.data;
+          if (!data || data.type !== 'dspln:configurator:height') return;
+          const height = Number(data.height);
+          if (!Number.isFinite(height) || height < 320) return;
+          frame.style.height = `${Math.ceil(height)}px`;
+        });
+      })();
+    </script>
+  </body>
+</html>

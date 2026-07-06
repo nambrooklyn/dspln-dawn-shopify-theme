@@ -1,0 +1,154 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #1c1b1b;
+  --card: #ffffff;
+  --card-foreground: #1c1b1b;
+  --popover: #ffffff;
+  --popover-foreground: #1c1b1b;
+  --primary: #5c0000;
+  --primary-foreground: #ffffff;
+  --secondary: #63513f;
+  --secondary-foreground: #ffffff;
+  --muted: #f5f5f5;
+  --muted-foreground: #6b7280;
+  --accent: #5c0000;
+  --accent-foreground: #ffffff;
+  --destructive: #dc3545;
+  --destructive-foreground: #ffffff;
+  --border: #e6e6e6;
+  --input: #e6e6e6;
+  --ring: #5c0000;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    Albert Sans,
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gi-mobile-scroll-canvas,
+.gi-mobile-scroll-canvas div,
+.gi-mobile-scroll-canvas canvas {
+  touch-action: pan-y !important;
+}
+
+.dspln-configurator-root {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--background);
+}
+
+.dspln-configurator-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.dspln-configurator-scene {
+  position: relative;
+  height: 27rem;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.dspln-configurator-login-save {
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+.dspln-configurator-login-save:hover {
+  color: var(--muted-foreground);
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .dspln-configurator-scene {
+    height: 34rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dspln-configurator-root {
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .dspln-configurator-main {
+    flex: 1 1 0%;
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  .dspln-configurator-scene {
+    height: auto;
+    min-height: 0;
+    flex: 1 1 0%;
+  }
+
+  .dspln-configurator-login-save {
+    font-size: 10px;
+  }
+}

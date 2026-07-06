@@ -1,0 +1,114 @@
+{
+  "sections": {
+    "dspln_home_hero": {
+      "type": "dspln-home-hero",
+      "settings": {
+        "heading": "THE ART OF GI MAKING",
+        "subheading": "THE DISCIPLINE OF JIU JITSU",
+        "primary_label": "START DESIGNING",
+        "primary_link": "/products/customgi?view=gi-configurator-product-page",
+        "secondary_label": "HOW ITS DONE",
+        "secondary_link": "/pages/how-to-use-customizer"
+      }
+    },
+    "dspln_home_3d_gi": {
+      "type": "dspln-home-3d-gi",
+      "settings": {
+        "eyebrow": "CLICK AND MOVE THE 3D Gi",
+        "heading": "DESIGN YOUR GI IN 3D",
+        "text": "Design your Brazilian Jiu Jitsu gi exactly how you envision it, with dynamic customization options that let you express your creativity effortlessly.",
+        "primary_link": "/products/customgi",
+        "primary_label": "START DESIGNING",
+        "secondary_link": "/pages/how-to-use-customizer",
+        "secondary_label": "HOW ITS DONE"
+      }
+    },
+    "dspln_brooklyn_banner": {
+      "type": "dspln-brooklyn-banner",
+      "settings": {
+        "eyebrow": "LOCALLY BASED 20 YEARS IN",
+        "heading": "BROOKLYN NEW YORK",
+        "text": "For us, crafting a gi is more than just a business—it's a calling, a labor of love that resonates with every practitioner who steps onto the mat. It's the artistry, the passion, and the unwavering dedication that define our Brooklyn-based atelier. We believe that a custom-made gi is not merely a piece of fabric; it is a manifestation of one's journey, a tangible expression of individuality on the canvas of combat."
+      }
+    },
+    "dspln_home_3d_rashguard": {
+      "type": "dspln-home-3d-rashguard",
+      "settings": {
+        "eyebrow": "CLICK AND MOVE THE 3D RASHGUARD",
+        "heading": "DESIGN YOUR RASHGUARD IN 3D",
+        "text": "Design your rashguard exactly how you envision it, with dynamic customization options that let you express your creativity effortlessly.",
+        "primary_link": "/products/custom-rashguard",
+        "primary_label": "START DESIGNING",
+        "secondary_link": "/pages/how-to-use-customizer",
+        "secondary_label": "HOW ITS DONE",
+        "model_url": "https://cdn.shopify.com/3d/models/31ac35ab2ac5ad35/Whiterashguard.glb"
+      }
+    },
+    "dspln_vision_band": {
+      "type": "dspln-vision-band",
+      "settings": {
+        "heading": "Your Vision Brought To Life",
+        "text": "At DSPLN we are committed to crafting more than just a kimono; we strive to create a personalized experience that embodies the spirit of tradition, quality, and individuality. We are not just artisans; we are collaborators, working hand in hand with our customers to achieve perfection in every stitch, and bring your Jiu-Jitsu journey to life."
+      }
+    },
+    "dspln_womens_gi_feature": {
+      "type": "dspln-womens-gi-feature",
+      "settings": {
+        "heading": "WOMENS CUSTOM GI",
+        "text": "Craft your Brazilian Jiu Jitsu gi to match your vision, offering dynamic customization options that allow you to effortlessly express your creativity. Tailored specifically for women, from selecting colors for each element to incorporating personalized patches and embroidery, customize every aspect to showcase your personality and dedication.",
+        "point_one": "Change color of every component including stitching.",
+        "point_two": "Add up to 8 logos and art. Add text to your belt",
+        "point_three": "Any sizes for the kimono, belt, and pants, ensuring a perfect fit.",
+        "primary_link": "/products/womens-custom-gi-suit",
+        "primary_label": "START DESIGNING",
+        "secondary_link": "/pages/how-to-use-customizer",
+        "secondary_label": "SEE THE PROCESS"
+      }
+    },
+    "dspln_philosophy_banner": {
+      "type": "dspln-philosophy-banner",
+      "settings": {
+        "eyebrow": "BLOOD SWEAT & TEARS",
+        "heading": "OUR PHILOSOPHY",
+        "text": "Discipline is the cornerstone upon which mastery is built, both in craft and in life. It is the unwavering commitment to the pursuit of excellence, the relentless drive to push beyond perceived limits, and the steadfast dedication to honing one's skills day in and day out.",
+        "button_link": "/pages/about",
+        "button_label": "ABOUT US"
+      }
+    },
+    "dspln_kids_gi_feature": {
+      "type": "dspln-kids-gi-feature",
+      "settings": {
+        "heading": "KIDS CUSTOM GI",
+        "text": "With a range of customizable features, kids can let their creativity shine as they design their perfect training gear. Whether it's selecting colors for each part, adding unique patches, or customizing embroidery, every detail can mirror their individual style and love for the sport. Imagine the excitement of stepping onto the mat in a gi that they've played a part in creating—it's sure to ignite their passion for training!",
+        "point_one": "Change color of every component including stitching.",
+        "point_two": "Add up to 8 logos and art. Add text to your belt",
+        "point_three": "Any sizes for the kimono, belt, and pants, ensuring a perfect fit.",
+        "primary_link": "/products/custom-kids-gi",
+        "primary_label": "START DESIGNING",
+        "secondary_link": "/pages/how-to-use-customizer",
+        "secondary_label": "SEE THE PROCESS"
+      }
+    },
+    "dspln_newsletter_banner": {
+      "type": "dspln-newsletter-banner",
+      "settings": {
+        "heading": "NEWSLETTER",
+        "text": "Get updates on new products, sales and events.",
+        "placeholder": "Enter your email",
+        "button_label": "SUBSCRIBE",
+        "success_message": "Thanks for subscribing."
+      }
+    }
+  },
+  "order": [
+    "dspln_home_hero",
+    "dspln_home_3d_gi",
+    "dspln_brooklyn_banner",
+    "dspln_home_3d_rashguard",
+    "dspln_vision_band",
+    "dspln_womens_gi_feature",
+    "dspln_philosophy_banner",
+    "dspln_kids_gi_feature",
+    "dspln_newsletter_banner"
+  ]
+}

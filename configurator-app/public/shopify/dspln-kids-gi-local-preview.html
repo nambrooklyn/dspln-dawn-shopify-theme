@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en" data-dspln-local-preview="true">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DSPLN Kids Gi Shopify Embed Preview</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f5f2ed;
+        color: #171313;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      .preview-header {
+        display: flex;
+        min-height: 64px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        border-bottom: 1px solid #ded7cf;
+        background: #151313;
+        padding: 0 24px;
+        color: #fff;
+      }
+
+      .preview-brand {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.24em;
+      }
+
+      .preview-meta {
+        color: #d8d0c8;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .preview-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid #ded7cf;
+        background: #fff;
+        padding: 12px 24px;
+      }
+
+      .preview-toolbar h1 {
+        margin: 0;
+        font-size: 15px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .preview-toolbar p {
+        margin: 4px 0 0;
+        color: #6c625a;
+        font-size: 12px;
+      }
+
+      .preview-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .preview-actions a,
+      .preview-actions button {
+        height: 34px;
+        border: 1px solid #241f1b;
+        background: #fff;
+        color: #171313;
+        cursor: pointer;
+        padding: 0 12px;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
+      .preview-actions button.primary {
+        background: #171313;
+        color: #fff;
+      }
+
+      #shopify-section-local-kids-gi {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      #shopify-section-local-kids-gi .section,
+      #shopify-section-local-kids-gi .Section,
+      #shopify-section-local-kids-gi .container,
+      #shopify-section-local-kids-gi .Container,
+      #shopify-section-local-kids-gi .page-width {
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      .dspln-configurator-frame {
+        display: block;
+        width: 100%;
+        height: calc(100vh - 122px);
+        min-height: 0;
+        border: 0;
+        background: #fff;
+      }
+
+      .preview-cart-log {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 20;
+        display: none;
+        width: min(420px, calc(100vw - 32px));
+        max-height: 50vh;
+        overflow: auto;
+        border: 1px solid #ded7cf;
+        background: #fff;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+      }
+
+      .preview-cart-log[data-open="true"] {
+        display: block;
+      }
+
+      .preview-cart-log header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #ded7cf;
+        padding: 10px 12px;
+      }
+
+      .preview-cart-log strong {
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .preview-cart-log pre {
+        margin: 0;
+        padding: 12px;
+        white-space: pre-wrap;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 768px) {
+        .preview-header {
+          padding: 0 16px;
+        }
+
+        .preview-toolbar {
+          padding: 12px 16px;
+        }
+
+        .dspln-configurator-frame {
+          height: calc(100svh - 150px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="preview-header">
+      <div class="preview-brand">DSPLN</div>
+      <div class="preview-meta">Local Shopify Custom Liquid Preview</div>
+    </header>
+
+    <section class="preview-toolbar">
+      <div>
+        <h1>Kids Custom Gi</h1>
+        <p>
+          Simulates the Shopify product template and cart bridge before the
+          live theme is changed.
+        </p>
+      </div>
+      <div class="preview-actions">
+        <a
+          href="http://127.0.0.1:3002/configurator/kids-gi?shopifyTest=1&amp;productId=9049587810600&amp;productHandle=custom-kids-gi&amp;shop=dspln.com"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open iframe URL
+        </a>
+        <button type="button" id="preview-clear-log">Clear Log</button>
+        <button type="button" id="preview-toggle-log" class="primary">
+          Cart Log
+        </button>
+      </div>
+    </section>
+
+    <main id="shopify-section-local-kids-gi">
+      <div id="dspln-configurator-embed">
+        <iframe
+          id="dspln-configurator-frame"
+          class="dspln-configurator-frame"
+          title="DSPLN Kids Custom Gi Configurator"
+          src="http://127.0.0.1:3002/configurator/kids-gi?shopifyTest=1&amp;productId=9049587810600&amp;productHandle=custom-kids-gi&amp;shop=dspln.com&amp;customerId=&amp;customerEmail="
+          loading="eager"
+          allow="clipboard-write; fullscreen"
+        ></iframe>
+      </div>
+    </main>
+
+    <aside class="preview-cart-log" id="preview-cart-log" data-open="false">
+      <header>
+        <strong>Cart Bridge Payload</strong>
+        <button type="button" id="preview-close-log">Close</button>
+      </header>
+      <pre id="preview-cart-log-output">No cart messages yet.</pre>
+    </aside>
+
+    <script>
+      (() => {
+        const frame = document.getElementById('dspln-configurator-frame');
+        const designId = new URLSearchParams(window.location.search).get(
+          'design',
+        );
+        if (!frame || !designId) return;
+        const src = new URL(frame.getAttribute('src'), window.location.origin);
+        src.searchParams.set('design', designId);
+        frame.setAttribute('src', src.toString());
+      })();
+    </script>
+
+    <script>
+      (() => {
+        const MESSAGE_TYPE = 'dspln:shopify-cart:add';
+        const log = document.getElementById('preview-cart-log');
+        const output = document.getElementById('preview-cart-log-output');
+        const toggle = document.getElementById('preview-toggle-log');
+        const close = document.getElementById('preview-close-log');
+        const clear = document.getElementById('preview-clear-log');
+        const frame = document.getElementById('dspln-configurator-frame');
+
+        function openLog() {
+          log.setAttribute('data-open', 'true');
+        }
+
+        function closeLog() {
+          log.setAttribute('data-open', 'false');
+        }
+
+        toggle.addEventListener('click', () => {
+          const isOpen = log.getAttribute('data-open') === 'true';
+          log.setAttribute('data-open', isOpen ? 'false' : 'true');
+        });
+        close.addEventListener('click', closeLog);
+        clear.addEventListener('click', () => {
+          output.textContent = 'No cart messages yet.';
+        });
+
+        window.addEventListener('message', (event) => {
+          const data = event.data;
+          if (event.source === frame.contentWindow) {
+            if (data && data.type === 'dspln:configurator:height') {
+              const height = Number(data.height);
+              if (Number.isFinite(height) && height >= 320) {
+                frame.style.height = `${Math.ceil(height)}px`;
+              }
+            }
+          }
+
+          if (!data || data.type !== MESSAGE_TYPE) return;
+
+          output.textContent = JSON.stringify(data, null, 2);
+          openLog();
+
+          if (event.source && typeof event.source.postMessage === 'function') {
+            event.source.postMessage(
+              {
+                type: 'dspln:shopify-cart:added',
+                ok: true,
+                cart: {
+                  token: 'local-preview',
+                  item_count: data.configuredLines?.length ?? 1,
+                  note: 'Local preview only. No Shopify cart was changed.',
+                },
+              },
+              event.origin,
+            );
+          }
+        });
+
+        window.__dsplnPreview = {
+          frame,
+          openLog,
+          closeLog,
+        };
+      })();
+    </script>
+  </body>
+</html>

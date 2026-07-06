@@ -1,0 +1,764 @@
+<!-- ============================================================
+     DSPLN SIZE RECOMMENDER — Shopify Paste Block
+     Paste this entire file into a Custom HTML section in the
+     Shopify theme editor on your product page.
+     No external dependencies. Fully self-contained.
+     ============================================================ -->
+
+<style>
+  /* ── Scoped reset: neutralise Shopify theme styles ── */
+  #dspln-sr *, #dspln-sr *::before, #dspln-sr *::after {
+    box-sizing: border-box !important;
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    line-height: normal;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Reset inputs, selects and buttons so Shopify theme can't override them */
+  #dspln-sr input,
+  #dspln-sr select,
+  #dspln-sr button,
+  #dspln-sr textarea {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
+    color: inherit !important;
+    border-radius: 0 !important;
+    border: none !important;
+    outline: none !important;
+    background: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  #dspln-sr {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    display: flex !important;
+    width: 100% !important;
+    max-width: 1200px;
+    margin: 0 auto !important;
+    background: #fff !important;
+    color: #222;
+  }
+
+  /* Left panel */
+  #dspln-sr .sr-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 48px 48px;
+    text-align: right;
+  }
+  #dspln-sr .sr-left h2 {
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: #7B1A1A;
+    margin-bottom: 24px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  #dspln-sr .sr-left p {
+    font-size: 15px;
+    line-height: 1.75;
+    color: #666;
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+  #dspln-sr .sr-guide-btn {
+    display: inline-block;
+    padding: 16px 40px;
+    background: #7B1A1A !important;
+    color: #fff !important;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none !important;
+    transition: background 0.2s;
+  }
+  #dspln-sr .sr-guide-btn:hover { background: #5a1212 !important; }
+
+  /* Right panel */
+  #dspln-sr .sr-right {
+    width: 480px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e0e0e0;
+    background: #f0f0f0;
+    align-self: flex-start;
+  }
+
+  /* Title header — white bg */
+  #dspln-sr .sr-calc-header {
+    background: #fff;
+    padding: 22px 40px 18px;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  #dspln-sr .sr-calc-title {
+    text-align: center;
+    font-size: 20px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #7B1A1A;
+    font-weight: 400;
+  }
+
+  /* Calculator — gray bg */
+  #dspln-sr .sr-calc {
+    background: #f0f0f0;
+    padding: 24px 40px 28px;
+  }
+
+  /* Unit toggle */
+  #dspln-sr .sr-units {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  #dspln-sr .sr-unit-sep { color: #ccc; font-size: 16px; }
+  #dspln-sr .sr-unit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #aaa;
+    padding: 0;
+    font-family: inherit;
+    transition: color 0.15s;
+  }
+  #dspln-sr .sr-unit-btn.sr-active { color: #7B1A1A; font-weight: 700; }
+
+  /* Fields */
+  #dspln-sr .sr-fields-row { display: flex; gap: 12px; margin-bottom: 18px; }
+  #dspln-sr .sr-fields-row .sr-field { flex: 0 0 calc(50% - 6px); width: calc(50% - 6px); margin-bottom: 0; }
+  #dspln-sr .sr-fields-row .sr-select-wrap,
+  #dspln-sr .sr-fields-row .sr-input-wrap { width: 100%; }
+  #dspln-sr .sr-field { margin-bottom: 18px; }
+  #dspln-sr .sr-field label {
+    display: block;
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 7px;
+  }
+  #dspln-sr .sr-input-wrap {
+    display: flex;
+    background: #fff;
+    border: 1px solid #d0d0d0;
+  }
+  #dspln-sr .sr-input-wrap input {
+    flex: 1 !important;
+    border: none !important;
+    outline: none !important;
+    padding: 14px 10px !important;
+    font-size: 16px !important;
+    color: #222 !important;
+    background: transparent !important;
+    font-family: inherit !important;
+    -moz-appearance: textfield !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  #dspln-sr .sr-input-wrap input::-webkit-inner-spin-button,
+  #dspln-sr .sr-input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  #dspln-sr .sr-input-wrap input::placeholder { color: #bbb !important; opacity: 1 !important; }
+  #dspln-sr .sr-input-wrap input::-webkit-input-placeholder { color: #bbb !important; }
+  #dspln-sr .sr-input-wrap input::-moz-placeholder { color: #bbb !important; opacity: 1 !important; }
+  #dspln-sr .sr-input-wrap input:-ms-input-placeholder { color: #bbb !important; }
+  #dspln-sr .sr-unit-lbl {
+    padding: 14px 10px 14px 4px !important;
+    font-size: 13px !important;
+    color: #aaa;
+    align-self: center;
+    flex-shrink: 0;
+  }
+  #dspln-sr .sr-select-wrap select {
+    width: 100% !important;
+    padding: 14px 16px !important;
+    border: 1px solid #d0d0d0 !important;
+    background: #fff !important;
+    font-size: 15px !important;
+    color: #333 !important;
+    outline: none !important;
+    cursor: pointer !important;
+    font-family: inherit !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Result (white bg) */
+  #dspln-sr .sr-result {
+    flex: 1;
+    background: #fff;
+    padding: 28px 32px 32px;
+    display: none;
+    flex-direction: column;
+  }
+  #dspln-sr .sr-result.sr-result-visible { display: flex; }
+  #dspln-sr .sr-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+    font-size: 14px;
+    min-height: 180px;
+  }
+  #dspln-sr .sr-empty.sr-hidden { display: none; }
+  #dspln-sr .sr-output { display: none; flex-direction: column; flex: 1; }
+  #dspln-sr .sr-output.sr-visible { display: flex; }
+
+  #dspln-sr .sr-your-size { font-size: 14px; color: #333; margin-bottom: 4px; }
+  #dspln-sr .sr-size-big {
+    font-size: 72px;
+    font-weight: 900;
+    color: #7B1A1A;
+    line-height: 1;
+    margin-bottom: 28px;
+    letter-spacing: -1px;
+  }
+
+  /* Fit bars */
+  #dspln-sr .sr-bar-row { margin-bottom: 22px; }
+  #dspln-sr .sr-bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  #dspln-sr .sr-bar-header .sr-end { color: #bbb; }
+  #dspln-sr .sr-bar-header .sr-mid { color: #555; font-weight: 600; font-size: 10px; }
+  #dspln-sr .sr-bar-track {
+    height: 7px;
+    /* Tricolor: light-blue | dark-blue | light-blue — fixed zones */
+    background: linear-gradient(to right,
+      #aec6e8 0%,  #aec6e8 22%,
+      #2a4eaa 22%, #2a4eaa 78%,
+      #aec6e8 78%, #aec6e8 100%
+    );
+    position: relative;
+    overflow: visible;
+  }
+  /* No fill element — bar is always tricolor, only marker moves */
+  #dspln-sr .sr-bar-tip {
+    position: absolute;
+    top: 100%;
+    margin-top: 4px;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 9px solid #1a1a1a;
+    transition: left 0.35s ease;
+  }
+
+  /* Carousel */
+  #dspln-sr .sr-carousel-label { font-size: 13px; color: #555; margin-top: 10px; margin-bottom: 14px; }
+  #dspln-sr .sr-carousel { display: flex; align-items: center; gap: 6px; margin-bottom: 28px; }
+  #dspln-sr .sr-arrow {
+    background: none; border: none;
+    font-size: 22px; color: #666;
+    cursor: pointer; padding: 4px 2px;
+    line-height: 1; flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  #dspln-sr .sr-arrow:hover:not(:disabled) { color: #111; }
+  #dspln-sr .sr-arrow:disabled { color: #ddd; cursor: default; }
+  #dspln-sr .sr-chips { display: flex; gap: 8px; flex: 1; }
+  #dspln-sr .sr-chip {
+    flex: 1;
+    position: relative;
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: #b08080;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 6px;
+  }
+  #dspln-sr .sr-chip.sr-best { background: #7B1A1A; font-size: 15px; }
+  #dspln-sr .sr-badge {
+    position: absolute;
+    top: -9px; right: -9px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    border: 2px solid #fff;
+  }
+  #dspln-sr .sr-chip.sr-best .sr-badge { background: #2a7a3b; color: #fff; }
+  #dspln-sr .sr-chip:not(.sr-best) .sr-badge { background: #cc2222; color: #fff; }
+
+  /* CTA */
+  #dspln-sr .sr-cta {
+    width: 100%;
+    padding: 18px;
+    background: #7B1A1A;
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+    margin-top: auto;
+  }
+  #dspln-sr .sr-cta:hover { background: #5a1212; }
+
+  /* Mobile */
+  @media (max-width: 820px) {
+    #dspln-sr { flex-direction: column; }
+    #dspln-sr .sr-left { padding: 40px 24px; text-align: center; align-items: center; }
+    #dspln-sr .sr-right { width: 100%; border: none; border-top: 1px solid #e0e0e0; }
+    #dspln-sr .sr-calc-header { padding: 18px 20px 14px; }
+    #dspln-sr .sr-calc { padding: 20px 20px 18px; }
+    #dspln-sr .sr-result { padding: 24px 20px 28px; }
+  }
+</style>
+
+<div style="width:100%;display:block;box-sizing:border-box;">
+<div id="dspln-sr">
+
+  <!-- Left: brand info -->
+  <div class="sr-left">
+    <h2>Size Recommender</h2>
+    <p>We offer a straightforward sizing system tailored to all body types. Simply provide your height and weight, and we'll find your perfect fit. For unique body types outside standard sizes, we customise gear based on your precise measurements.</p>
+    <a class="sr-guide-btn" href="https://dspln.com/pages/sizing" target="_blank" rel="noopener">Complete Fit Guide</a>
+  </div>
+
+  <!-- Right: calculator -->
+  <div class="sr-right">
+
+    <div class="sr-calc-header">
+      <div class="sr-calc-title">Calculate My Size</div>
+    </div>
+
+    <div class="sr-calc">
+      <div class="sr-units">
+        <button class="sr-unit-btn sr-active" id="dspln-btn-imp" onclick="dsplnSetUnit('imperial')">Imperial</button>
+        <span class="sr-unit-sep">|</span>
+        <button class="sr-unit-btn" id="dspln-btn-met" onclick="dsplnSetUnit('metric')">Metric</button>
+      </div>
+
+      <div class="sr-fields-row">
+        <div class="sr-field">
+          <label>Height</label>
+          <div class="sr-select-wrap">
+            <select id="dspln-h" onchange="dsplnCalc()">
+              <option value="">Select height</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sr-field">
+          <label>Weight</label>
+          <div class="sr-input-wrap">
+            <input type="number" id="dspln-w" placeholder="e.g. 157 lbs" oninput="dsplnCalc()">
+          </div>
+        </div>
+      </div>
+
+      <div class="sr-field">
+        <label>Fit preference</label>
+        <div class="sr-select-wrap">
+          <select id="dspln-fit" onchange="dsplnCalc()">
+            <option value="0">Regular</option>
+            <option value="-1">Snug (size down)</option>
+            <option value="1">Loose (size up)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="sr-result" id="dspln-result">
+      <div class="sr-empty" id="dspln-empty">Enter your measurements above</div>
+
+      <div class="sr-output" id="dspln-output">
+        <div class="sr-your-size">Your perfect size is:</div>
+        <div class="sr-size-big" id="dspln-size">—</div>
+
+        <div class="sr-bar-row">
+          <div class="sr-bar-header">
+            <span class="sr-end">Snug</span>
+            <span class="sr-mid">Weight</span>
+            <span class="sr-end">Loose</span>
+          </div>
+          <div class="sr-bar-track">
+            <div class="sr-bar-tip" id="dspln-wt"></div>
+          </div>
+        </div>
+
+        <div class="sr-bar-row" style="margin-top:20px">
+          <div class="sr-bar-header">
+            <span class="sr-end">Short</span>
+            <span class="sr-mid">Height</span>
+            <span class="sr-end">Long</span>
+          </div>
+          <div class="sr-bar-track">
+            <div class="sr-bar-tip" id="dspln-ht"></div>
+          </div>
+        </div>
+
+        <div class="sr-carousel-label">See other sizes:</div>
+        <div class="sr-carousel">
+          <button class="sr-arrow" id="dspln-prev" onclick="dsplnShift(-1)">&#8249;</button>
+          <div class="sr-chips" id="dspln-chips"></div>
+          <button class="sr-arrow" id="dspln-next" onclick="dsplnShift(1)">&#8250;</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+(function () {
+
+  // ── Populate height dropdown (3'0" = 36" to 6'9" = 81") ──
+  function dsplnBuildHeightOptions(u) {
+    var sel = document.getElementById('dspln-h');
+    var currentVal = sel.value; // preserve selection across rebuild
+    sel.innerHTML = '<option value="">Select height</option>';
+    for (var inches = 36; inches <= 81; inches++) {
+      var opt = document.createElement('option');
+      opt.value = inches; // always store as inches internally
+      if (u === 'metric') {
+        var cm = Math.round(inches * 2.54);
+        opt.textContent = cm + ' cm';
+      } else {
+        var ft  = Math.floor(inches / 12);
+        var ins = inches % 12;
+        opt.textContent = ft + '\'' + ins + '"';
+      }
+      sel.appendChild(opt);
+    }
+    if (currentVal) sel.value = currentVal; // restore selection
+  }
+  dsplnBuildHeightOptions('imperial');
+
+  // ── Adult lookup table ───────────────────────────────────
+  // Rows: height 60"–82" (5'0"–6'10"), step 1" → 23 rows (index 0–22)
+  // Cols: weight 90–300 lbs, step 10 lbs → 22 cols (index 0–21)
+  //  col:  0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21
+  //  lbs: 90   100   110   120   130   140   150   160   170   180   190   200   210   220   230   240   250   260   270   280   290   300
+  var T = [
+    ['A00','A00','A0S','A0S','A0S','A1S','A1S','A1S','',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   ''],  //  0: 60" 5'0"
+    ['A00','A00','A0S','A0S','A0S','A1S','A1S','A1S','',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   ''],  //  1: 61" 5'1"
+    ['A00','A00','A0', 'A0', 'A0', 'A1S','A1S','A1S','',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   ''],  //  2: 62" 5'2"
+    ['A00L','A00L','A0','A0','A0', 'A1S','A1S','A1S','',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   ''],  //  3: 63" 5'3"
+    ['A00L','A00L','A0','A0','A0', 'A1', 'A1', 'A1', 'A2S','A2S','A2S','',   '',   '',   '',   '',   '',   '',   '',   '',   '',   ''],  //  4: 64" 5'4"
+    ['A00L','A00L','A0L','A0L','A0L','A1','A1', 'A1', 'A2S','A2S','A2S','',   '',   '',   '',   '',   '',   '',   '',   '',   '',   ''],  //  5: 65" 5'5"
+    ['',   '',   'A0L','A0L','A0L','A1', 'A1', 'A1', 'A2S','A2S','A2S','',   '',   '',   '',   '',   '',   '',   '',   '',   '',   ''],  //  6: 66" 5'6"
+    ['',   '',   'A0L','A0L','A0L','A1', 'A1', 'A1', 'A2S','A2S','A2S','A3S','A3S','A3S','',   '',   '',   '',   '',   '',   '',   ''],  //  7: 67" 5'7"
+    ['',   '',   '',   '',   '',   'A1L','A1L','A1L','A2', 'A2', 'A2', 'A3S','A3S','A3S','',   '',   '',   '',   '',   '',   '',   ''],  //  8: 68" 5'8"
+    ['',   '',   '',   '',   '',   'A1L','A1L','A1L','A2', 'A2', 'A2', 'A3S','A3S','A3S','',   '',   '',   '',   '',   '',   '',   ''],  //  9: 69" 5'9"
+    ['',   '',   '',   '',   '',   'A1L','A1L','A1L','A2', 'A2', 'A2', 'A3S','A3S','A3S','A4S','A4S','A4S','A5S','A5S','A5S','A6S','A6S'],  // 10: 70" 5'10"
+    ['',   '',   '',   '',   '',   'A1L','A1L','A1L','A2', 'A2', 'A2', 'A3', 'A3', 'A3', 'A4S','A4S','A4S','A5S','A5S','A5S','A6S','A6S'],  // 11: 71" 5'11"
+    ['',   '',   '',   '',   '',   '',   '',   '',   'A2L','A2L','A2L','A3', 'A3', 'A3', 'A4S','A4S','A4S','A5S','A5S','A5S','A6S','A6S'],  // 12: 72" 6'0"
+    ['',   '',   '',   '',   '',   '',   '',   '',   'A2L','A2L','A2L','A3', 'A3', 'A3', 'A4S','A4S','A4S','A5S','A5S','A5S','A6S','A6S'],  // 13: 73" 6'1"
+    ['',   '',   '',   '',   '',   '',   '',   '',   'A2L','A2L','A2L','A3L','A3L','A3L','A4', 'A4', 'A4', 'A5S','A5S','A5S','A6S','A6S'],  // 14: 74" 6'2"
+    ['',   '',   '',   '',   '',   '',   '',   '',   'A2L','A2L','A2L','A3L','A3L','A3L','A4', 'A4', 'A4', 'A5S','A5S','A5S','A6S','A6S'],  // 15: 75" 6'3"
+    ['',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   'A3L','A3L','A3L','A4', 'A4', 'A4', 'A5', 'A5', 'A5', 'A6', 'A6' ],  // 16: 76" 6'4"
+    ['',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   'A3L','A3L','A3L','A4', 'A4', 'A4', 'A5', 'A5', 'A5', 'A6', 'A6' ],  // 17: 77" 6'5"
+    ['',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   'A3L','A3L','A3L','A4L','A4L','A4L','A5', 'A5', 'A5', 'A6', 'A6' ],  // 18: 78" 6'6"
+    ['',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   'A4L','A4L','A4L','A5', 'A5', 'A5', 'A6', 'A6' ],  // 19: 79" 6'7"
+    ['',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   'A4L','A4L','A4L','A5L','A5L','A5L','',   ''   ],  // 20: 80" 6'8"
+    ['',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   'A4L','A4L','A4L','A5L','A5L','A5L','',   ''   ],  // 21: 81" 6'9"
+    ['',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   '',   'A5L','A5L','A5L','',   ''   ],  // 22: 82" 6'10"
+  ];
+
+  // ── Kids lookup table ────────────────────────────────────
+  // Rows: height 36"–59" (3'0"–4'11"), step 1" → 24 rows (index 0–23)
+  // Cols: weight 25–90 lbs, step 5 lbs → 14 cols (index 0–13)
+  //  col:  0     1     2     3     4     5     6     7     8     9    10    11    12    13
+  //  lbs: 25    30    35    40    45    50    55    60    65    70    75    80    85    90
+  var TK = [
+    ['M0', 'M0', 'M1', 'M1', 'M1', '',    '',    '',    '',    '',    '',    '',    '',    ''],   //  0: 36" 3'0"
+    ['M0', 'M0', 'M1', 'M1', 'M1', '',    '',    '',    '',    '',    '',    '',    '',    ''],   //  1: 37" 3'1"
+    ['M0', 'M0', 'M1', 'M1', 'M1', '',    '',    '',    '',    '',    '',    '',    '',    ''],   //  2: 38" 3'2"
+    ['M0', 'M0', 'M1', 'M1', 'M1', 'M2',  'M2',  'M2',  '',    '',    '',    '',    '',    ''],   //  3: 39" 3'3"
+    ['M0L','M0L','M1', 'M1', 'M1', 'M2',  'M2',  'M2',  'M3',  'M3',  'M3',  '',    '',    ''],   //  4: 40" 3'4"
+    ['M0L','M0L','M1L','M1L','M1L','M2',  'M2',  'M2',  'M3',  'M3',  'M3',  '',    '',    ''],   //  5: 41" 3'5"
+    ['M0L','M0L','M1L','M1L','M1L','M2',  'M2',  'M2',  'M3',  'M3',  'M3',  '',    '',    ''],   //  6: 42" 3'6"
+    ['M0L','M0L','M1L','M1L','M1L','M2',  'M2',  'M2',  'M3',  'M3',  'M3',  '',    '',    ''],   //  7: 43" 3'7"
+    ['M0L','M0L','M1L','M1L','M1L','M2L', 'M2L', 'M2L', 'M3',  'M3',  'M3',  'M4',  'M4',  'M4'],  //  8: 44" 3'8"
+    ['M0L','M0L','M1L','M1L','M1L','M2L', 'M2L', 'M2L', 'M3',  'M3',  'M3',  'M4',  'M4',  'M4'],  //  9: 45" 3'9"
+    ['M0L','M0L','',   '',   '',   'M2L', 'M2L', 'M2L', 'M3',  'M3',  'M3',  'M4',  'M4',  'M4'],  // 10: 46" 3'10"
+    ['M0L','M0L','',   '',   '',   'M2L', 'M2L', 'M2L', 'M3',  'M3',  'M3',  'M4',  'M4',  'M4'],  // 11: 47" 3'11"
+    ['',   '',   '',   '',   '',   'M2L', 'M2L', 'M2L', 'M3L', 'M3L', 'M3L', 'M4',  'M4',  'M4'],  // 12: 48" 4'0"
+    ['',   '',   '',   '',   '',   'M2L', 'M2L', 'M2L', 'M3L', 'M3L', 'M3L', 'M4',  'M4',  'M4'],  // 13: 49" 4'1"
+    ['',   '',   '',   '',   '',   '',    '',    '',    'M3L', 'M3L', 'M3L', 'M4',  'M4',  'M4'],  // 14: 50" 4'2"
+    ['',   '',   '',   '',   '',   '',    '',    '',    'M3L', 'M3L', 'M3L', 'M4L', 'M4L', 'M4L'],  // 15: 51" 4'3"
+    ['',   '',   '',   '',   '',   '',    '',    '',    'M3L', 'M3L', 'M3L', 'M4L', 'M4L', 'M4L'],  // 16: 52" 4'4"
+    ['',   '',   '',   '',   '',   '',    '',    '',    'M3L', 'M3L', 'M3L', 'M4L', 'M4L', 'M4L'],  // 17: 53" 4'5"
+    ['',   '',   '',   '',   '',   '',    '',    '',    '',    '',    '',    'M4L', 'M4L', 'M4L'],  // 18: 54" 4'6"
+    ['',   '',   '',   '',   '',   '',    '',    '',    '',    '',    '',    'M4L', 'M4L', 'M4L'],  // 19: 55" 4'7"
+    ['',   '',   '',   '',   '',   '',    '',    '',    '',    '',    '',    'M4L', 'M4L', 'M4L'],  // 20: 56" 4'8"
+    ['',   '',   '',   '',   '',   '',    '',    '',    '',    '',    '',    'M4L', 'M4L', 'M4L'],  // 21: 57" 4'9"
+    ['',   '',   '',   '',   '',   '',    '',    '',    '',    '',    '',    'M4L', 'M4L', 'M4L'],  // 22: 58" 4'10"
+    ['',   '',   '',   '',   '',   '',    '',    '',    '',    '',    '',    'M4L', 'M4L', 'M4L'],  // 23: 59" 4'11"
+  ];
+
+  var K_WIDTH_ORDER = ['M0','M1','M2','M3','M4'];
+
+  var K_W_RANGE_NUM = {
+    'M0':[25,30], 'M1':[31,45], 'M2':[46,60], 'M3':[61,75], 'M4':[76,90]
+  };
+
+  var K_H_RANGE = {
+    'M0': [36,39], 'M0L':[40,47],
+    'M1': [36,40], 'M1L':[41,45],
+    'M2': [39,43], 'M2L':[44,49],
+    'M3': [40,47], 'M3L':[48,53],
+    'M4': [44,50], 'M4L':[51,59],
+  };
+
+  // Width numbers in order — fit preference shifts ONLY this
+  var WIDTH_ORDER = ['A00','A0','A1','A2','A3','A4','A5','A6'];
+
+  // Weight range (lbs) per width number — drives SNUG/LOOSE bar
+  var W_RANGE_NUM = {
+    'A00':[90,100], 'A0':[110,130], 'A1':[131,160], 'A2':[161,190],
+    'A3':[191,220], 'A4':[221,250], 'A5':[251,280],  'A6':[281,300]
+  };
+
+  // Height range (inches) per full size — drives SHORT/LONG bar
+  var H_RANGE = {
+    'A00': [60,62], 'A00L':[63,65],
+    'A0S': [60,61], 'A0':  [62,64], 'A0L': [65,67],
+    'A1S': [60,63], 'A1':  [64,67], 'A1L': [68,71],
+    'A2S': [64,67], 'A2':  [68,71], 'A2L': [72,75],
+    'A3S': [67,70], 'A3':  [71,73], 'A3L': [74,78],
+    'A4S': [70,73], 'A4':  [74,77], 'A4L': [78,81],
+    'A5S': [70,75], 'A5':  [76,79], 'A5L': [80,82],
+    'A6S': [70,75], 'A6':  [76,79], 'A6L': [70,75],
+  };
+
+  // Parse a size into its width number and length suffix
+  // e.g. 'A1L' → { num:'A1', suffix:'L' }
+  //      'A2S' → { num:'A2', suffix:'S' }
+  //      'A3'  → { num:'A3', suffix:''  }
+  function parseSize(s) {
+    var last = s.slice(-1);
+    if (last === 'S' || last === 'L') return { num: s.slice(0,-1), suffix: last };
+    return { num: s, suffix: '' };
+  }
+
+  var mode = 'adult'; // auto-detected from height inside dsplnCalc
+  var unit = 'imperial';
+  var curSize = null;
+  var curWidthIdx = 0;
+  var curSuffix = '';
+  var curWO = WIDTH_ORDER;
+
+  function updatePlaceholders() {
+    document.getElementById('dspln-w').placeholder = unit === 'imperial' ? 'e.g. 157 lbs' : 'e.g. 71 kg';
+  }
+
+  window.dsplnSetUnit = function(u) {
+    // Convert the current weight value when toggling units
+    var wEl = document.getElementById('dspln-w');
+    var currentW = parseFloat(wEl.value);
+    if (!isNaN(currentW) && currentW > 0) {
+      if (u === 'metric' && unit === 'imperial') {
+        wEl.value = Math.round(currentW / 2.2046 * 10) / 10; // lbs → kg
+      } else if (u === 'imperial' && unit === 'metric') {
+        wEl.value = Math.round(currentW * 2.2046); // kg → lbs
+      }
+    }
+    unit = u;
+    document.getElementById('dspln-btn-imp').classList.toggle('sr-active', u === 'imperial');
+    document.getElementById('dspln-btn-met').classList.toggle('sr-active', u === 'metric');
+    dsplnBuildHeightOptions(u); // rebuild height dropdown in correct unit
+    updatePlaceholders();
+    dsplnCalc();
+  };
+
+  window.dsplnCalc = function() {
+    var w = parseFloat(document.getElementById('dspln-w').value);
+    var h = parseFloat(document.getElementById('dspln-h').value);
+    var fit = parseInt(document.getElementById('dspln-fit').value);
+    if (!w || !h || w <= 0 || h <= 0) { dsplnEmpty(); return; }
+    if (unit === 'metric') { w = w * 2.2046; } // h is always inches from the dropdown
+
+    // Auto-detect kids vs adult:
+    // - h < 60" and weight within kids range → kids table
+    // - otherwise → adult table (handles edge cases like 100 lbs / 50")
+    var useKids = (h < 60 && w >= 22 && w <= 93);
+    mode = useKids ? 'kids' : 'adult';
+
+    var size, hI, wI, WO, WR, HR;
+    if (mode === 'kids') {
+      WO = K_WIDTH_ORDER; WR = K_W_RANGE_NUM; HR = K_H_RANGE;
+      hI = Math.min(23, Math.max(0, Math.round(h - 36)));
+      wI = Math.min(13, Math.max(0, Math.round((w - 25) / 5)));
+      size = TK[hI][wI] || nearestK(hI, wI);
+    } else {
+      WO = WIDTH_ORDER; WR = W_RANGE_NUM; HR = H_RANGE;
+      hI = Math.min(22, Math.max(0, Math.round(h - 60)));
+      wI = Math.min(21, Math.max(0, Math.round((w - 90) / 10)));
+      size = T[hI][wI] || nearest(hI, wI);
+    }
+    if (!size) { dsplnEmpty(); return; }
+
+    var parsed = parseSize(size);
+    var wIdx = WO.indexOf(parsed.num);
+    if (wIdx === -1) { dsplnEmpty(); return; }
+
+    var finalNum, finalSuffix;
+    if (fit === 1) {
+      // Loose: next width, shorter variant (S for adult, no suffix for kids)
+      finalNum    = WO[Math.min(WO.length - 1, wIdx + 1)];
+      finalSuffix = mode === 'adult' ? 'S' : '';
+    } else if (fit === -1) {
+      // Snug: prev width, same suffix
+      finalNum    = WO[Math.max(0, wIdx - 1)];
+      finalSuffix = parsed.suffix;
+    } else {
+      finalNum    = parsed.num;
+      finalSuffix = parsed.suffix;
+    }
+    var finalSize = finalNum + finalSuffix;
+
+    curSize = finalSize;
+    curWidthIdx = wIdx;
+    curSuffix = parsed.suffix;
+    curWO = WO;
+
+    var wr = WR[finalNum] || [w, w];
+    var wPct = clamp(1 - (w - wr[0]) / (wr[1] - wr[0]), 0.08, 0.92);
+
+    var hr = HR[finalSize] || HR[size] || [h, h];
+    var hPct = clamp(1 - (h - hr[0]) / (hr[1] - hr[0]), 0.08, 0.92);
+
+    dsplnShow(finalSize, wPct, hPct);
+  };
+
+  function nearest(hI, wI) {
+    for (var r = 1; r <= 5; r++) {
+      for (var dh = -r; dh <= r; dh++) {
+        for (var dw = -r; dw <= r; dw++) {
+          if (Math.abs(dh) !== r && Math.abs(dw) !== r) continue;
+          var row = hI + dh, col = wI + dw;
+          if (row < 0 || row > 22 || col < 0 || col > 21) continue;
+          if (T[row][col]) return T[row][col];
+        }
+      }
+    }
+    return null;
+  }
+
+  function nearestK(hI, wI) {
+    for (var r = 1; r <= 5; r++) {
+      for (var dh = -r; dh <= r; dh++) {
+        for (var dw = -r; dw <= r; dw++) {
+          if (Math.abs(dh) !== r && Math.abs(dw) !== r) continue;
+          var row = hI + dh, col = wI + dw;
+          if (row < 0 || row > 23 || col < 0 || col > 13) continue;
+          if (TK[row][col]) return TK[row][col];
+        }
+      }
+    }
+    return null;
+  }
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function dsplnEmpty() {
+    curSize = null;
+    document.getElementById('dspln-result').classList.remove('sr-result-visible');
+  }
+
+  function dsplnShow(size, wPct, hPct) {
+    document.getElementById('dspln-result').classList.add('sr-result-visible');
+    document.getElementById('dspln-empty').classList.add('sr-hidden');
+    document.getElementById('dspln-output').classList.add('sr-visible');
+    document.getElementById('dspln-size').textContent = size;
+    bar(null, 'dspln-wt', wPct);
+    bar(null, 'dspln-ht', hPct);
+    renderChips();
+  }
+
+  function bar(fillId, tipId, pct) {
+    document.getElementById(tipId).style.left = Math.round(pct * 100) + '%';
+  }
+
+  function renderChips() {
+    var el = document.getElementById('dspln-chips');
+    el.innerHTML = '';
+    var total = curWO.length;
+    var start = Math.max(0, Math.min(curWidthIdx - 1, total - 3));
+    var end = Math.min(start + 3, total);
+    for (var i = start; i < end; i++) {
+      var s = curWO[i] + curSuffix;
+      var best = (i === curWidthIdx);
+      var chip = document.createElement('div');
+      chip.className = 'sr-chip' + (best ? ' sr-best' : '');
+      chip.textContent = s;
+      var badge = document.createElement('span');
+      badge.className = 'sr-badge';
+      badge.textContent = best ? '✓' : '✕';
+      chip.appendChild(badge);
+      el.appendChild(chip);
+    }
+    document.getElementById('dspln-prev').disabled = (curWidthIdx <= 0);
+    document.getElementById('dspln-next').disabled = (curWidthIdx >= total - 1);
+  }
+
+  window.dsplnShift = function(dir) {
+    curWidthIdx = Math.max(0, Math.min(curWO.length - 1, curWidthIdx + dir));
+    curSize = curWO[curWidthIdx] + curSuffix;
+    document.getElementById('dspln-size').textContent = curSize;
+    renderChips();
+  };
+
+  window.dsplnApply = function() {
+    if (!curSize) return;
+    var s = curSize.toUpperCase();
+    var applied = false;
+
+    document.querySelectorAll('input[type="radio"][name*="size"], input[type="radio"][data-value]').forEach(function(r) {
+      if ((r.value || r.dataset.value || '').trim().toUpperCase() === s) { r.click(); applied = true; }
+    });
+
+    if (!applied) {
+      document.querySelectorAll('select[name*="size"], select[id*="size"]').forEach(function(sel) {
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].text.trim().toUpperCase() === s) {
+            sel.selectedIndex = i;
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            applied = true;
+          }
+        }
+      });
+    }
+
+    if (!applied) {
+      document.querySelectorAll('[data-value], .variant-button').forEach(function(b) {
+        if ((b.dataset.value || b.textContent || '').trim().toUpperCase() === s) { b.click(); applied = true; }
+      });
+    }
+  };
+
+})();
+</script>

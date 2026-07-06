@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DSPLN Mobile Cart Preview</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f3f1ee;
+        color: #171313;
+        font-family:
+          Albert Sans,
+          Inter,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .preview-page {
+        min-height: 100svh;
+        background: linear-gradient(#211f1f 0 52px, #fff 52px);
+      }
+
+      .preview-header {
+        height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18px;
+        color: #fff;
+      }
+
+      .preview-brand {
+        letter-spacing: 0.32em;
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .preview-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.28);
+      }
+
+      #sidebar-cart.Drawer {
+        position: fixed;
+        inset: 0 0 0 auto;
+        width: min(100vw, 390px);
+        max-width: 100vw;
+        background: #fff;
+        color: #171313;
+        box-shadow: -18px 0 48px rgba(0, 0, 0, 0.18);
+      }
+
+      #sidebar-cart .Drawer__Header {
+        min-height: 48px;
+        padding: 0 18px;
+        border-bottom: 1px solid #e7e2dc;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      #sidebar-cart .Drawer__Title {
+        font-size: 13px;
+        line-height: 1;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      #sidebar-cart .Drawer__Close {
+        width: 32px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        background: transparent;
+        font-size: 22px;
+      }
+
+      #sidebar-cart .Cart.Drawer__Content {
+        display: flex;
+        flex-direction: column;
+        height: calc(100svh - 48px);
+        padding: 0;
+      }
+
+      #sidebar-cart .Drawer__Main {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 0 18px;
+      }
+
+      #sidebar-cart .CartItem {
+        padding: 18px 0;
+        border-top: 1px solid #171313;
+        border-bottom: 1px solid #ded9d2;
+      }
+
+      #sidebar-cart .CartItem__Body {
+        display: grid;
+        grid-template-columns: 92px minmax(0, 1fr);
+        gap: 14px;
+      }
+
+      #sidebar-cart .CartItem__Image {
+        width: 92px;
+        height: 118px;
+        object-fit: cover;
+        background: #f7f5f2;
+      }
+
+      #sidebar-cart .CartItem__Info {
+        min-width: 0;
+        padding: 0;
+      }
+
+      #sidebar-cart .CartItem__Title {
+        margin: 0 0 10px;
+        padding-bottom: 9px;
+        border-bottom: 1px solid #e7e2dc;
+        font-size: 14px;
+        line-height: 1.2;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      #sidebar-cart .CartItem__Details {
+        display: grid;
+        gap: 0;
+      }
+
+      #sidebar-cart details {
+        border-bottom: 1px solid #e7e2dc;
+      }
+
+      #sidebar-cart summary {
+        min-height: 34px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 1;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      #sidebar-cart summary::-webkit-details-marker {
+        display: none;
+      }
+
+      #sidebar-cart summary::before {
+        content: "";
+        width: 0;
+        height: 0;
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+        border-left: 7px solid #171313;
+        transform: rotate(0deg);
+      }
+
+      #sidebar-cart details[open] summary::before {
+        transform: rotate(90deg);
+      }
+
+      #sidebar-cart .CartItem__PropertyList {
+        margin: 0 0 10px 15px;
+        padding: 0;
+        list-style: none;
+        font-size: 11px;
+        line-height: 1.65;
+        color: #a5a2a0;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      #sidebar-cart .CartItem__PropertyList strong {
+        color: #6b6764;
+        font-weight: 800;
+      }
+
+      #sidebar-cart .CartItem__Actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        align-items: center;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      #sidebar-cart .CartItem__Action {
+        height: 36px;
+        border: 1px solid #eee9e3;
+        background: #fff;
+        color: #a5a2a0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      #sidebar-cart .CartItem__PriceList {
+        justify-self: end;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      #sidebar-cart .QuantitySelector {
+        margin-top: 10px;
+        width: 92px;
+        height: 32px;
+        border: 1px solid #e7e2dc;
+        border-radius: 4px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        align-items: center;
+        text-align: center;
+        font-size: 12px;
+      }
+
+      #sidebar-cart .Cart__Footer {
+        flex: 0 0 auto;
+        padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+        border-top: 1px solid #e7e2dc;
+        background: #fff;
+        box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.06);
+      }
+
+      #sidebar-cart .Cart__Subtotal {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      #sidebar-cart .Cart__Taxes {
+        margin: 6px 0 12px;
+        font-size: 10px;
+        line-height: 1.35;
+        color: #6b6764;
+        text-align: center;
+      }
+
+      #sidebar-cart .Cart__Checkout {
+        min-height: 44px;
+        width: 100%;
+        border: 0;
+        border-radius: 6px;
+        background: #171313;
+        color: #fff;
+        font-size: 13px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="preview-page">
+      <header class="preview-header">
+        <span>☰</span>
+        <span class="preview-brand">DSPLN</span>
+        <span>□</span>
+      </header>
+      <div class="preview-backdrop"></div>
+      <aside id="sidebar-cart" class="Drawer Drawer--fromRight">
+        <div class="Drawer__Header Drawer__Header--bordered Drawer__Container">
+          <span class="Drawer__Title Heading u-h4">Cart</span>
+          <button class="Drawer__Close" aria-label="Close cart">×</button>
+        </div>
+        <form class="Cart Drawer__Content">
+          <div class="Drawer__Main">
+            <article class="CartItem">
+              <div class="CartItem__Body">
+                <div class="CartItem__Image"></div>
+                <div class="CartItem__Info">
+                  <h3 class="CartItem__Title">Mens Custom Gi Suit</h3>
+                  <div class="CartItem__Details">
+                    <details open>
+                      <summary>Kimono</summary>
+                      <ul class="CartItem__PropertyList">
+                        <li>Size: <strong>A2L</strong></li>
+                        <li>Body Color: <strong>Red</strong></li>
+                        <li>Lapel Color: <strong>White</strong></li>
+                        <li>Left Chest Logo: <strong>No</strong></li>
+                        <li>Left Sleeve Logo: <strong>No</strong></li>
+                        <li>Right Sleeve Logo: <strong>No</strong></li>
+                        <li>Back Logo: <strong>Yes</strong></li>
+                      </ul>
+                    </details>
+                    <details open>
+                      <summary>Belt</summary>
+                      <ul class="CartItem__PropertyList">
+                        <li>Color: <strong>A0</strong></li>
+                      </ul>
+                    </details>
+                    <details open>
+                      <summary>Pant</summary>
+                      <ul class="CartItem__PropertyList">
+                        <li>Size: <strong>A00S</strong></li>
+                        <li>Body Color: <strong>Royal Blue</strong></li>
+                        <li>Drawcord Color: <strong>Royal Blue</strong></li>
+                        <li>Left Thigh Logo: <strong>No</strong></li>
+                        <li>Right Thigh Logo: <strong>No</strong></li>
+                      </ul>
+                    </details>
+                  </div>
+                </div>
+              </div>
+              <div class="CartItem__Actions">
+                <button class="CartItem__Action" type="button">✎ Edit</button>
+                <button class="CartItem__Action" type="button">♲ Remove</button>
+                <div class="CartItem__PriceList">$140.00</div>
+              </div>
+            </article>
+          </div>
+          <footer class="Cart__Footer">
+            <div class="Cart__Subtotal">
+              <span>Subtotal</span>
+              <span>$140.00</span>
+            </div>
+            <p class="Cart__Taxes">Shipping and taxes calculated at checkout.</p>
+            <button class="Cart__Checkout" type="button">Checkout</button>
+          </footer>
+        </form>
+      </aside>
+    </main>
+  </body>
+</html>

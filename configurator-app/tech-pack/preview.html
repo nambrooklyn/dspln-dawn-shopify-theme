@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DSPLN Tech Pack — Preview</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Helvetica, Arial, sans-serif;
+        background: #f4f4f5;
+        color: #18181b;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 20px;
+        background: #fff;
+        border-bottom: 1px solid #e4e4e7;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0;
+        letter-spacing: 2px;
+      }
+      button {
+        font: inherit;
+        font-weight: 600;
+        padding: 8px 16px;
+        border: 1px solid #18181b;
+        background: #18181b;
+        color: #fff;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #fff;
+        color: #18181b;
+      }
+      #status {
+        margin-left: auto;
+        font-size: 13px;
+        color: #71717a;
+      }
+      iframe {
+        width: 100%;
+        height: calc(100vh - 58px);
+        border: 0;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>DSPLN TECH PACK · PREVIEW</h1>
+      <button id="generate">Generate Tech Pack</button>
+      <button id="download" class="secondary">Download PDF</button>
+      <span id="status"></span>
+    </header>
+    <iframe id="preview" title="Tech pack preview"></iframe>
+    <script type="module" src="./preview.ts"></script>
+  </body>
+</html>

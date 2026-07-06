@@ -1,0 +1,139 @@
+<style>
+  @media (max-width: 768px) {
+    #sidebar-cart.Drawer {
+      width: min(100vw, 390px) !important;
+      max-width: 100vw !important;
+      background: #fff !important;
+      color: #171313 !important;
+      box-shadow: -18px 0 48px rgba(0, 0, 0, 0.18) !important;
+    }
+
+    #sidebar-cart .Drawer__Header {
+      min-height: 48px !important;
+      padding: 0 18px !important;
+      border-bottom: 1px solid #e7e2dc !important;
+      align-items: center !important;
+    }
+
+    #sidebar-cart .Drawer__Title {
+      font-size: 13px !important;
+      line-height: 1 !important;
+      letter-spacing: 0.18em !important;
+      text-transform: uppercase !important;
+      font-weight: 700 !important;
+    }
+
+    #sidebar-cart .Drawer__Close {
+      right: 18px !important;
+      width: 32px !important;
+      height: 32px !important;
+      display: grid !important;
+      place-items: center !important;
+    }
+
+    #sidebar-cart .Cart.Drawer__Content {
+      display: flex !important;
+      flex-direction: column !important;
+      height: calc(100svh - 48px) !important;
+      padding: 0 !important;
+    }
+
+    #sidebar-cart .Drawer__Main {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      overflow-y: auto !important;
+      padding: 0 16px !important;
+    }
+
+    #sidebar-cart .Cart__Empty {
+      margin: 38svh 0 0 !important;
+      font-size: 13px !important;
+      letter-spacing: 0.12em !important;
+      text-transform: uppercase !important;
+      color: #6b6764 !important;
+    }
+
+    #sidebar-cart .CartItem {
+      display: grid !important;
+      grid-template-columns: 76px minmax(0, 1fr) !important;
+      gap: 12px !important;
+      padding: 14px 0 !important;
+      border-bottom: 1px solid #eee9e3 !important;
+    }
+
+    #sidebar-cart .CartItem__ImageWrapper,
+    #sidebar-cart .CartItem__Image {
+      width: 76px !important;
+      height: 92px !important;
+      object-fit: cover !important;
+      background: #f7f5f2 !important;
+    }
+
+    #sidebar-cart .CartItem__Info {
+      min-width: 0 !important;
+      padding: 0 !important;
+    }
+
+    #sidebar-cart .CartItem__Title,
+    #sidebar-cart .CartItem__Title a {
+      font-size: 12px !important;
+      line-height: 1.25 !important;
+      letter-spacing: 0.08em !important;
+      text-transform: uppercase !important;
+      font-weight: 700 !important;
+      color: #171313 !important;
+    }
+
+    #sidebar-cart .CartItem__Meta,
+    #sidebar-cart .CartItem__PropertyList,
+    #sidebar-cart .CartItem__Variant {
+      margin-top: 6px !important;
+      font-size: 11px !important;
+      line-height: 1.35 !important;
+      color: #6b6764 !important;
+    }
+
+    #sidebar-cart .CartItem__PriceList,
+    #sidebar-cart .CartItem__LinePriceList {
+      margin-top: 8px !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      color: #171313 !important;
+    }
+
+    #sidebar-cart .QuantitySelector {
+      height: 32px !important;
+      border: 1px solid #e7e2dc !important;
+      border-radius: 4px !important;
+    }
+
+    #sidebar-cart .Cart__Footer {
+      flex: 0 0 auto !important;
+      padding: 14px 16px calc(14px + env(safe-area-inset-bottom)) !important;
+      border-top: 1px solid #e7e2dc !important;
+      background: #fff !important;
+      box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.06) !important;
+    }
+
+    #sidebar-cart .Cart__Taxes {
+      margin: 6px 0 12px !important;
+      font-size: 10px !important;
+      line-height: 1.35 !important;
+      color: #6b6764 !important;
+      text-align: center !important;
+    }
+
+    #sidebar-cart .Cart__Checkout,
+    #sidebar-cart button[name='checkout'] {
+      min-height: 44px !important;
+      width: 100% !important;
+      border-radius: 6px !important;
+      background: #171313 !important;
+      color: #fff !important;
+      font-size: 13px !important;
+      letter-spacing: 0.16em !important;
+      text-transform: uppercase !important;
+      font-weight: 700 !important;
+    }
+  }
+</style>

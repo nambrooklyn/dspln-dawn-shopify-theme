@@ -1,0 +1,17 @@
+{
+  "sections": {
+    "main": {
+      "type": "dspln-configurator-product",
+      "settings": {
+        "platform_origin": "http://127.0.0.1:3002",
+        "configurator_slug": "gi",
+        "show_header": true,
+        "desktop_min_height": 820,
+        "mobile_min_height": 780
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

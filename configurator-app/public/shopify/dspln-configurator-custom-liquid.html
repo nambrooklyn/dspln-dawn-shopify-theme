@@ -1,0 +1,776 @@
+<style>
+  #shopify-section-{{ section.id }} {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #shopify-section-{{ section.id }} .section,
+  #shopify-section-{{ section.id }} .Section,
+  #shopify-section-{{ section.id }} .container,
+  #shopify-section-{{ section.id }} .Container,
+  #shopify-section-{{ section.id }} .page-width {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .dspln-configurator-frame {
+    display: block;
+    width: 100%;
+    height: calc(100vh - 72px);
+    min-height: 820px;
+    border: 0;
+    background: #fff;
+  }
+
+  @media (max-width: 768px) {
+    .dspln-configurator-frame {
+      height: calc(100svh - 68px);
+      min-height: 980px;
+    }
+  }
+</style>
+
+<div id="dspln-configurator-embed">
+  {% assign dspln_design_id = request.params.design | default: '' %}
+  <iframe
+    id="dspln-configurator-frame"
+    class="dspln-configurator-frame"
+    title="DSPLN Custom BJJ Gi Configurator"
+    src="http://127.0.0.1:3002/configurator/gi?shopifyTest=1&amp;productId={{ product.id }}&amp;productHandle={{ product.handle | url_encode }}&amp;shop={{ shop.permanent_domain | url_encode }}&amp;customerId={{ customer.id | default: '' }}&amp;customerEmail={{ customer.email | default: '' | url_encode }}{% if dspln_design_id != blank %}&amp;design={{ dspln_design_id | url_encode }}{% endif %}"
+    loading="eager"
+    allow="clipboard-write; fullscreen"
+  ></iframe>
+</div>
+
+<script>
+  (() => {
+    const frame = document.getElementById('dspln-configurator-frame');
+    if (!frame) return;
+    const designId = new URLSearchParams(window.location.search).get('design');
+    if (!designId) return;
+    const src = new URL(frame.getAttribute('src'), window.location.origin);
+    if (src.searchParams.get('design') === designId) return;
+    src.searchParams.set('design', designId);
+    frame.setAttribute('src', src.toString());
+  })();
+</script>
+
+  <script>
+  (() => {
+    const BRIDGE_MARKER = 'data-dspln-cart-bridge';
+    const MESSAGE_MARKER = 'data-dspln-last-cart-message';
+    if (document.documentElement.getAttribute(BRIDGE_MARKER) === 'active') {
+      return;
+    }
+    document.documentElement.setAttribute(BRIDGE_MARKER, 'active');
+
+    const MESSAGE_TYPE = 'dspln:shopify-cart:add';
+    const DSPLN_ALLOWED_CONFIGURATOR_HOSTS = [
+      '127.0.0.1',
+      'localhost',
+    ];
+    /*
+      Angle-style pricing:
+      Create one Shopify product with variants named by total price, e.g.
+      TDA_PRICE_100, TDA_PRICE_115, TDA_PRICE_125, etc. Then put each
+      total's real variant ID below.
+
+      When the configurator total matches one of these keys, Shopify gets
+      ONE cart line with all customization details attached as properties.
+      This is the cleanest customer-facing cart.
+    */
+    const DSPLN_PRICE_VARIANTS_BY_TOTAL = {
+      {% for variant in product.variants %}
+        {% assign price_option = variant.option1 | downcase %}
+        {% if price_option contains 'tda_price_' %}
+          {{ price_option | remove: 'tda_price_' | plus: 0 }}: {{ variant.id }}{% unless forloop.last %},{% endunless %}
+        {% endif %}
+      {% endfor %}
+    };
+
+    /*
+      Fallback pricing:
+      If a total is not listed above, the bridge can price through separate
+      charge products. This is useful while testing, but the Angle-style
+      price variant map above is the cleaner DTC cart flow.
+
+      Recommended setup:
+      - configuredDesign: optional $0 "DSPLN Custom BJJ Gi Design" variant.
+      - kimono: $55 charge variant.
+      - belt: $15 charge variant.
+      - pant: $45 charge variant.
+      - logo10: $10 logo/customization charge variant.
+      - backLogo25: $25 back-logo charge variant.
+      - beltText10: $10 belt-text charge variant. Can reuse logo10.
+
+      Put the real Shopify variant IDs below. Leave configuredDesign null
+      until the $0 design-summary product exists; the first charge line will
+      carry the full customization details in the meantime. If using the
+      price variant map above, these can stay null.
+    */
+    const DSPLN_CART_VARIANTS = {
+      configuredDesign: null,
+      kimono: null,
+      belt: null,
+      pant: null,
+      logo10: null,
+      backLogo25: null,
+      beltText10: null,
+    };
+    const frame = document.getElementById('dspln-configurator-frame');
+
+    const CHARGE_LABELS = {
+      kimono: 'Kimono $55 charge',
+      belt: 'Belt $15 charge',
+      pant: 'Pant $45 charge',
+      logo10: '$10 customization charge',
+      backLogo25: 'Back logo $25 charge',
+      beltText10: 'Belt text $10 charge',
+    };
+
+    function getCartSectionIds() {
+      const sectionHost =
+        document.querySelector('cart-drawer') ||
+        document.querySelector('cart-notification');
+
+      if (
+        sectionHost &&
+        typeof sectionHost.getSectionsToRender === 'function'
+      ) {
+        return sectionHost.getSectionsToRender().map((section) => section.id);
+      }
+
+      return ['cart-drawer', 'cart-icon-bubble'];
+    }
+
+    function openCartDrawer() {
+      const cartDrawer = document.querySelector('cart-drawer');
+      if (cartDrawer) {
+        cartDrawer.classList.remove('is-empty');
+        if (typeof cartDrawer.open === 'function') {
+          cartDrawer.open();
+          return;
+        }
+      }
+
+      const possibleOpeners = [
+        '[aria-controls="CartDrawer"]',
+        '[data-action="open-drawer"][data-drawer-id="sidebar-cart"]',
+        'a[href="/cart"][data-action="open-drawer"]',
+        '#cart-icon-bubble',
+        'cart-drawer-opener button',
+        '.header__icon--cart',
+        '.Header__Icon[data-action="open-drawer"]',
+        '[data-cart-drawer-toggle]',
+      ];
+      for (const selector of possibleOpeners) {
+        const opener = document.querySelector(selector);
+        if (opener && typeof opener.click === 'function') {
+          opener.click();
+          return;
+        }
+      }
+    }
+
+    async function refreshCartPage(cart, addResult) {
+      const cartDrawer = document.querySelector('cart-drawer');
+      const cartNotification = document.querySelector('cart-notification');
+
+      if (
+        cartDrawer &&
+        typeof cartDrawer.renderContents === 'function' &&
+        addResult &&
+        addResult.sections
+      ) {
+        cartDrawer.renderContents(addResult);
+      } else if (
+        cartNotification &&
+        typeof cartNotification.renderContents === 'function' &&
+        addResult &&
+        addResult.sections
+      ) {
+        cartNotification.renderContents(addResult);
+      }
+
+      window.dispatchEvent(new CustomEvent('cart:refresh', { detail: { cart } }));
+      document.documentElement.dispatchEvent(
+        new CustomEvent('cart:refresh', { detail: { cart } }),
+      );
+      document.dispatchEvent(
+        new CustomEvent('cart:refresh', { detail: { cart } }),
+      );
+      document.dispatchEvent(
+        new CustomEvent('cart:updated', { detail: { cart } }),
+      );
+
+      if (window.location.pathname.replace(/\/+$/, '') === '/cart') {
+        window.location.reload();
+      } else {
+        window.location.href = '/cart';
+      }
+    }
+
+    function legacyConfiguredLines(data) {
+      if (!Array.isArray(data.items)) return [];
+
+      return data.items.map((item) => ({
+        quantity: item.quantity || 1,
+        configuredTotal: 0,
+        main: {
+          quantity: item.quantity || 1,
+          properties: item.properties || {},
+        },
+        charges: [],
+      }));
+    }
+
+    function configuredLinesFromMessage(data) {
+      return Array.isArray(data.configuredLines)
+        ? data.configuredLines
+        : legacyConfiguredLines(data);
+    }
+
+    function configuredTotalInDollars(configuredLine) {
+      const total = Number(configuredLine.configuredTotal);
+      return Number.isFinite(total) ? Math.round(total) : null;
+    }
+
+    function priceVariantIdForTotal(total) {
+      if (total === null) return null;
+      return DSPLN_PRICE_VARIANTS_BY_TOTAL[total] || null;
+    }
+
+    function buildShopifyItems(configuredLine) {
+      const items = [];
+      const mainProperties =
+        configuredLine.main && configuredLine.main.properties
+          ? configuredLine.main.properties
+          : {};
+      const configuredTotal = configuredTotalInDollars(configuredLine);
+      const priceVariantId = priceVariantIdForTotal(configuredTotal);
+
+      if (priceVariantId) {
+        return [
+          {
+            id: priceVariantId,
+            quantity:
+              configuredLine.quantity ||
+                (configuredLine.main && configuredLine.main.quantity) ||
+                1,
+            properties: mainProperties,
+          },
+        ];
+      }
+
+      if (DSPLN_CART_VARIANTS.configuredDesign) {
+        items.push({
+          id: DSPLN_CART_VARIANTS.configuredDesign,
+          quantity:
+            configuredLine.quantity ||
+            (configuredLine.main && configuredLine.main.quantity) ||
+            1,
+          properties: mainProperties,
+        });
+      }
+
+      const charges = Array.isArray(configuredLine.charges)
+        ? configuredLine.charges
+        : [];
+
+      charges.forEach((charge) => {
+        const variantId = DSPLN_CART_VARIANTS[charge.variantKey];
+        if (!variantId) {
+          throw new Error(
+            `Missing Shopify variant ID for ${CHARGE_LABELS[charge.variantKey] || charge.variantKey}.`,
+          );
+        }
+
+        items.push({
+          id: variantId,
+          quantity: charge.quantity || 1,
+          properties: {
+            ...(charge.properties || {}),
+            _dspln_charge_expected_price: `$${Number(
+              charge.unitPrice || 0,
+            ).toFixed(2)}`,
+          },
+        });
+      });
+
+      if (!DSPLN_CART_VARIANTS.configuredDesign && items[0]) {
+        items[0].properties = {
+          ...mainProperties,
+          ...items[0].properties,
+          _dspln_summary_carrier: 'true',
+        };
+      }
+
+      return items;
+    }
+
+    function isTrustedConfiguratorMessage(event) {
+      if (frame && event.source === frame.contentWindow) return true;
+
+      try {
+        const eventHost = new URL(event.origin).hostname;
+        const frameHost = frame && frame.src ? new URL(frame.src).hostname : '';
+
+        return (
+          eventHost === frameHost ||
+          DSPLN_ALLOWED_CONFIGURATOR_HOSTS.includes(eventHost) ||
+          eventHost === window.location.hostname ||
+          eventHost === 'localhost' ||
+          eventHost === '127.0.0.1'
+        );
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function postConfiguratorMessage(event, payload) {
+      if (event.source && typeof event.source.postMessage === 'function') {
+        event.source.postMessage(payload, event.origin);
+      }
+    }
+
+    window.addEventListener('message', async (event) => {
+      const data = event.data;
+      if (!data || data.type !== MESSAGE_TYPE) return;
+      if (!isTrustedConfiguratorMessage(event)) return;
+
+      document.documentElement.setAttribute(
+        MESSAGE_MARKER,
+        `${new Date().toISOString()} ${event.origin}`,
+      );
+
+      let items = [];
+      try {
+        items = configuredLinesFromMessage(data).flatMap(buildShopifyItems);
+      } catch (error) {
+        postConfiguratorMessage(
+          event,
+          {
+            type: 'dspln:shopify-cart:error',
+            ok: false,
+            message:
+              error && typeof error === 'object' && 'message' in error
+                ? error.message
+                : 'Missing Shopify charge product setup.',
+          },
+        );
+        return;
+      }
+
+      if (!items.length) return;
+
+      try {
+        const sections = getCartSectionIds();
+        const addResponse = await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            items,
+            sections,
+            sections_url: window.location.pathname,
+          }),
+        });
+
+        if (!addResponse.ok) {
+          throw new Error(await addResponse.text());
+        }
+
+        const addResult = await addResponse.json();
+
+        const cart = await fetch('/cart.js', {
+          headers: { Accept: 'application/json' },
+        }).then((response) => response.json());
+
+        await refreshCartPage(cart, addResult);
+        postConfiguratorMessage(event, {
+          type: 'dspln:shopify-cart:added',
+          ok: true,
+          cart,
+        });
+      } catch (error) {
+        postConfiguratorMessage(
+          event,
+          {
+            type: 'dspln:shopify-cart:error',
+            ok: false,
+            message:
+              error && typeof error === 'object' && 'message' in error
+                ? error.message
+                : 'Unable to add custom gear to cart.',
+          },
+        );
+      }
+    });
+  })();
+</script>
+
+<script>
+  (() => {
+    const SCRIPT_MARKER = 'data-dspln-cart-preview-thumbnails';
+    const PREVIEW_PROPERTY = '_preview_image_url';
+
+    if (document.documentElement.getAttribute(SCRIPT_MARKER) === 'active') {
+      return;
+    }
+
+    document.documentElement.setAttribute(SCRIPT_MARKER, 'active');
+
+    function installPreviewStyles() {
+      if (document.getElementById('dspln-cart-preview-thumbnail-styles')) {
+        return;
+      }
+
+      const style = document.createElement('style');
+      style.id = 'dspln-cart-preview-thumbnail-styles';
+      style.textContent = `
+        html[${SCRIPT_MARKER}="active"] .CartItem__Image,
+        html[${SCRIPT_MARKER}="active"] .cart-item img,
+        html[${SCRIPT_MARKER}="active"] .cart__row img {
+          opacity: 0;
+        }
+
+        html[${SCRIPT_MARKER}="active"] .CartItem__Image[data-dspln-preview-ready="true"],
+        html[${SCRIPT_MARKER}="active"] .cart-item img[data-dspln-preview-ready="true"],
+        html[${SCRIPT_MARKER}="active"] .cart__row img[data-dspln-preview-ready="true"] {
+          opacity: 1;
+        }
+
+        html[${SCRIPT_MARKER}="active"] .CartItem__Image[data-dspln-preview-image="true"],
+        html[${SCRIPT_MARKER}="active"] .cart-item img[data-dspln-preview-image="true"],
+        html[${SCRIPT_MARKER}="active"] .cart__row img[data-dspln-preview-image="true"] {
+          display: block !important;
+          width: 100% !important;
+          height: 100% !important;
+          max-width: 100% !important;
+          max-height: 100% !important;
+          object-fit: contain !important;
+          object-position: center center !important;
+        }
+
+        html[${SCRIPT_MARKER}="active"] [data-dspln-preview-frame="true"] {
+          display: block !important;
+          width: clamp(190px, 15vw, 260px) !important;
+          height: clamp(320px, 26vw, 440px) !important;
+          max-width: 34vw !important;
+          aspect-ratio: 2 / 3 !important;
+          background: #fff !important;
+          overflow: hidden !important;
+          padding: 0 !important;
+        }
+
+        html[${SCRIPT_MARKER}="active"] .CartItem__Info .CartItem__PriceList,
+        html[${SCRIPT_MARKER}="active"] .cart-item__details .cart-item__price-wrapper,
+        html[${SCRIPT_MARKER}="active"] .line-item__info .line-item__price-list {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    installPreviewStyles();
+
+    async function fetchCart() {
+      const response = await fetch('/cart.js', {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return response.json();
+    }
+
+    function cartRows() {
+      const selectors = [
+        '[data-cart-item]',
+        '[data-cart-item-key]',
+        '[data-line-item]',
+        '[id^="CartItem-"]',
+        '.cart-item',
+        'tr.cart-item',
+        '.cart__row',
+        '.CartItem',
+        '.line-item',
+        '.cart-items .item',
+        '.ajaxcart__product',
+        '.cart-drawer-item',
+        '.CartItemWrapper',
+        '#sidebar-cart .CartItem',
+        '#sidebar-cart .Cart__Item',
+        '#sidebar-cart .CartItemWrapper',
+        '#sidebar-cart .Cart__ItemList > *',
+        '#sidebar-cart .Drawer__Main [class*="CartItem"]',
+        '#sidebar-cart .Drawer__Main [class*="LineItem"]',
+        'cart-drawer .drawer__inner .cart-item',
+        'cart-drawer .drawer__contents .cart-item',
+        'cart-drawer .cart-drawer__item',
+      ];
+
+      return Array.from(document.querySelectorAll(selectors.join(',')));
+    }
+
+    function itemKeyCandidates(item) {
+      return [item.key, item.id, item.variant_id, item.product_id]
+        .filter(Boolean)
+        .map(String);
+    }
+
+    function rowMatchesItem(row, item, index) {
+      const keys = itemKeyCandidates(item);
+      const attributes = [
+        'data-key',
+        'data-cart-item-key',
+        'data-line-item-key',
+        'data-variant-id',
+        'data-product-id',
+      ];
+
+      if (
+        attributes.some((attribute) => {
+          const value = row.getAttribute(attribute);
+          return value && keys.includes(value);
+        })
+      ) {
+        return true;
+      }
+
+      if (row.id === `CartItem-${index + 1}`) {
+        return true;
+      }
+
+      const text = (row.textContent || '').toLowerCase();
+      const title = String(item.product_title || item.title || '').toLowerCase();
+      return Boolean(title && text.includes(title.slice(0, 18)));
+    }
+
+    function imageCandidates(row) {
+      return Array.from(row.querySelectorAll('img')).filter((image) => {
+        const box = image.getBoundingClientRect();
+        const width = image.naturalWidth || image.width || box.width;
+        const height = image.naturalHeight || image.height || box.height;
+        return width >= 32 && height >= 32;
+      });
+    }
+
+    function setPreviewImage(image, url) {
+      image.src = url;
+      image.removeAttribute('srcset');
+      image.removeAttribute('data-srcset');
+      image.removeAttribute('data-src');
+      image.removeAttribute('sizes');
+      image.setAttribute('data-dspln-preview-image', 'true');
+      image.setAttribute('data-dspln-preview-ready', 'true');
+      image.loading = 'lazy';
+      image.style.objectFit = 'contain';
+      image.style.objectPosition = 'center center';
+      image.style.width = '100%';
+      image.style.height = '100%';
+      image.style.maxWidth = '100%';
+      image.style.maxHeight = '100%';
+      image.style.display = 'block';
+
+      const imageFrame = image.parentElement && image.parentElement.closest(
+        '.AspectRatio, .CartItem__ImageWrapper, .cart-item__image-container, .cart-item__media, .line-item__image-wrapper',
+      );
+      if (imageFrame) {
+        imageFrame.setAttribute('data-dspln-preview-frame', 'true');
+        imageFrame.style.backgroundColor = '#fff';
+        imageFrame.style.overflow = 'hidden';
+        imageFrame.style.aspectRatio = '2 / 3';
+        imageFrame.style.height = 'clamp(320px, 26vw, 440px)';
+        imageFrame.style.width = 'clamp(190px, 15vw, 260px)';
+        imageFrame.style.maxWidth = '34vw';
+        imageFrame.style.paddingBottom = '0';
+      }
+
+      const cartMedia = image.closest('.CartItem__ImageWrapper, .cart-item__media, .cart-item__image-container, .line-item__image-wrapper');
+      if (cartMedia) {
+        cartMedia.setAttribute('data-dspln-preview-frame', 'true');
+      }
+    }
+
+    function revealImage(image) {
+      if (image) {
+        image.setAttribute('data-dspln-preview-ready', 'true');
+      }
+    }
+
+    function revealAllCartImages() {
+      cartRows().forEach((row) => {
+        imageCandidates(row).forEach(revealImage);
+      });
+    }
+
+    function previewUrlForItem(item) {
+      const value = item && item.properties && item.properties[PREVIEW_PROPERTY];
+
+      if (typeof value !== 'string') {
+        return '';
+      }
+
+      return /^https?:\/\//.test(value) ? value : '';
+    }
+
+    function hidePreviewPropertyLabels() {
+      const propertyNodes = document.querySelectorAll(
+        '.product-option, .cart-item__property, .line-item-property, .cart__meta-text, li, dt, dd',
+      );
+
+      propertyNodes.forEach((node) => {
+        const text = node.textContent || '';
+        if (
+          text.includes(PREVIEW_PROPERTY) ||
+          /(?:Left Chest|Left Sleeve|Right Sleeve|Back|Left Thigh|Right Thigh) Artwork\s*:/i.test(text)
+        ) {
+          node.style.display = 'none';
+        }
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function artworkUrlsForItem(item) {
+      const properties = (item && item.properties) || {};
+      const labels = {
+        'Left Chest Artwork': 'Left Chest Logo',
+        'Left Sleeve Artwork': 'Left Sleeve Logo',
+        'Right Sleeve Artwork': 'Right Sleeve Logo',
+        'Back Artwork': 'Back Logo',
+        'Left Thigh Artwork': 'Left Thigh Logo',
+        'Right Thigh Artwork': 'Right Thigh Logo',
+      };
+      return Object.entries(labels).reduce((result, [propertyName, summaryLabel]) => {
+        const url = properties[propertyName];
+        if (typeof url === 'string' && /^https?:\/\//.test(url)) {
+          result[summaryLabel] = url;
+        }
+        return result;
+      }, {});
+    }
+
+    function linkArtworkYesValues(row, item) {
+      const artworkUrls = artworkUrlsForItem(item);
+      if (!Object.keys(artworkUrls).length) return;
+
+      const nodes = row.querySelectorAll(
+        '.product-option, .cart-item__property, .line-item-property, .cart__meta-text, li, dt, dd, p, span',
+      );
+
+      nodes.forEach((node) => {
+        if (node.getAttribute('data-dspln-artwork-links') === 'true') return;
+        const originalText = node.textContent || '';
+        if (!/\bYES\b/i.test(originalText)) return;
+
+        let html = escapeHtml(originalText);
+        Object.entries(artworkUrls).forEach(([label, url]) => {
+          const pattern = new RegExp(`(${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*)YES`, 'i');
+          html = html.replace(
+            pattern,
+            `$1<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">YES</a>`,
+          );
+        });
+
+        if (html !== escapeHtml(originalText)) {
+          node.innerHTML = html;
+          node.setAttribute('data-dspln-artwork-links', 'true');
+        }
+      });
+    }
+
+    async function applyPreviewImages() {
+      const cart = await fetchCart();
+
+      if (!cart || !Array.isArray(cart.items) || !cart.items.length) {
+        revealAllCartImages();
+        return;
+      }
+
+      const rows = cartRows();
+      const usedRows = new Set();
+
+      cart.items.forEach((item, index) => {
+        const url = previewUrlForItem(item);
+
+        const row =
+          rows.find((candidate) => {
+            if (usedRows.has(candidate)) {
+              return false;
+            }
+
+            return rowMatchesItem(candidate, item, index);
+          }) || rows[index];
+
+        if (!row) {
+          return;
+        }
+
+        usedRows.add(row);
+
+        const image = imageCandidates(row)[0];
+        if (image && url) {
+          setPreviewImage(image, url);
+        } else {
+          revealImage(image);
+        }
+        linkArtworkYesValues(row, item);
+      });
+
+      rows.forEach((row) => {
+        if (!usedRows.has(row)) {
+          imageCandidates(row).forEach(revealImage);
+        }
+      });
+      hidePreviewPropertyLabels();
+    }
+
+    let scheduledPreviewRefresh = 0;
+    function schedulePreviewRefresh() {
+      window.clearTimeout(scheduledPreviewRefresh);
+      const safelyApplyPreviewImages = () => {
+        applyPreviewImages().catch(revealAllCartImages);
+      };
+      safelyApplyPreviewImages();
+      scheduledPreviewRefresh = window.setTimeout(safelyApplyPreviewImages, 50);
+      window.setTimeout(safelyApplyPreviewImages, 140);
+      window.setTimeout(safelyApplyPreviewImages, 600);
+      window.setTimeout(safelyApplyPreviewImages, 1400);
+      window.setTimeout(revealAllCartImages, 3000);
+    }
+
+    [
+      'DOMContentLoaded',
+      'cart:refresh',
+      'cart:updated',
+      'cart:change',
+      'ajaxCart:updated',
+      'theme:cart:change',
+    ].forEach((eventName) => {
+      document.addEventListener(eventName, schedulePreviewRefresh);
+      window.addEventListener(eventName, schedulePreviewRefresh);
+    });
+
+    new MutationObserver(schedulePreviewRefresh).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+
+    schedulePreviewRefresh();
+  })();
+</script>

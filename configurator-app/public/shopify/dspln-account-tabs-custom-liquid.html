@@ -1,0 +1,102 @@
+{% assign dspln_account_base_url = routes.account_url %}
+{% assign dspln_designs_url = dspln_account_base_url | append: '?view=designs' %}
+{% assign dspln_logos_url = dspln_account_base_url | append: '?view=logos' %}
+{% assign dspln_shop_domain = shop.permanent_domain | default: 'dspln.com' %}
+{% assign dspln_customer_id = customer.id | default: '' %}
+{% assign dspln_customer_email = customer.email | default: '' %}
+
+<style>
+  .dspln-account-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 34px 0 44px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #dedede;
+  }
+
+  .dspln-account-tabs a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 22px;
+    border: 1px solid #d8d8d8;
+    color: #1c1b1b;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .dspln-account-tabs a[aria-current="page"] {
+    background: #1c1b1b;
+    border-color: #1c1b1b;
+    color: #fff;
+  }
+
+  .dspln-account-embed {
+    margin: 0 0 52px;
+    border: 1px solid #dedede;
+    background: #fff;
+  }
+
+  .dspln-account-embed iframe {
+    display: block;
+    width: 100%;
+    min-height: 760px;
+    border: 0;
+  }
+</style>
+
+<nav class="dspln-account-tabs" aria-label="Account sections">
+  <a href="{{ dspln_account_base_url }}" data-dspln-view="orders" aria-current="page">Orders</a>
+  <a href="{{ dspln_designs_url }}" data-dspln-view="designs">Saved Designs</a>
+  <a href="{{ dspln_logos_url }}" data-dspln-view="logos">Uploaded Logos</a>
+</nav>
+
+<script>
+  (function () {
+    function initDsplnAccountTabs() {
+      var nav = document.querySelector('.dspln-account-tabs');
+      if (!nav) return;
+
+      var params = new URLSearchParams(window.location.search);
+      var view = params.get('view') || 'orders';
+
+      nav.querySelectorAll('a').forEach(function (link) {
+        link.removeAttribute('aria-current');
+      });
+
+      var activeLink = nav.querySelector('[data-dspln-view="' + view + '"]');
+      if (activeLink) {
+        activeLink.setAttribute('aria-current', 'page');
+      }
+
+      if (view !== 'designs' && view !== 'logos') return;
+      if (document.querySelector('.dspln-account-embed')) return;
+
+      var path = view === 'logos' ? '/account/logos' : '/account/designs';
+      var iframe = document.createElement('iframe');
+      iframe.title = view === 'logos' ? 'DSPLN uploaded logos' : 'DSPLN saved designs';
+      iframe.loading = 'lazy';
+      iframe.src = 'http://127.0.0.1:3002' +
+        path +
+        '?shop={{ dspln_shop_domain | url_encode }}' +
+        '&customerId={{ dspln_customer_id | url_encode }}' +
+        '&customerEmail={{ dspln_customer_email | url_encode }}';
+
+      var wrapper = document.createElement('div');
+      wrapper.className = 'dspln-account-embed';
+      wrapper.appendChild(iframe);
+      nav.insertAdjacentElement('afterend', wrapper);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initDsplnAccountTabs);
+    } else {
+      initDsplnAccountTabs();
+    }
+  })();
+</script>
