@@ -314,23 +314,21 @@ export const BELT_EMBROIDERY_DEFAULT = {
 export type CameraView = 'front' | 'back';
 
 // Camera positions for Front/Back tabs. Tuned to frame the full gi
-// (head to feet) given the model auto-scales to ~2.5 units tall.
-// Target y = 1.25 = exact vertical center of the model so the gi sits
-// dead-center in the canvas (not biased high or low).
+// (head to feet) with the women's GLB sitting lower in the viewport.
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
-  front: [0, 1.25, 4.35],
-  back: [0, 1.25, -4.35],
+  front: [0, 1.55, 4.8],
+  back: [0, 1.55, -4.8],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
   CameraView,
   [number, number, number]
 > = {
-  front: [0, 1.25, 4.0],
-  back: [0, 1.25, -4.0],
+  front: [0, 1.55, 4.35],
+  back: [0, 1.55, -4.35],
 };
 
-export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
+export const CAMERA_TARGET: [number, number, number] = [0, 1.55, 0];
 
 // Anchor for a logo placed on the jacket chest (front).
 // In world space relative to the placeholder gi origin (0,0,0).

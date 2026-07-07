@@ -29,8 +29,8 @@ import { LayerDecal } from '../shared/layer-decal';
 import { IN_TO_WORLD, ProjectedDecal } from '../shared/projected-decal';
 
 const CAMERA_MIN_DISTANCE = 1.2;
-const DESKTOP_CAMERA_MAX_DISTANCE = 4.6;
-const MOBILE_CAMERA_MAX_DISTANCE = 4.2;
+const DESKTOP_CAMERA_MAX_DISTANCE = 5.0;
+const MOBILE_CAMERA_MAX_DISTANCE = 4.6;
 
 // Surface normal for each slot — derived from the slot's plane
 // rotation (Y axis only, for our four anchors). Used to push the
