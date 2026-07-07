@@ -1,7 +1,39 @@
 {%- if cart != empty -%}
   {%- for item in cart.items -%}
+    {%- liquid
+      capture dspln_preview_image
+        render 'dspln-line-item-preview-url', item: item
+      endcapture
+      assign dspln_preview_image = dspln_preview_image | strip
+      assign has_dspln_line_item_properties = false
+      for property in item.properties
+        assign property_name = property.first | strip
+        assign property_value = property.last | strip
+        assign property_key = property_name | downcase
+        if property_value != blank
+          if property_key contains 'dspln' or property_key contains 'kimono' or property_key contains 'belt' or property_key contains 'pant' or property_key contains 'logo' or property_key contains 'artwork' or property_key contains 'rashguard' or property_key == 'front body color' or property_key == 'back body color' or property_key == 'left sleeve color' or property_key == 'right sleeve color' or property_key == 'neck band color' or property_key contains 'grappling short' or property_key == 'waistband color' or property_key contains 'leg color'
+            assign has_dspln_line_item_properties = true
+          endif
+        endif
+      endfor
+      assign item_title_key = item.product.title | downcase
+      assign item_handle_key = item.product.handle | downcase
+      if item_title_key contains 'rashguard' or item_title_key contains 'grappling short' or item_title_key contains 'custom gi' or item_handle_key contains 'custom' or item_handle_key contains 'configurator'
+        assign has_dspln_line_item_properties = true
+      endif
+    -%}
     <div id="cart-notification-product-{{ item.key }}" class="cart-item">
-      {%- if item.image -%}
+      {%- if dspln_preview_image != blank -%}
+        <div class="cart-notification-product__image global-media-settings">
+          <img
+            src="{{ dspln_preview_image | escape }}"
+            alt="{{ item.product.title | escape }} customization preview"
+            width="70"
+            height="70"
+            loading="lazy"
+          >
+        </div>
+      {%- elsif item.image and has_dspln_line_item_properties == false -%}
         <div class="cart-notification-product__image global-media-settings">
           <img
             src="{{ item.image | image_url: width: 140 }}"

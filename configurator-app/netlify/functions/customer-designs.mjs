@@ -31,6 +31,15 @@ const htmlResponse = (statusCode, body) =>
     'Cache-Control': 'private, max-age=60',
   });
 
+const redirectResponse = (location) => ({
+  statusCode: 302,
+  headers: {
+    'Access-Control-Allow-Origin': '*',
+    Location: location,
+  },
+  body: '',
+});
+
 const cleanPathPart = (value) =>
   encodeURIComponent(String(value || 'unknown')).replace(/%/g, '~');
 
@@ -60,6 +69,19 @@ const absoluteApiUrl = (event, params) => {
     'https';
   const query = new URLSearchParams(params);
   return `${protocol}://${host}/api/customer-designs?${query.toString()}`;
+};
+
+const absoluteAppUrl = (event, path, params = {}) => {
+  const host = event.headers.host ?? event.headers.Host;
+  const protocol =
+    event.headers['x-forwarded-proto'] ??
+    event.headers['X-Forwarded-Proto'] ??
+    'https';
+  const url = new URL(`${protocol}://${host}${path}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) url.searchParams.set(key, value);
+  });
+  return url.toString();
 };
 
 const shopifyDesignUrl = (record) => {
@@ -638,7 +660,9 @@ export const handler = async (event) => {
       if (query.asset) return assetResponse(record, query.asset);
       if ((event.headers.accept || event.headers.Accept || '').includes('text/html')) {
         if (query.view === 'tech-pack') {
-          return htmlResponse(200, techPackHtml(event, record));
+          return redirectResponse(
+            absoluteAppUrl(event, '/tech-pack/gi', { id: record.id }),
+          );
         }
         return htmlResponse(200, productionPacketHtml(event, record));
       }

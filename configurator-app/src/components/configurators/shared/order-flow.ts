@@ -9,6 +9,10 @@ export function createLineDesignId(prefix: string) {
 export function productionTechPackUrl(productionUrl?: string) {
   if (!productionUrl) return undefined;
   const url = new URL(productionUrl);
+  const designId = url.searchParams.get('id');
+  if (designId) {
+    return `${url.origin}/tech-pack/gi?id=${encodeURIComponent(designId)}`;
+  }
   url.searchParams.set('view', 'tech-pack');
   return url.toString();
 }

@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { GiStateProvider, useGiState } from './gi-state';
+import type { GiSerializedState } from './gi-state';
 import { GiCanvas } from './gi-canvas';
 import { ConfiguratorActionRail } from './configurator-action-rail';
 import { SceneVisibilityControls } from './scene-visibility-controls';
@@ -57,6 +58,75 @@ const SHOPIFY_CART_UPDATED_MESSAGE = 'dspln:shopify-cart:updated';
 const SHOPIFY_CART_ERROR_MESSAGE = 'dspln:shopify-cart:error';
 const AUTO_SAVE_DELAY_MS = 800;
 const CUSTOMER_DESIGNS_CHANGED_KEY = 'dspln:customer-designs:changed';
+
+interface CartLogoImageData {
+  dataUrl: string;
+  filename: string;
+  imageWidth: number;
+  imageHeight: number;
+}
+
+interface GiCartConfigData {
+  kind: 'gi-cart-config';
+  version: 1;
+  spec: GiSerializedState;
+  images: {
+    kimono: Record<string, CartLogoImageData>;
+    pant: Record<string, CartLogoImageData>;
+  };
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string | null>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve(typeof reader.result === 'string' ? reader.result : null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function draftImagesToCartImages<TSlot extends string>(
+  images: GiDraftDocument['images']['kimono'] | GiDraftDocument['images']['pant'],
+) {
+  const entries = await Promise.all(
+    Object.entries(images).map(async ([slot, image]) => {
+      if (!image) return null;
+      const dataUrl = await blobToDataUrl(image.blob);
+      if (!dataUrl) return null;
+      return [
+        slot,
+        {
+          dataUrl,
+          filename: image.filename,
+          imageWidth: image.imageWidth,
+          imageHeight: image.imageHeight,
+        },
+      ] as const;
+    }),
+  );
+
+  return entries.reduce<Record<string, CartLogoImageData>>((acc, entry) => {
+    if (!entry) return acc;
+    const [slot, image] = entry;
+    acc[slot as TSlot] = image;
+    return acc;
+  }, {});
+}
+
+async function draftToCartConfigData(
+  draft: GiDraftDocument,
+): Promise<GiCartConfigData> {
+  return {
+    kind: 'gi-cart-config',
+    version: 1,
+    spec: draft.spec,
+    images: {
+      kimono: await draftImagesToCartImages(draft.images.kimono),
+      pant: await draftImagesToCartImages(draft.images.pant),
+    },
+  };
+}
 
 function mergeSavedDesigns(...groups: GiDraftDocument[][]) {
   const designsById = new Map<string, GiDraftDocument>();
@@ -417,6 +487,7 @@ const GiConfiguratorInner = memo(() => {
       let designUrl: string | undefined;
       let productionUrl: string | undefined;
       let artworkLinks: CloudArtworkLink[] = [];
+      let cartConfigData: GiCartConfigData | undefined;
 
       try {
         const draft = await createGiDraftDocument({
@@ -427,6 +498,7 @@ const GiConfiguratorInner = memo(() => {
           pantLogos,
           thumbnailUrl,
         });
+        cartConfigData = await draftToCartConfigData(draft);
         const cloudResult = await saveGiCloudDesignRecord(
           draft,
           cloudOwnerContext,
@@ -451,6 +523,7 @@ const GiConfiguratorInner = memo(() => {
         designUrl,
         productionUrl,
         artworkLinks,
+        configData: cartConfigData,
       });
       const parentCartResult = isShopifyIframeMode()
         ? waitForShopifyCartParentResult()

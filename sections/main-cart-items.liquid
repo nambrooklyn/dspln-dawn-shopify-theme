@@ -123,20 +123,25 @@
 
                         if property_key contains 'grappling short' or property_key == 'waistband color' or property_key == 'right front leg color' or property_key == 'left front leg color' or property_key == 'right back leg color' or property_key == 'left back leg color'
                           assign is_dspln_grappling_short_line_item = true
+                          assign has_dspln_line_item_properties = true
                         endif
 
                         if property_key contains 'rashguard' or property_key == 'front body color' or property_key == 'back body color' or property_key == 'left sleeve color' or property_key == 'right sleeve color' or property_key == 'neck band color'
                           assign is_dspln_rashguard_line_item = true
+                          assign has_dspln_line_item_properties = true
                         endif
 
                         if property_value contains 'short_sleeve_rashguard' or property_value contains 'short-sleeve-rashguard'
                           assign is_dspln_short_sleeve_rashguard_line_item = true
+                          assign has_dspln_line_item_properties = true
                         endif
                         if property_value contains 'womens_gi_' or property_value contains 'womens-gi'
                           assign is_dspln_womens_gi_line_item = true
+                          assign has_dspln_line_item_properties = true
                         endif
                         if property_value contains 'kids_gi_' or property_value contains 'kids-gi'
                           assign is_dspln_kids_gi_line_item = true
+                          assign has_dspln_line_item_properties = true
                         endif
                       endif
                     endfor
@@ -144,15 +149,26 @@
                     assign item_handle_key = item.product.handle | downcase
                     if item_title_key contains 'grappling short'
                       assign is_dspln_grappling_short_line_item = true
+                      assign has_dspln_line_item_properties = true
                     endif
                     if item_title_key contains 'short sleeve' and item_title_key contains 'rashguard'
                       assign is_dspln_short_sleeve_rashguard_line_item = true
+                      assign has_dspln_line_item_properties = true
+                    endif
+                    if item_title_key contains 'long sleeve' and item_title_key contains 'rashguard'
+                      assign is_dspln_rashguard_line_item = true
+                      assign has_dspln_line_item_properties = true
                     endif
                     if item_title_key contains 'women' or item_handle_key contains 'womens'
                       assign is_dspln_womens_gi_line_item = true
+                      assign has_dspln_line_item_properties = true
                     endif
                     if item_title_key contains 'kids' or item_title_key contains 'kid' or item_handle_key contains 'kids'
                       assign is_dspln_kids_gi_line_item = true
+                      assign has_dspln_line_item_properties = true
+                    endif
+                    if item_handle_key contains 'custom' or item_handle_key contains 'configurator'
+                      assign has_dspln_line_item_properties = true
                     endif
                   -%}
                   <tr

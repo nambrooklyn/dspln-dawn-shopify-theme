@@ -205,6 +205,45 @@
     }
   }
 
+  function isDsplnCustomRow(row, item) {
+    if (row?.classList?.contains('cart-item--dspln-custom')) return true;
+
+    const productTitle = normalizedText(item?.product_title || item?.title || '');
+    const productHandle = normalizedText(item?.handle || item?.product_handle || item?.url || '');
+    if (
+      productTitle.includes('rashguard') ||
+      productTitle.includes('grappling short') ||
+      productTitle.includes('custom gi') ||
+      productTitle.includes('kids') ||
+      productTitle.includes('women') ||
+      productHandle.includes('custom') ||
+      productHandle.includes('configurator')
+    ) {
+      return true;
+    }
+
+    const properties = item?.properties || {};
+    return Object.keys(properties).some((key) => {
+      const normalizedKey = normalizedText(key);
+      return (
+        normalizedKey.includes('dspln') ||
+        normalizedKey.includes('kimono') ||
+        normalizedKey.includes('belt') ||
+        normalizedKey.includes('pant') ||
+        normalizedKey.includes('logo') ||
+        normalizedKey.includes('artwork') ||
+        normalizedKey.includes('rashguard') ||
+        normalizedKey.includes('front body color') ||
+        normalizedKey.includes('back body color') ||
+        normalizedKey.includes('sleeve color') ||
+        normalizedKey.includes('neck band color') ||
+        normalizedKey.includes('grappling short') ||
+        normalizedKey.includes('waistband color') ||
+        normalizedKey.includes('leg color')
+      );
+    });
+  }
+
   function normalizedText(value) {
     return String(value || '')
       .toLowerCase()
@@ -488,6 +527,9 @@
         const image = row?.querySelector('.cart-item__image') || cartImages[index];
         if (url) {
           setPreviewImage(image, url);
+        } else if (isDsplnCustomRow(row, item)) {
+          image?.classList.add('cart-item__image--dspln-pending');
+          image?.setAttribute('data-dspln-preview-pending', 'true');
         } else {
           clearPendingImage(image);
         }

@@ -3,6 +3,7 @@ import { Toaster } from 'sonner';
 import { GiConfigurator } from './components/configurators/gi';
 import { getConfigurator } from './components/configurators/registry';
 import { ProductionDashboard } from './components/production-dashboard';
+import { TechPackDownloadPage } from './components/tech-pack-download-page';
 
 export function App() {
   const path =
@@ -20,7 +21,9 @@ export function App() {
 
   return (
     <>
-      {isProductionDashboard ? (
+      {path === '/tech-pack/gi' ? (
+        <TechPackDownloadPage />
+      ) : isProductionDashboard ? (
         <ProductionDashboard />
       ) : Configurator ? (
         <Configurator />

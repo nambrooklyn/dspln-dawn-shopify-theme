@@ -148,11 +148,16 @@
                               assign dspln_cart_design_id = property_value | split: 'design=' | last | split: '&' | first | split: '#' | first
                             endif
 
-                            if property_key == 'kimono' or property_key contains 'kimono ' or property_key == 'belt' or property_key contains 'belt ' or property_key == 'pant' or property_key contains 'pant ' or property_key == 'logos' or property_key contains 'logo' or property_key contains 'artwork' or property_key contains 'dspln'
+                            if property_key == 'kimono' or property_key contains 'kimono ' or property_key == 'belt' or property_key contains 'belt ' or property_key == 'pant' or property_key contains 'pant ' or property_key == 'logos' or property_key contains 'logo' or property_key contains 'artwork' or property_key contains 'dspln' or property_key contains 'rashguard' or property_key == 'front body color' or property_key == 'back body color' or property_key == 'left sleeve color' or property_key == 'right sleeve color' or property_key == 'neck band color' or property_key contains 'grappling short' or property_key == 'waistband color' or property_key == 'right front leg color' or property_key == 'left front leg color' or property_key == 'right back leg color' or property_key == 'left back leg color'
                               assign has_dspln_line_item_properties = true
                             endif
                           endif
                         endfor
+                        assign item_title_key = item.product.title | downcase
+                        assign item_handle_key = item.product.handle | downcase
+                        if item_title_key contains 'rashguard' or item_title_key contains 'grappling short' or item_title_key contains 'women' or item_title_key contains 'kids' or item_title_key contains 'kid' or item_handle_key contains 'custom' or item_handle_key contains 'configurator'
+                          assign has_dspln_line_item_properties = true
+                        endif
                       -%}
                       <tr
                         id="CartDrawer-Item-{{ item.index | plus: 1 }}"
