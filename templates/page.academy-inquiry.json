@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "academy_contact": {
+      "type": "dspln-academy-contact",
+      "settings": {}
+    }
+  },
+  "order": [
+    "academy_contact"
+  ]
+}

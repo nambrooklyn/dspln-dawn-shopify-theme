@@ -1,0 +1,43 @@
+{{ 'dspln-philosophy-page.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-philosophy-meaning" aria-label="{{ section.settings.heading | escape }}">
+  <div class="dspln-philosophy-meaning__inner">
+    <img
+      class="dspln-philosophy-meaning__mark"
+      src="{{ 'dspln-blood-sweat-tears-mark.png' | asset_url }}"
+      alt=""
+      width="300"
+      height="132"
+      loading="lazy"
+    >
+    <h2 class="dspln-philosophy-heading">{{ section.settings.heading }}</h2>
+    <div class="dspln-philosophy-meaning__body">
+      {{ section.settings.text }}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN philosophy meaning",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "BLOOD SWEAT & TEARS"
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "Text",
+      "default": "<p>The red, white and blue drops not only represents where we come from, but also epitomizes the relentless pursuit of excellence and mastery within a discipline. Each element, blood, sweat, and tears, symbolizes the sacrifices, perseverance, and dedication required to achieve greatness.</p><p><strong>Blood</strong> signifies the physical effort and occasional pain endured in the pursuit of one's goals.</p><p><strong>Sweat</strong> represents the hard work and toil poured into honing skills and pushing boundaries.</p><p><strong>Tears</strong> embody the emotional investment and resilience needed to overcome setbacks and challenges along the journey.</p><p>Together, these elements encapsulate the essence of unwavering determination and commitment to mastery, serving as a powerful emblem of the relentless pursuit of excellence.</p>"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN philosophy meaning"
+    }
+  ]
+}
+{% endschema %}

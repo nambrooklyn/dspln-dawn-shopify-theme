@@ -2264,9 +2264,13 @@
             }
           }
         },
-        "icon_with_text": {
+          "icon_with_text": {
           "name": "Icon with text",
           "settings": {
+            "content": {
+              "label": "Content",
+              "info": "Configure the text and icon pairs for this feature."
+            },
             "layout": {
               "label": "Layout",
               "options__1": {

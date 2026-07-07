@@ -1,0 +1,51 @@
+{
+  "sections": {
+    "about_hero": {
+      "type": "dspln-about-hero",
+      "settings": {
+        "heading": "ABOUT",
+        "text": "DSPLN is an atelier for high-quality kimonos created by @namcoanyc Tailored specifically for Brazilian Jiu Jitsu and meticulously crafted with a keen eye for detail, DSPLN kimonos seamlessly blend the elegance of traditional Japanese design with the durability required for intense BJJ training and rigorous grappling sessions."
+      }
+    },
+    "about_vision": {
+      "type": "dspln-about-vision",
+      "settings": {
+        "heading": "Your Vision Brought To Life",
+        "text": "At DSPLN we are committed to crafting more than just a kimono; we strive to create a personalized experience that embodies the spirit of tradition, quality, and individuality. We are not just artisans; we are collaborators, working hand in hand with our customers to achieve perfection in every stitch, and bring your Jiu-Jitsu journey to life."
+      }
+    },
+    "about_mission": {
+      "type": "dspln-about-mission",
+      "settings": {
+        "heading": "OUR MISSION",
+        "text": "Is to empower jiu jitsu disciples with garments that not only meet their functional needs but also reflect their unique style and personality. Through meticulous craftsmanship, innovative design, and attention to detail, we aim to provide you with gis that inspire confidence, elevate performance, and foster a deeper connection to their martial arts journey. We believe that every stitch tells a story, and it's our passion to help you write yours."
+      }
+    },
+    "about_experience": {
+      "type": "dspln-about-experience",
+      "settings": {
+        "heading": "A Personal Experience",
+        "text": "Our process begins with a deep understanding of our clients' needs, preferences, and aspirations. Whether it's a specific fit, design, or customization request, we take pride in our ability to listen attentively and translate their vision into reality. Through our mastery and skill, we meticulously bring together traditional craftsmanship and modern innovation to create gis that not only meet but exceed expectations."
+      }
+    },
+    "about_craftsmanship": {
+      "type": "dspln-about-craftsmanship",
+      "settings": {
+        "video_watch_url": "https://www.youtube.com/watch?v=bJANX1-TjLg",
+        "video_label": "Watch Blood Sweat and Tears video",
+        "eyebrow": "BLOOD SWEAT AND TEARS",
+        "heading": "PASSIONATE CRAFTSMANSHIP",
+        "text": "@namcoanyc brings an unparalleled level of craftsmanship, attention to detail, precision, innovation, obsession to quality, and passion to his kimono making, resulting in truly unique and beautiful pieces that are a reflection of the culture and spirit of Brazilian jujitsu.",
+        "button_link": "https://www.youtube.com/watch?v=bJANX1-TjLg",
+        "button_label": "WATCH VIDEO"
+      }
+    }
+  },
+  "order": [
+    "about_hero",
+    "about_vision",
+    "about_mission",
+    "about_experience",
+    "about_craftsmanship"
+  ]
+}

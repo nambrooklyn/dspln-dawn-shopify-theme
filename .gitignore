@@ -8,3 +8,8 @@
 ehthumbs.db
 Thumbs.db
 .shopify
+.github/workflows/
+*.zip
+sizing-body.html
+sizing-main-only.html
+sizing-page.html
