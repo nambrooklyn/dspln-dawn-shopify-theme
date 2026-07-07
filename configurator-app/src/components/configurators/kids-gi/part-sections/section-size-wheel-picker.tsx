@@ -41,6 +41,7 @@ export const SectionSizeWheelPicker = memo(
     const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const parsed = useMemo(() => parseSize(value), [value]);
     const isCustom = value === CUSTOM_MEASUREMENTS;
+    const hasSelection = Boolean(value);
     const activeIndex = isCustom
       ? BASE_SIZES.length
       : BASE_SIZES.indexOf(parsed.base);
@@ -65,7 +66,7 @@ export const SectionSizeWheelPicker = memo(
           Math.max(0, Math.round(scrollTop / ROW_HEIGHT)),
         );
 
-        if (nextIndex !== activeIndex) {
+        if (!hasSelection || nextIndex !== activeIndex) {
           onChange(
             nextIndex === BASE_SIZES.length
               ? CUSTOM_MEASUREMENTS
@@ -73,7 +74,7 @@ export const SectionSizeWheelPicker = memo(
           );
         }
       }, 70);
-    }, [activeIndex, activeSuffix, onChange]);
+    }, [activeIndex, activeSuffix, hasSelection, onChange]);
 
     const shiftBase = (direction: -1 | 1) => {
       const nextIndex = activeIndex + direction;
@@ -101,6 +102,11 @@ export const SectionSizeWheelPicker = memo(
             <span key={column.label}>{column.label}</span>
           ))}
         </div>
+        {!hasSelection ? (
+          <p className="text-muted-foreground mb-1 text-center text-[10px] font-medium tracking-wide uppercase">
+            Select size
+          </p>
+        ) : null}
 
         <div className="border-border relative overflow-hidden rounded border bg-background px-2 py-1">
           <button
@@ -125,7 +131,7 @@ export const SectionSizeWheelPicker = memo(
           >
             <div style={{ height: ROW_HEIGHT }} />
             {BASE_SIZES.map((base) => {
-              const isActiveRow = !isCustom && base === parsed.base;
+              const isActiveRow = hasSelection && !isCustom && base === parsed.base;
 
               return (
                 <div
@@ -159,7 +165,7 @@ export const SectionSizeWheelPicker = memo(
             })}
             <div
               className={`grid snap-center grid-cols-3 gap-1 text-center ${
-                isCustom ? 'opacity-100' : 'opacity-35 blur-[0.45px]'
+                hasSelection && isCustom ? 'opacity-100' : 'opacity-35 blur-[0.45px]'
               }`}
               style={{ height: ROW_HEIGHT }}
             >

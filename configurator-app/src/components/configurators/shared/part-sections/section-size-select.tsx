@@ -18,7 +18,7 @@ export const SectionSizeSelect = memo(
         </h3>
         <span className="text-muted-foreground">|</span>
         <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-          {value}
+          {value || 'Choose size'}
         </span>
       </div>
       <SectionSizeWheelPicker value={value} onChange={onChange} />

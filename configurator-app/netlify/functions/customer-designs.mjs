@@ -459,6 +459,171 @@ function productionPacketHtml(event, record) {
 </html>`;
 }
 
+function yesNoLink(hasArtwork, link) {
+  if (!hasArtwork) return 'NO';
+  return link
+    ? `<a href="${esc(link.url)}" target="_blank" rel="noopener noreferrer">YES</a>`
+    : 'YES';
+}
+
+function artworkBySlot(linked) {
+  return linked.artwork.reduce((acc, art) => {
+    acc[`${art.part}:${art.slot}`] = art;
+    return acc;
+  }, {});
+}
+
+function techPackHtml(event, record) {
+  const linked = withLinks(event, record);
+  const spec = record.configData?.spec || {};
+  const images = record.configData?.images || {};
+  const artwork = artworkBySlot(linked);
+  const kimonoImages = images.kimono || {};
+  const pantImages = images.pant || {};
+  const date = record.updatedAt || record.createdAt || new Date().toISOString();
+  const colors = [
+    ['Kimono Body', colorName(spec.kimono?.colors?.body)],
+    ['Kimono Lapel', colorName(spec.kimono?.colors?.lapel)],
+    ['Kimono Reinforcement', colorName(spec.kimono?.colors?.reinforcement)],
+    ['Kimono Stitching', colorName(spec.kimono?.colors?.stitching)],
+    ['Belt Color', colorName(spec.belt?.color)],
+    ['Pant Body', colorName(spec.pant?.colors?.body)],
+    ['Pant Reinforcement', colorName(spec.pant?.colors?.reinforcement)],
+    ['Pant Drawcord', colorName(spec.pant?.colors?.drawcord)],
+    ['Pant Stitching', colorName(spec.pant?.colors?.stitching)],
+  ].filter(([, value]) => value);
+  const sizes = [
+    ['Kimono Size', spec.kimono?.size],
+    ['Belt Size', spec.belt?.size],
+    ['Pant Size', spec.pant?.size],
+  ].filter(([, value]) => value);
+  const belt = [
+    ['Left Belt Text', spec.belt?.embroidery?.leftEnd || 'NO'],
+    ['Left Belt Font', spec.belt?.embroidery?.leftFont || ''],
+    [
+      'Left Belt Thread',
+      spec.belt?.embroidery?.leftThreadColorName ||
+        spec.belt?.embroidery?.leftThreadColor ||
+        '',
+    ],
+    ['Right Belt Text', spec.belt?.embroidery?.rightEnd || 'NO'],
+    ['Right Belt Font', spec.belt?.embroidery?.rightFont || ''],
+    [
+      'Right Belt Thread',
+      spec.belt?.embroidery?.rightThreadColorName ||
+        spec.belt?.embroidery?.rightThreadColor ||
+        '',
+    ],
+  ].filter(([, value]) => value);
+  const logoRows = [
+    [
+      'Kimono Left Chest Logo',
+      yesNoLink(kimonoImages['left-chest'], artwork['kimono:left-chest']),
+    ],
+    [
+      'Kimono Left Sleeve Logo',
+      yesNoLink(kimonoImages['left-sleeve'], artwork['kimono:left-sleeve']),
+    ],
+    [
+      'Kimono Right Sleeve Logo',
+      yesNoLink(kimonoImages['right-sleeve'], artwork['kimono:right-sleeve']),
+    ],
+    ['Kimono Back Logo', yesNoLink(kimonoImages.back, artwork['kimono:back'])],
+    [
+      'Pant Left Thigh Logo',
+      yesNoLink(pantImages['left-pant'], artwork['pant:left-pant']),
+    ],
+    [
+      'Pant Right Thigh Logo',
+      yesNoLink(pantImages['right-pant'], artwork['pant:right-pant']),
+    ],
+  ];
+
+  const renderRows = (rows, { htmlValues = false } = {}) =>
+    rows
+      .map(
+        ([label, value]) =>
+          `<tr><th>${esc(label)}</th><td>${htmlValues ? value : esc(value)}</td></tr>`,
+      )
+      .join('');
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DSPLN Tech Pack ${esc(record.id)}</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; color: #161616; background: #f7f7f7; }
+      main { max-width: 1120px; margin: 0 auto; padding: 42px 28px 64px; }
+      header { display: flex; justify-content: space-between; gap: 24px; align-items: end; padding-bottom: 18px; border-bottom: 2px solid #111; }
+      h1 { margin: 0; font-size: 26px; letter-spacing: .18em; font-weight: 700; text-transform: uppercase; }
+      .meta { color: #666; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; text-align: right; }
+      .layout { display: grid; grid-template-columns: minmax(240px, 360px) 1fr; gap: 32px; margin-top: 28px; }
+      .preview, .card { background: #fff; border: 1px solid #d8d8d8; }
+      .preview { padding: 24px; }
+      .preview img { display: block; width: 100%; height: auto; object-fit: contain; }
+      .card { margin-bottom: 18px; padding: 22px; break-inside: avoid; }
+      h2 { margin: 0 0 16px; color: #730000; font-size: 14px; letter-spacing: .18em; text-transform: uppercase; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { padding: 9px 0; border-bottom: 1px solid #eee; vertical-align: top; text-align: left; }
+      th { width: 46%; color: #777; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+      td { color: #111; }
+      a { color: #730000; }
+      .note { margin-top: 20px; color: #666; font-size: 12px; line-height: 1.55; }
+      @media print {
+        body { background: #fff; }
+        main { max-width: none; padding: 20px; }
+        a { color: #111; text-decoration: none; }
+      }
+      @media (max-width: 760px) {
+        header, .layout { display: block; }
+        .meta { margin-top: 12px; text-align: left; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>DSPLN Tech Pack</h1>
+          <div class="meta" style="text-align:left;margin-top:8px;">${esc(record.name || 'Custom Gi Design')}</div>
+        </div>
+        <div class="meta">
+          Design ID<br>${esc(record.id)}<br><br>
+          Updated<br>${esc(new Date(date).toLocaleString('en-US'))}
+        </div>
+      </header>
+      <div class="layout">
+        <aside class="preview">
+          ${record.thumbnailUrl ? `<img src="${esc(record.thumbnailUrl)}" alt="Design preview">` : ''}
+          <p class="note">Use the linked 3D design for rotation/editing. This page is the production reference for sizes, colors, belt text, and uploaded artwork.</p>
+          <p><a href="${esc(linked.designUrl)}" target="_top">Open editable 3D design</a></p>
+        </aside>
+        <section>
+          <div class="card">
+            <h2>Sizes</h2>
+            <table>${renderRows(sizes)}</table>
+          </div>
+          <div class="card">
+            <h2>Colors</h2>
+            <table>${renderRows(colors)}</table>
+          </div>
+          <div class="card">
+            <h2>Belt Embroidery</h2>
+            <table>${renderRows(belt)}</table>
+          </div>
+          <div class="card">
+            <h2>Artwork</h2>
+            <table>${renderRows(logoRows, { htmlValues: true })}</table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>`;
+}
+
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return jsonResponse(204, {});
 
@@ -472,6 +637,9 @@ export const handler = async (event) => {
       if (!record) return jsonResponse(404, { error: 'Design not found' });
       if (query.asset) return assetResponse(record, query.asset);
       if ((event.headers.accept || event.headers.Accept || '').includes('text/html')) {
+        if (query.view === 'tech-pack') {
+          return htmlResponse(200, techPackHtml(event, record));
+        }
         return htmlResponse(200, productionPacketHtml(event, record));
       }
       return jsonResponse(200, { data: { design: withLinks(event, record) } });

@@ -22,7 +22,7 @@ export const SectionKimonoSize = memo(() => {
         </h3>
         <span className="text-muted-foreground">|</span>
         <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-          {isCustom ? 'Custom Measurements' : kimonoSize}
+          {isCustom ? 'Custom Measurements' : kimonoSize || 'Choose size'}
         </span>
       </div>
 

@@ -19,14 +19,26 @@ export function getMissingGiSizeMessage(spec: {
   belt: { size?: string };
   pant: { size?: string };
 }) {
+  const missingParts: string[] = [];
   if (spec.partVisibility.jacket && !spec.kimono.size?.trim()) {
-    return 'Please choose a kimono size before adding this Gi to cart.';
+    missingParts.push('kimono');
   }
   if (spec.partVisibility.belt && !spec.belt.size?.trim()) {
-    return 'Please choose a belt size before adding this Gi to cart.';
+    missingParts.push('belt');
   }
   if (spec.partVisibility.pants && !spec.pant.size?.trim()) {
-    return 'Please choose a pant size before adding this Gi to cart.';
+    missingParts.push('pant');
+  }
+  if (missingParts.length === 1) {
+    return `Please choose a ${missingParts[0]} size before adding this Gi to cart.`;
+  }
+  if (missingParts.length > 1) {
+    const labels = missingParts.map((part) => `${part} size`);
+    const list =
+      labels.length === 2
+        ? `${labels[0]} and ${labels[1]}`
+        : `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+    return `Please choose a ${list} before adding this Gi to cart.`;
   }
   return null;
 }

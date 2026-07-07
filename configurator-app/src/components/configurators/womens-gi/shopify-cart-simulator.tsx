@@ -381,7 +381,6 @@ export function buildShopifyTestCartLine({
     { name: '_preview_image_url', value: thumbnailUrl, hidden: true },
     ...(designUrl ? [{ name: '3D Design', value: designUrl }] : []),
     ...(techPackUrl ? [{ name: 'Tech Pack', value: techPackUrl }] : []),
-    ...(productionUrl ? [{ name: 'Production URL', value: productionUrl }] : []),
     ...(designUrl ? [{ name: '_dspln_design_url', value: designUrl, hidden: true }] : []),
     ...(productionUrl
       ? [{ name: '_dspln_production_url', value: productionUrl, hidden: true }]
@@ -429,22 +428,7 @@ export function readShopifyTestCart(): ShopifyCartLine[] {
 
 function cartPropertiesForShopify(line: ShopifyCartLine) {
   return line.properties.reduce<Record<string, string>>((acc, property) => {
-    // This test build stores the preview as a local data URL. Shopify line
-    // properties should stay compact; production will pass a real hosted URL.
-    if (
-      property.name === '_preview_image_url' &&
-      property.value.startsWith('data:')
-    ) {
-      return acc;
-    }
-    if (
-      property.hidden &&
-      ![
-        '_dspln_design_id',
-        '_dspln_design_url',
-        '_preview_image_url',
-      ].includes(property.name)
-    ) {
+    if (property.hidden) {
       return acc;
     }
     acc[property.name] = property.value;
