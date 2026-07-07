@@ -3,6 +3,7 @@ import { Toaster } from 'sonner';
 import { GiConfigurator } from './components/configurators/gi';
 import { getConfigurator } from './components/configurators/registry';
 import { ProductionDashboard } from './components/production-dashboard';
+import { RashguardTechPackDownloadPage } from './components/rashguard-tech-pack-download-page';
 import { TechPackDownloadPage } from './components/tech-pack-download-page';
 
 export function App() {
@@ -23,6 +24,8 @@ export function App() {
     <>
       {path === '/tech-pack/gi' ? (
         <TechPackDownloadPage />
+      ) : path === '/tech-pack/rashguard' ? (
+        <RashguardTechPackDownloadPage />
       ) : isProductionDashboard ? (
         <ProductionDashboard />
       ) : Configurator ? (

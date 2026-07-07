@@ -32,6 +32,13 @@ export interface RashguardDraftDocument {
   name: string;
   spec: RashguardSerializedState;
   images: RashguardDraftArtworkImage[];
+  renders?: {
+    front?: string;
+    back?: string;
+    left?: string;
+    right?: string;
+    aspect?: number;
+  };
   thumbnailUrl?: string;
   createdAt: string;
   updatedAt: string;
@@ -110,6 +117,7 @@ export async function createRashguardDraftDocument({
   name,
   spec,
   artworkLayers,
+  renders,
   thumbnailUrl,
   existingCreatedAt,
 }: {
@@ -117,6 +125,7 @@ export async function createRashguardDraftDocument({
   name: string;
   spec: RashguardSerializedState;
   artworkLayers: RashguardArtworkLayer[];
+  renders?: RashguardDraftDocument['renders'];
   thumbnailUrl?: string;
   existingCreatedAt?: string;
 }): Promise<RashguardDraftDocument> {
@@ -130,6 +139,7 @@ export async function createRashguardDraftDocument({
     name,
     spec,
     images,
+    renders,
     thumbnailUrl,
     createdAt: existingCreatedAt ?? now,
     updatedAt: now,

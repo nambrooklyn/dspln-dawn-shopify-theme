@@ -1,7 +1,10 @@
 import { RASHGUARD_PRODUCT_CONFIG } from './rashguard-config';
 import type { RashguardSerializedState } from './rashguard-state';
 import type { ShopifyCartLine } from '../shared/shopify-cart-simulator';
-import { createLineDesignId } from '../shared/order-flow';
+import {
+  createLineDesignId,
+  productionRashguardTechPackUrl,
+} from '../shared/order-flow';
 
 function colorValue(color: { name: string | null; hex: string }) {
   return color.name ?? color.hex;
@@ -46,16 +49,21 @@ export function buildRashguardCartLine({
   thumbnailUrl,
   designId,
   artworkLayerUrls,
+  designUrl,
+  productionUrl,
 }: {
   spec: RashguardSerializedState;
   thumbnailUrl: string;
   designId?: string;
   artworkLayerUrls?: Record<number, string>;
+  designUrl?: string;
+  productionUrl?: string;
 }): ShopifyCartLine {
   const configuratorId =
     designId ?? createLineDesignId(RASHGUARD_PRODUCT_CONFIG.orderDesignIdPrefix);
   const configStorageKey = `${RASHGUARD_PRODUCT_CONFIG.configStoragePrefix}${configuratorId}`;
   const summary = buildSummary(spec);
+  const techPackUrl = productionRashguardTechPackUrl(productionUrl);
 
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(configStorageKey, JSON.stringify(spec));
@@ -84,6 +92,12 @@ export function buildRashguardCartLine({
       { name: '_configurator_id', value: configuratorId, hidden: true },
       { name: '_config_json_storage_key', value: configStorageKey, hidden: true },
       { name: '_preview_image_url', value: thumbnailUrl, hidden: true },
+      ...(designUrl ? [{ name: '3D Design', value: designUrl }] : []),
+      ...(techPackUrl ? [{ name: 'Tech Pack', value: techPackUrl }] : []),
+      ...(designUrl ? [{ name: '_dspln_design_url', value: designUrl, hidden: true }] : []),
+      ...(productionUrl
+        ? [{ name: '_dspln_production_url', value: productionUrl, hidden: true }]
+        : []),
       ...artworkLayerUrlProperties(artworkLayerUrls),
     ],
     charges: [],

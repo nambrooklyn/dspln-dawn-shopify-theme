@@ -17,6 +17,11 @@ import {
 } from './rashguard-export';
 import { uploadPreviewImage } from '../shared/preview-upload';
 import {
+  buildRashguardCloudDesignUrls,
+  getRashguardCloudOwnerContext,
+  saveRashguardCloudDesignRecord,
+} from '../shared/rashguard-cloud-designs';
+import {
   generateRashguardArtFile,
   type ArtFileOrderInfo,
 } from './rashguard-artfile';
@@ -186,6 +191,9 @@ const RashguardConfiguratorInner = memo(() => {
     getLinkedDesignId(),
   );
   const [currentDesignName, setCurrentDesignName] = useState(formatDesignName);
+  const [cloudOwnerContext] = useState(() =>
+    getRashguardCloudOwnerContext(RASHGUARD_PRODUCT_CONFIG),
+  );
   const [isCartEditMode] = useState(getCartEditMode);
   const draftReadyRef = useRef(false);
 
@@ -474,9 +482,53 @@ const RashguardConfiguratorInner = memo(() => {
         : null;
       const thumbnailUrl = hostedThumbnailUrl ?? localThumbnailUrl;
       const artworkLayerUrls = await uploadArtworkLayerUrls();
+      const captured = captureGarmentViewsSafe();
+      const renders = captured
+        ? {
+            ...captured.views,
+            aspect: captured.aspect,
+          }
+        : undefined;
+      let lineDesignId = createLineDesignId(
+        RASHGUARD_PRODUCT_CONFIG.orderDesignIdPrefix,
+      );
+      let designUrl: string | undefined;
+      let productionUrl: string | undefined;
+
+      try {
+        const draft = await createRashguardDraftDocument({
+          id: lineDesignId,
+          name: currentDesignName || formatDesignName(),
+          spec,
+          artworkLayers,
+          renders,
+          thumbnailUrl,
+        });
+        const cloudResult = await saveRashguardCloudDesignRecord(
+          draft,
+          cloudOwnerContext,
+          RASHGUARD_PRODUCT_CONFIG,
+        );
+        if (cloudResult) {
+          lineDesignId = cloudResult.draft.id;
+          setCurrentDesignId(cloudResult.draft.id);
+          const urls = buildRashguardCloudDesignUrls(
+            cloudResult.draft.id,
+            RASHGUARD_PRODUCT_CONFIG,
+          );
+          designUrl = cloudResult.designUrl ?? urls?.designUrl;
+          productionUrl = cloudResult.productionUrl ?? urls?.productionUrl;
+        }
+      } catch (err) {
+        console.warn('[RashguardConfigurator] cloud design save failed', err);
+      }
+
       const line = buildRashguardCartLine({
         spec,
         thumbnailUrl,
+        designId: lineDesignId,
+        designUrl,
+        productionUrl,
         artworkLayerUrls,
       });
       const sentToShopifyParent = sendLinesToShopifyParent([line]);
@@ -493,7 +545,15 @@ const RashguardConfiguratorInner = memo(() => {
     } finally {
       setIsAddingToCart(false);
     }
-  }, [getCanvasEl, serialize, setCameraView, uploadArtworkLayerUrls]);
+  }, [
+    artworkLayers,
+    cloudOwnerContext,
+    currentDesignName,
+    getCanvasEl,
+    serialize,
+    setCameraView,
+    uploadArtworkLayerUrls,
+  ]);
 
   return (
     <>

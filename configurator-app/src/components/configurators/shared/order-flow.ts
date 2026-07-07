@@ -17,6 +17,17 @@ export function productionTechPackUrl(productionUrl?: string) {
   return url.toString();
 }
 
+export function productionRashguardTechPackUrl(productionUrl?: string) {
+  if (!productionUrl) return undefined;
+  const url = new URL(productionUrl);
+  const designId = url.searchParams.get('id');
+  if (designId) {
+    return `${url.origin}/tech-pack/rashguard?id=${encodeURIComponent(designId)}`;
+  }
+  url.searchParams.set('view', 'tech-pack');
+  return url.toString();
+}
+
 export function getMissingGiSizeMessage(spec: {
   partVisibility: { jacket?: boolean; belt?: boolean; pants?: boolean };
   kimono: { size?: string };
