@@ -14,6 +14,7 @@ import type { Mesh } from 'three';
 import {
   BELT_EMBROIDERY_DEFAULT,
   CAMERA_POSITIONS,
+  CAMERA_TARGETS,
   MOBILE_CAMERA_POSITIONS,
   GI_DEFAULT_COLORS,
   GI_PART_PRICES,
@@ -786,3 +787,5 @@ export const cameraViewToPosition = (
   view: CameraView,
   useMobileCamera = false,
 ) => (useMobileCamera ? MOBILE_CAMERA_POSITIONS : CAMERA_POSITIONS)[view];
+
+export const cameraViewToTarget = (view: CameraView) => CAMERA_TARGETS[view];

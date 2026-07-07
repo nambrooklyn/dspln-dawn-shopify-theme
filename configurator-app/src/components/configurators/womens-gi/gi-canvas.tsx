@@ -13,7 +13,7 @@ import {
 } from 'three';
 
 import { GiGlbModel } from './gi-glb-model';
-import { useGiState, cameraViewToPosition } from './gi-state';
+import { useGiState, cameraViewToPosition, cameraViewToTarget } from './gi-state';
 import {
   CAMERA_TARGET,
   fontCssForBeltFont,
@@ -388,16 +388,27 @@ GiModelClient.displayName = 'GiModelClient';
  * Start's SSR-then-hydrate flow, leaving the WebGL buffer at 300×150.
  */
 const CanvasBridge = memo(() => {
-  const { gl, scene } = useThree();
+  const { camera, gl, scene } = useThree();
   const { setCanvasEl } = useGiState();
 
   useEffect(() => {
     setCanvasEl(gl.domElement);
     if (typeof window !== 'undefined') {
-      (window as unknown as Record<string, unknown>).__giScene = scene;
+      const globals = window as unknown as Record<string, unknown>;
+      globals.__giRenderer = gl;
+      globals.__giScene = scene;
+      globals.__giCamera = camera;
     }
-    return () => setCanvasEl(null);
-  }, [gl, scene, setCanvasEl]);
+    return () => {
+      setCanvasEl(null);
+      if (typeof window !== 'undefined') {
+        const globals = window as unknown as Record<string, unknown>;
+        delete globals.__giRenderer;
+        delete globals.__giScene;
+        delete globals.__giCamera;
+      }
+    };
+  }, [camera, gl, scene, setCanvasEl]);
 
   return null;
 });
@@ -443,7 +454,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     const targetPos = new Vector3(
       ...cameraViewToPosition(cameraView, useMobileCamera),
     );
-    const targetTgt = new Vector3(...CAMERA_TARGET);
+    const targetTgt = new Vector3(...cameraViewToTarget(cameraView));
     const startTime = performance.now();
     const duration = 600;
     let raf = 0;

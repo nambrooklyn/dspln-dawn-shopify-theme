@@ -323,7 +323,13 @@ export const BELT_EMBROIDERY_DEFAULT = {
   rightThreadColor: '#ffffff',
 };
 
-export type CameraView = 'front' | 'back';
+export type CameraView =
+  | 'front'
+  | 'back'
+  | 'left'
+  | 'right'
+  | 'left-belt-end'
+  | 'right-belt-end';
 
 // Camera positions for Front/Back tabs. Tuned to frame the full gi
 // (head to feet) given the model auto-scales to ~2.5 units tall.
@@ -332,6 +338,10 @@ export type CameraView = 'front' | 'back';
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   front: [0, 1.25, 3.75],
   back: [0, 1.25, -3.75],
+  left: [-3.75, 1.25, 0],
+  right: [3.75, 1.25, 0],
+  'left-belt-end': [0.68, 1.2, 1.05],
+  'right-belt-end': [-0.68, 1.2, 1.05],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
@@ -340,9 +350,22 @@ export const MOBILE_CAMERA_POSITIONS: Record<
 > = {
   front: [0, 1.25, 3.35],
   back: [0, 1.25, -3.35],
+  left: [-3.35, 1.25, 0],
+  right: [3.35, 1.25, 0],
+  'left-belt-end': [0.68, 1.2, 1.05],
+  'right-belt-end': [-0.68, 1.2, 1.05],
 };
 
 export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
+
+export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
+  front: CAMERA_TARGET,
+  back: CAMERA_TARGET,
+  left: CAMERA_TARGET,
+  right: CAMERA_TARGET,
+  'left-belt-end': [0.15, 1.25, 0.18],
+  'right-belt-end': [-0.16, 1.25, 0.18],
+};
 
 // Anchor for a logo placed on the jacket chest (front).
 // In world space relative to the placeholder gi origin (0,0,0).

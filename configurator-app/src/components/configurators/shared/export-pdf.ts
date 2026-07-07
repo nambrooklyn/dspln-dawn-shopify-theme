@@ -1,4 +1,9 @@
 import jsPDF from 'jspdf';
+import type {
+  Camera,
+  Scene,
+  WebGLRenderer,
+} from 'three';
 
 import {
   GI_PART_DISPLAY,
@@ -7,11 +12,53 @@ import {
   PANT_LOGO_SLOT_LABEL,
   PANT_SUBPART_LABEL,
 } from '../gi/gi-config';
-import type { GiLayer, GiSerializedState } from '../gi/gi-state';
+import type { GiLayer } from '../gi/gi-state';
+
+type ExportGiSerializedState = {
+  price: {
+    total: number;
+    currency: string;
+    lines: Array<{
+      part: keyof typeof GI_PART_DISPLAY;
+      included: boolean;
+      unitPrice: number;
+    }>;
+  };
+  kimono: {
+    size: string;
+    colors: Record<string, { hex: string; name?: string | null }>;
+    logos: Record<
+      string,
+      { filename: string; imageWidth: number; imageHeight: number }
+    >;
+  };
+  belt: {
+    size: string;
+    color: { hex: string; name?: string | null };
+    embroidery: {
+      leftEnd: string;
+      leftFont: string;
+      rightEnd: string;
+      rightFont: string;
+      leftThreadColor: string;
+      leftThreadColorName: string | null;
+      rightThreadColor: string;
+      rightThreadColorName: string | null;
+    };
+  };
+  pant: {
+    size: string;
+    colors: Record<string, { hex: string; name?: string | null }>;
+    logos: Record<
+      string,
+      { filename: string; imageWidth: number; imageHeight: number }
+    >;
+  };
+};
 
 interface ExportPDFInput {
   productName: string;
-  spec: GiSerializedState;
+  spec: ExportGiSerializedState;
   layers: GiLayer[];
   // Two snapshots from the 3D canvas — front and back views.
   frontDataUrl: string;
@@ -209,6 +256,63 @@ export function snapshotCanvas(
     return canvasEl.toDataURL('image/png');
   } catch {
     return null;
+  }
+}
+
+interface HighResolutionRendererGlobals {
+  __giRenderer?: WebGLRenderer;
+  __giScene?: Scene;
+  __giCamera?: Camera & {
+    aspect?: number;
+    updateProjectionMatrix?: () => void;
+  };
+}
+
+export function snapshotCanvasHighResolution({
+  width = 3200,
+  height = 4000,
+}: {
+  width?: number;
+  height?: number;
+} = {}): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const globals = window as unknown as HighResolutionRendererGlobals;
+  const renderer = globals.__giRenderer;
+  const scene = globals.__giScene;
+  const camera = globals.__giCamera;
+
+  if (!renderer || !scene || !camera) return null;
+
+  const canvas = renderer.domElement;
+  const previousWidth = canvas.width;
+  const previousHeight = canvas.height;
+  const previousPixelRatio = renderer.getPixelRatio();
+  const previousAspect = camera.aspect;
+
+  try {
+    renderer.setPixelRatio(1);
+    renderer.setSize(width, height, false);
+    if (typeof camera.aspect === 'number') {
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix?.();
+    }
+    renderer.render(scene, camera);
+    return canvas.toDataURL('image/png');
+  } catch {
+    return null;
+  } finally {
+    renderer.setPixelRatio(previousPixelRatio);
+    renderer.setSize(
+      previousWidth / previousPixelRatio,
+      previousHeight / previousPixelRatio,
+      false,
+    );
+    if (typeof previousAspect === 'number') {
+      camera.aspect = previousAspect;
+      camera.updateProjectionMatrix?.();
+    }
+    renderer.render(scene, camera);
   }
 }
 

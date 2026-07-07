@@ -32,8 +32,9 @@ import {
   exportGiPdf,
   snapshotCanvas,
   snapshotCanvasCenteredThumbnail,
+  snapshotCanvasHighResolution,
   snapshotCanvasThumbnail,
-} from './export-pdf';
+} from '../shared/export-pdf';
 import { uploadPreviewImage } from '../shared/preview-upload';
 import { createLineDesignId, getMissingGiSizeMessage } from '../shared/order-flow';
 import {
@@ -432,10 +433,29 @@ const GiConfiguratorInner = memo(() => {
       setCameraView(view);
       // Let the camera-rig lerp settle + a render frame elapse.
       await new Promise((r) => setTimeout(r, 600));
-      return snapshotCanvas(getCanvasEl());
+      return snapshotCanvasHighResolution() ?? snapshotCanvas(getCanvasEl());
     },
     [getCanvasEl, setCameraView],
   );
+
+  const captureTechPackRenders = useCallback(async () => {
+    const startView = cameraView;
+    const front = await captureView('front');
+    const back = await captureView('back');
+    const left = await captureView('left');
+    const right = await captureView('right');
+    const leftBeltEnd = await captureView('left-belt-end');
+    const rightBeltEnd = await captureView('right-belt-end');
+    setCameraView(startView);
+    return {
+      front: front ?? undefined,
+      back: back ?? undefined,
+      left: left ?? undefined,
+      right: right ?? undefined,
+      leftBeltEnd: leftBeltEnd ?? undefined,
+      rightBeltEnd: rightBeltEnd ?? undefined,
+    };
+  }, [cameraView, captureView, setCameraView]);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
@@ -480,6 +500,7 @@ const GiConfiguratorInner = memo(() => {
         ? await uploadPreviewImage(localThumbnailUrl)
         : null;
       const thumbnailUrl = hostedThumbnailUrl ?? localThumbnailUrl;
+      const renders = await captureTechPackRenders();
       let lineDesignId = createLineDesignId(PRODUCT_CONFIG.orderDesignIdPrefix);
       let designUrl: string | undefined;
       let productionUrl: string | undefined;
@@ -494,6 +515,7 @@ const GiConfiguratorInner = memo(() => {
           kimonoLogos,
           pantLogos,
           thumbnailUrl,
+          renders,
         });
         cartConfigData = await draftToCartConfigData(draft);
         const cloudResult = await saveGiCloudDesignRecord(
@@ -542,6 +564,7 @@ const GiConfiguratorInner = memo(() => {
     }
   }, [
     cloudOwnerContext,
+    captureTechPackRenders,
     currentDesignId,
     currentDesignName,
     getCanvasEl,

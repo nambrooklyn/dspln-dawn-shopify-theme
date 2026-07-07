@@ -26,6 +26,7 @@ interface GenerateGiTechPackInput {
   pantLogos?: Partial<Record<PantLogoSlot, KimonoLogo>>;
   orderDate?: Date;
   orderNumber?: string;
+  includeSizeMeasurements?: boolean;
 }
 
 const LOGO_URL = '/tech-pack/dspln-logo.png';
@@ -753,234 +754,6 @@ function measurementText(widthIn: number, heightIn: number) {
     : `${fmtInches(heightIn)}" IN HEIGHT`;
 }
 
-type PantoneChip = {
-  hex: string;
-  code: string;
-  name: string;
-};
-
-const PANTONE_TCX_REFERENCE: PantoneChip[] = [
-  { hex: '#f4f5f0', code: '11-0601 TCX', name: 'Bright White' },
-  { hex: '#f1f0ea', code: '11-0602 TCX', name: 'Snow White' },
-  { hex: '#d7c49e', code: '15-1216 TCX', name: 'Pale Khaki' },
-  { hex: '#b8ad87', code: '16-0726 TCX', name: 'Safari' },
-  { hex: '#e2b051', code: '14-0846 TCX', name: 'Yolk Yellow' },
-  { hex: '#c65d2c', code: '16-1448 TCX', name: 'Burnt Orange' },
-  { hex: '#a11729', code: '19-1758 TCX', name: 'Haute Red' },
-  { hex: '#a52a2a', code: '18-1547 TCX', name: 'Baked Apple' },
-  { hex: '#184a45', code: '19-5230 TCX', name: 'Forest Biome' },
-  { hex: '#8a803d', code: '17-0636 TCX', name: 'Green Moss' },
-  { hex: '#2d4f9e', code: '19-3955 TCX', name: 'Royal Blue' },
-  { hex: '#102a55', code: '19-4024 TCX', name: 'Dress Blues' },
-  { hex: '#2b2b2f', code: '19-3911 TCX', name: 'Black Beauty' },
-  { hex: '#777772', code: '17-1501 TCX', name: 'Steeple Gray' },
-  { hex: '#6b2fa0', code: '19-3642 TCX', name: 'Imperial Purple' },
-  { hex: '#7b4a12', code: '18-0937 TCX', name: 'Glazed Ginger' },
-];
-
-function hexToRgb(hex: string) {
-  const clean = hex.replace('#', '');
-  return {
-    r: parseInt(clean.slice(0, 2), 16),
-    g: parseInt(clean.slice(2, 4), 16),
-    b: parseInt(clean.slice(4, 6), 16),
-  };
-}
-
-function rgbToHex(r: number, g: number, b: number) {
-  return `#${[r, g, b]
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('')}`;
-}
-
-function closestPantoneChip(hex: string): PantoneChip {
-  const rgb = hexToRgb(hex);
-  return PANTONE_TCX_REFERENCE.reduce((closest, chip) => {
-    const chipRgb = hexToRgb(chip.hex);
-    const distance = colorDistanceRgb(rgb, chipRgb);
-    return distance < closest.distance ? { chip, distance } : closest;
-  }, { chip: PANTONE_TCX_REFERENCE[0], distance: Number.POSITIVE_INFINITY }).chip;
-}
-
-function colorDistanceRgb(
-  a: { r: number; g: number; b: number },
-  b: { r: number; g: number; b: number },
-) {
-  return (a.r - b.r) ** 2 + (a.g - b.g) ** 2 + (a.b - b.b) ** 2;
-}
-
-function colorDistance(hexA: string, hexB: string) {
-  return colorDistanceRgb(hexToRgb(hexA), hexToRgb(hexB));
-}
-
-function isBetweenChannels(value: number, a: number, b: number, tolerance = 12) {
-  return value >= Math.min(a, b) - tolerance && value <= Math.max(a, b) + tolerance;
-}
-
-function isLikelyAntialiasBlend(
-  candidate: { hex: string; count: number },
-  strongerColors: { hex: string; count: number }[],
-) {
-  const rgb = hexToRgb(candidate.hex);
-
-  for (let i = 0; i < strongerColors.length; i += 1) {
-    for (let j = i + 1; j < strongerColors.length; j += 1) {
-      const a = strongerColors[i];
-      const b = strongerColors[j];
-      if (candidate.count > Math.min(a.count, b.count) * 0.65) continue;
-
-      const rgbA = hexToRgb(a.hex);
-      const rgbB = hexToRgb(b.hex);
-      const between =
-        isBetweenChannels(rgb.r, rgbA.r, rgbB.r) &&
-        isBetweenChannels(rgb.g, rgbA.g, rgbB.g) &&
-        isBetweenChannels(rgb.b, rgbA.b, rgbB.b);
-
-      if (between) return true;
-    }
-  }
-
-  return false;
-}
-
-async function extractLogoPantoneChips(logo: KimonoLogo, maxColors = 8) {
-  const image = await loadImage(logo.imageUrl);
-  const canvas = document.createElement('canvas');
-  const maxSide = 180;
-  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-  canvas.width = Math.max(1, Math.round(image.width * scale));
-  canvas.height = Math.max(1, Math.round(image.height * scale));
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-
-  if (!context) return [];
-
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-  const buckets = new Map<string, { count: number; r: number; g: number; b: number }>();
-  const step = 4 * 4;
-  let sampledPixels = 0;
-
-  for (let i = 0; i < pixels.length; i += step) {
-    const alpha = pixels[i + 3];
-    if (alpha < 220) continue;
-
-    const r = pixels[i];
-    const g = pixels[i + 1];
-    const b = pixels[i + 2];
-    sampledPixels += 1;
-    const bucketR = Math.round(r / 48) * 48;
-    const bucketG = Math.round(g / 48) * 48;
-    const bucketB = Math.round(b / 48) * 48;
-    const key = `${bucketR},${bucketG},${bucketB}`;
-    const bucket = buckets.get(key) ?? { count: 0, r: 0, g: 0, b: 0 };
-    bucket.count += 1;
-    bucket.r += r;
-    bucket.g += g;
-    bucket.b += b;
-    buckets.set(key, bucket);
-  }
-
-  const minimumBucketCount = Math.max(8, Math.round(sampledPixels * 0.035));
-  const dominantColors = Array.from(buckets.values())
-    .filter((bucket) => bucket.count >= minimumBucketCount)
-    .sort((a, b) => b.count - a.count)
-    .map((bucket) => ({
-      count: bucket.count,
-      hex: rgbToHex(
-        Math.round(bucket.r / bucket.count),
-        Math.round(bucket.g / bucket.count),
-        Math.round(bucket.b / bucket.count),
-      ),
-    }))
-    .filter((color, index, colors) => !isLikelyAntialiasBlend(color, colors.slice(0, index)));
-
-  const chips: PantoneChip[] = [];
-  for (const { hex } of dominantColors) {
-    const chip = closestPantoneChip(hex);
-    const isNearExisting = chips.some(
-      (existing) =>
-        existing.code === chip.code ||
-        colorDistance(existing.hex, chip.hex) < 1900 ||
-        colorDistance(existing.hex, hex) < 1900,
-    );
-    if (!isNearExisting) {
-      chips.push(chip);
-    }
-    if (chips.length >= maxColors) break;
-  }
-
-  return chips;
-}
-
-function drawPantoneChip({
-  pdf,
-  chip,
-  x,
-  y,
-  width,
-  height,
-}: {
-  pdf: jsPDF;
-  chip: PantoneChip;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}) {
-  const swatchHeight = height * 0.6;
-  pdf.setDrawColor(120);
-  pdf.setLineWidth(0.35);
-  pdf.rect(x, y, width, height);
-  pdf.setFillColor(chip.hex);
-  pdf.rect(x, y, width, swatchHeight, 'F');
-  pdf.setFillColor(255, 255, 255);
-  pdf.rect(x, y + swatchHeight, width, height - swatchHeight, 'F');
-  pdf.setTextColor(20);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(3.8);
-  pdf.text('PANTONE', x + 4, y + swatchHeight + 8);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(3.6);
-  pdf.text(chip.code, x + 4, y + swatchHeight + 14);
-  pdf.setFontSize(3.5);
-  pdf.text(chip.name, x + 4, y + swatchHeight + 20);
-  pdf.setDrawColor(120);
-  pdf.rect(x, y, width, height);
-}
-
-function drawPantoneChips({
-  pdf,
-  chips,
-  x,
-  y,
-}: {
-  pdf: jsPDF;
-  chips: PantoneChip[];
-  x: number;
-  y: number;
-}) {
-  const chipWidth = 40;
-  const chipHeight = 58;
-  const gapX = 4;
-  const gapY = 8;
-  const perRow = 4;
-
-  chips.forEach((chip, index) => {
-    const row = Math.floor(index / perRow);
-    const col = index % perRow;
-    drawPantoneChip({
-      pdf,
-      chip,
-      x: x + col * (chipWidth + gapX),
-      y: y + row * (chipHeight + gapY),
-      width: chipWidth,
-      height: chipHeight,
-    });
-  });
-}
-
 function drawMeasurementArrow({
   pdf,
   x1,
@@ -1701,13 +1474,6 @@ async function drawLogoPlacementPage({
   const startY = bottomBox.y + 38;
   const rowGap = 26;
   const logo = logoImage(page.logo);
-  let pantoneChips: PantoneChip[] = [];
-
-  try {
-    pantoneChips = await extractLogoPantoneChips(page.logo);
-  } catch {
-    pantoneChips = [];
-  }
 
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(10);
@@ -1715,9 +1481,6 @@ async function drawLogoPlacementPage({
   pdf.text('METHOD:', labelX, startY);
   pdf.text('PLACEMENT:', labelX, startY + rowGap);
   pdf.text('MEASUREMENT:', labelX, startY + rowGap * 2);
-  if (pantoneChips.length) {
-    pdf.text('COLORS:', labelX, startY + rowGap * 3);
-  }
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(10);
@@ -1728,15 +1491,6 @@ async function drawLogoPlacementPage({
     valueX,
     startY + rowGap * 2,
   );
-
-  if (pantoneChips.length) {
-    drawPantoneChips({
-      pdf,
-      chips: pantoneChips,
-      x: labelX,
-      y: startY + rowGap * 3 + 14,
-    });
-  }
 
   const logoBox = {
     x: bottomBox.x + bottomBox.width * 0.35,
@@ -1932,6 +1686,7 @@ export async function generateGiTechPackPageOne({
   pantLogos,
   orderDate = new Date(),
   orderNumber = buildOrderNumber(orderDate),
+  includeSizeMeasurements = true,
 }: GenerateGiTechPackInput) {
   const pdf = new jsPDF({
     orientation: 'portrait',
@@ -2041,14 +1796,16 @@ export async function generateGiTechPackPageOne({
     pantLogos,
   });
 
-  await drawSizeMeasurementsPage({
-    pdf,
-    logoDataUrl,
-    orderDate,
-    shipDate,
-    orderNumber,
-    spec,
-  });
+  if (includeSizeMeasurements) {
+    await drawSizeMeasurementsPage({
+      pdf,
+      logoDataUrl,
+      orderDate,
+      shipDate,
+      orderNumber,
+      spec,
+    });
+  }
 
   await drawBrandingPage({
     pdf,

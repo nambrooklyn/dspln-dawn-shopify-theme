@@ -22,6 +22,12 @@ export interface GiDraftDocument {
   name: string;
   spec: GiSerializedState;
   thumbnailUrl?: string;
+  renders?: Partial<
+    Record<
+      'front' | 'back' | 'left' | 'right' | 'leftBeltEnd' | 'rightBeltEnd',
+      string
+    >
+  >;
   createdAt: string;
   updatedAt: string;
   images: {
@@ -159,6 +165,7 @@ export async function createGiDraftDocument({
   kimonoLogos,
   pantLogos,
   thumbnailUrl,
+  renders,
   existingCreatedAt,
 }: {
   id: string;
@@ -167,6 +174,7 @@ export async function createGiDraftDocument({
   kimonoLogos: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   pantLogos: Partial<Record<PantLogoSlot, KimonoLogo>>;
   thumbnailUrl?: string;
+  renders?: GiDraftDocument['renders'];
   existingCreatedAt?: string;
 }): Promise<GiDraftDocument> {
   const now = new Date().toISOString();
@@ -175,6 +183,7 @@ export async function createGiDraftDocument({
     name,
     spec,
     thumbnailUrl,
+    renders,
     createdAt: existingCreatedAt ?? now,
     updatedAt: now,
     images: {

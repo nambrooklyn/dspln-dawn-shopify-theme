@@ -17,6 +17,7 @@ interface CloudDesignConfigData {
   source: string;
   version: 1;
   spec: GiDraftDocument['spec'];
+  renders?: GiDraftDocument['renders'];
   images: {
     kimono: Partial<Record<KimonoLogoSlot, CloudLogoImage>>;
     pant: Partial<Record<PantLogoSlot, CloudLogoImage>>;
@@ -217,6 +218,7 @@ async function draftToCloudConfigData(
     source: PRODUCT_CONFIG.cloudConfigSource,
     version: 1,
     spec: draft.spec,
+    renders: draft.renders,
     images: {
       kimono: await imagesToCloudImages(draft.images.kimono),
       pant: await imagesToCloudImages(draft.images.pant),
@@ -231,6 +233,7 @@ async function recordToDraft(record: CustomerDesignRecord) {
     name: record.name,
     spec: config.spec,
     thumbnailUrl: record.thumbnailUrl ?? undefined,
+    renders: config.renders,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     images: {

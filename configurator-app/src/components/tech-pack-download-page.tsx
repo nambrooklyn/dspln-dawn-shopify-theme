@@ -20,12 +20,18 @@ type SavedDesignRecord = {
   name?: string;
   thumbnailUrl?: string | null;
   configData?: {
+    source?: string;
     spec?: GiSerializedState;
     images?: {
       kimono?: Partial<Record<KimonoLogoSlot, SavedLogoImage>>;
       pant?: Partial<Record<PantLogoSlot, SavedLogoImage>>;
     };
-    renders?: Partial<Record<'front' | 'back' | 'left' | 'right', string>>;
+      renders?: Partial<
+        Record<
+          'front' | 'back' | 'left' | 'right' | 'leftBeltEnd' | 'rightBeltEnd',
+          string
+        >
+      >;
   };
 };
 
@@ -101,9 +107,13 @@ export function TechPackDownloadPage() {
           backDataUrl: renders.back || frontDataUrl,
           leftSideDataUrl: renders.left,
           rightSideDataUrl: renders.right,
+          leftBeltEndDataUrl: renders.leftBeltEnd,
+          rightBeltEndDataUrl: renders.rightBeltEnd,
           kimonoLogos: mapLogos(design.configData?.images?.kimono),
           pantLogos: mapLogos(design.configData?.images?.pant),
           orderNumber: orderNumberForDesign(design.id),
+          includeSizeMeasurements:
+            design.configData?.source !== 'dspln-kids-gi-configurator',
         });
 
         if (!cancelled) {
