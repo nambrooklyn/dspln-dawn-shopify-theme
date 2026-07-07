@@ -12,6 +12,7 @@
     'dspln-dawn-shopify-theme.netlify.app',
   ];
   const LOCAL_PREVIEW_STORAGE_PREFIX = 'dspln:cart-preview:';
+  const LOCAL_PREVIEW_FINGERPRINT_PREFIX = 'dspln:cart-preview:fingerprint:';
   const LOCAL_CONFIG_STORAGE_PREFIX = 'dspln:cart-config:';
   const frame = document.getElementById('dspln-configurator-frame');
 
@@ -151,14 +152,37 @@
     return properties._dspln_design_id || properties._configurator_id || '';
   }
 
+  function lineFingerprintFromProperties(properties = {}) {
+    try {
+      const entries = Object.entries(properties)
+        .filter(([key, value]) => {
+          if (!key || key.charAt(0) === '_') return false;
+          if (value === null || value === undefined || value === '') return false;
+          return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+        })
+        .map(([key, value]) => [String(key).trim().toLowerCase(), String(value).trim().toLowerCase()])
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      return entries.length ? JSON.stringify(entries) : '';
+    } catch {
+      return '';
+    }
+  }
+
   function rememberLocalPreview(configuredLine) {
     const properties = configuredLine.main?.properties || {};
-    const designId = designIdFromProperties(properties);
+    const designId = designIdFromProperties(properties) || configuredLine.id || '';
     const previewUrl = configuredLine.previewImageUrl || properties._preview_image_url || '';
-    if (!designId || typeof previewUrl !== 'string' || !previewUrl) return;
+    if (typeof previewUrl !== 'string' || !previewUrl) return;
 
     try {
-      window.localStorage.setItem(`${LOCAL_PREVIEW_STORAGE_PREFIX}${designId}`, previewUrl);
+      if (designId) {
+        window.localStorage.setItem(`${LOCAL_PREVIEW_STORAGE_PREFIX}${designId}`, previewUrl);
+      }
+      const fingerprint = lineFingerprintFromProperties(properties);
+      if (fingerprint) {
+        window.localStorage.setItem(`${LOCAL_PREVIEW_FINGERPRINT_PREFIX}${fingerprint}`, previewUrl);
+      }
     } catch {
       // Local previews are an enhancement for theme dev/cart display only.
     }
@@ -166,7 +190,7 @@
 
   function rememberLocalConfig(configuredLine) {
     const properties = configuredLine.main?.properties || {};
-    const designId = designIdFromProperties(properties);
+    const designId = designIdFromProperties(properties) || configuredLine.id || '';
     if (!designId || !configuredLine.configData) return;
 
     try {

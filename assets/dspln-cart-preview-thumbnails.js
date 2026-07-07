@@ -4,6 +4,7 @@
   const DESIGN_ID_PROPERTIES = ['_dspln_design_id', '_configurator_id'];
   const DESIGN_LOOKUP_ORIGIN = 'https://dspln-dawn-shopify-theme.netlify.app';
   const LOCAL_PREVIEW_STORAGE_PREFIX = 'dspln:cart-preview:';
+  const LOCAL_PREVIEW_FINGERPRINT_PREFIX = 'dspln:cart-preview:fingerprint:';
   const LOCAL_CONFIG_STORAGE_PREFIX = 'dspln:cart-config:';
 
   if (document.documentElement.getAttribute(MARKER) === 'active') return;
@@ -49,6 +50,23 @@
 
   function designIdForRow(row, properties = {}) {
     return row?.getAttribute?.('data-dspln-design-id') || designIdFromProperties(properties);
+  }
+
+  function lineFingerprintFromProperties(properties = {}) {
+    try {
+      const entries = Object.entries(properties)
+        .filter(([key, value]) => {
+          if (!key || key.charAt(0) === '_') return false;
+          if (value === null || value === undefined || value === '') return false;
+          return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+        })
+        .map(([key, value]) => [String(key).trim().toLowerCase(), String(value).trim().toLowerCase()])
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      return entries.length ? JSON.stringify(entries) : '';
+    } catch {
+      return '';
+    }
   }
 
   async function designDataFromDesignId(designId) {
@@ -134,6 +152,18 @@
     return typeof thumbnailUrl === 'string' ? thumbnailUrl : '';
   }
 
+  function previewUrlFromFingerprint(properties = {}) {
+    const fingerprint = lineFingerprintFromProperties(properties);
+    if (!fingerprint) return '';
+
+    try {
+      const url = window.localStorage.getItem(`${LOCAL_PREVIEW_FINGERPRINT_PREFIX}${fingerprint}`);
+      return typeof url === 'string' && /^(https?:\/\/|data:image\/)/.test(url) ? url : '';
+    } catch {
+      return '';
+    }
+  }
+
   async function previewUrlForItem(item) {
     const properties = item?.properties || {};
     const directPreview = properties[PREVIEW_PROPERTY] || properties._mczr_image;
@@ -142,7 +172,10 @@
       return directPreview;
     }
 
-    return previewUrlFromDesignId(designIdFromProperties(properties));
+    return (
+      (await previewUrlFromDesignId(designIdFromProperties(properties))) ||
+      previewUrlFromFingerprint(properties)
+    );
   }
 
   function clearPendingImage(image) {
@@ -488,5 +521,4 @@
   });
 
   scheduleRefresh();
-  window.setTimeout(clearAllPendingImages, 2500);
 })();
