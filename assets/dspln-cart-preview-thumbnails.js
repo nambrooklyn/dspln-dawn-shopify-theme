@@ -2,7 +2,7 @@
   const MARKER = 'data-dspln-cart-preview-thumbnails';
   const PREVIEW_PROPERTY = '_preview_image_url';
   const DESIGN_ID_PROPERTIES = ['_dspln_design_id', '_configurator_id'];
-  const DESIGN_LOOKUP_ORIGIN = 'http://127.0.0.1:3002';
+  const DESIGN_LOOKUP_ORIGIN = 'https://dspln-dawn-shopify-theme.netlify.app';
   const LOCAL_PREVIEW_STORAGE_PREFIX = 'dspln:cart-preview:';
   const LOCAL_CONFIG_STORAGE_PREFIX = 'dspln:cart-config:';
 

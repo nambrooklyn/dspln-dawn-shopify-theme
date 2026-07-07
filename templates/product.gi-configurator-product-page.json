@@ -3,7 +3,7 @@
     "main": {
       "type": "dspln-configurator-product",
       "settings": {
-        "platform_origin": "http://127.0.0.1:3002",
+        "platform_origin": "https://dspln-dawn-shopify-theme.netlify.app",
         "configurator_slug": "gi",
         "product_family": "gi",
         "customization_mode": "color-logo",
