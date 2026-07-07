@@ -456,7 +456,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     }, {});
 
     return {
-      kind: PRODUCT_CONFIG.stateKind,
+      kind: 'gi',
       partColors,
       partVisibility,
       price: {

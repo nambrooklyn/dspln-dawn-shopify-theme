@@ -1,9 +1,9 @@
-export type GiProductKey = 'mens' | 'womens' | 'kids';
+export type GiProductKey = 'mens' | 'kids' | 'womens';
 
 export interface GiProductConfig {
   key: GiProductKey;
   slug: string;
-  stateKind: 'gi';
+  stateKind: 'gi' | 'kids-gi' | 'womens-gi';
   productName: string;
   productTitle: string;
   shopifyProductPath: string;
@@ -44,37 +44,16 @@ export const GI_PRODUCT_CONFIGS = {
     testCartStorageKey: 'dspln:shopify-test-cart',
     configStoragePrefix: 'dspln:config:',
   },
-  womens: {
-    key: 'womens',
-    slug: 'womens-gi',
-    stateKind: 'gi',
-    productName: "Women's BJJ Gi",
-    productTitle: "Women's Custom BJJ Gi",
-    shopifyProductPath: '/products/womens-custom-gi-suit',
-    shopifyProductHandle: 'womens-custom-gi-suit',
-    shopifyProductUrl: 'https://dspln.com/products/womens-custom-gi-suit',
-    modelUrl: '/models/womens-gi-suit-edited-in-blender.glb',
-    designNamePrefix: "Women's Gi Design",
-    savedDesignIdPrefix: 'womens_gi_saved',
-    orderDesignIdPrefix: 'womens_gi_order',
-    localDraftDbName: 'dspln-womens-gi-configurator',
-    fallbackStorageKey: 'dspln:womens-gi-designs:fallback:v1',
-    guestTokenStorageKey: 'dspln:womens-gi-cloud-guest-token',
-    cloudConfigSource: 'dspln-womens-gi-configurator',
-    netlifyPath: '/configurator/womens-gi',
-    testCartStorageKey: 'dspln:womens-gi-shopify-test-cart',
-    configStoragePrefix: 'dspln:womens-gi-config:',
-  },
   kids: {
     key: 'kids',
     slug: 'kids-gi',
-    stateKind: 'gi',
+    stateKind: 'kids-gi',
     productName: 'Kids BJJ Gi',
-    productTitle: 'Kids Custom BJJ Gi',
+    productTitle: 'Kids Custom Gi',
     shopifyProductPath: '/products/custom-kids-gi',
     shopifyProductHandle: 'custom-kids-gi',
     shopifyProductUrl: 'https://dspln.com/products/custom-kids-gi',
-    modelUrl: '/models/big-kids-gi-suit-edited-in-blender.glb',
+    modelUrl: '/models/big-kids-gi-suit-edited-in-blender-5.glb?v=20260602-belt-text-height-2',
     designNamePrefix: 'Kids Gi Design',
     savedDesignIdPrefix: 'kids_gi_saved',
     orderDesignIdPrefix: 'kids_gi_order',
@@ -85,6 +64,27 @@ export const GI_PRODUCT_CONFIGS = {
     netlifyPath: '/configurator/kids-gi',
     testCartStorageKey: 'dspln:kids-gi-shopify-test-cart',
     configStoragePrefix: 'dspln:kids-gi-config:',
+  },
+  womens: {
+    key: 'womens',
+    slug: 'womens-gi',
+    stateKind: 'womens-gi',
+    productName: "Women's BJJ Gi",
+    productTitle: "Women's Custom Gi",
+    shopifyProductPath: '/products/womens-custom-gi-suit',
+    shopifyProductHandle: 'womens-custom-gi-suit',
+    shopifyProductUrl: 'https://dspln.com/products/womens-custom-gi-suit',
+    modelUrl: '/models/womens-gi-suit-edited-in-blender.glb?v=20260603-clean-model-5',
+    designNamePrefix: "Women's Gi Design",
+    savedDesignIdPrefix: 'womens_gi_saved',
+    orderDesignIdPrefix: 'womens_gi_order',
+    localDraftDbName: 'dspln-womens-gi-configurator',
+    fallbackStorageKey: 'dspln:womens-gi-designs:fallback:v1',
+    guestTokenStorageKey: 'dspln:womens-gi-cloud-guest-token',
+    cloudConfigSource: 'dspln-womens-gi-configurator',
+    netlifyPath: '/configurator/womens-gi',
+    testCartStorageKey: 'dspln:womens-gi-shopify-test-cart',
+    configStoragePrefix: 'dspln:womens-gi-config:',
   },
 } satisfies Record<GiProductKey, GiProductConfig>;
 

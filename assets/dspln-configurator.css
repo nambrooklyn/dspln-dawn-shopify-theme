@@ -43,11 +43,6 @@
   background: rgb(var(--color-background));
 }
 
-.dspln-configurator-product__fallback {
-  margin: 12px 16px 0;
-  font-size: 1.3rem;
-}
-
 @media screen and (max-width: 749px) {
   .dspln-configurator-product__inner {
     padding: 0;
@@ -67,10 +62,5 @@
   .dspln-configurator-product__frame-wrap,
   .dspln-configurator-product__frame {
     min-height: var(--dspln-configurator-mobile-min-height, 780px);
-  }
-
-  .dspln-configurator-product__fallback {
-    padding: 0 16px 16px;
-    margin-inline: 0;
   }
 }

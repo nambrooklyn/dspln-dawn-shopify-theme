@@ -2,8 +2,10 @@ import type { ComponentType } from 'react';
 
 import { GiConfigurator } from './gi';
 import { AdultGrapplingShortConfigurator } from './adult-grappling-short';
+import { KidsGiConfigurator } from './kids-gi';
 import { LongSleeveRashguardConfigurator } from './long-sleeve-rashguard';
 import { ShortSleeveRashguardConfigurator } from './short-sleeve-rashguard';
+import { WomensGiConfigurator } from './womens-gi';
 
 /**
  * Map of configurator slug → React component.
@@ -12,8 +14,8 @@ import { ShortSleeveRashguardConfigurator } from './short-sleeve-rashguard';
  */
 export const CONFIGURATOR_REGISTRY: Record<string, ComponentType> = {
   gi: GiConfigurator,
-  'womens-gi': GiConfigurator,
-  'kids-gi': GiConfigurator,
+  'womens-gi': WomensGiConfigurator,
+  'kids-gi': KidsGiConfigurator,
   'adult-grappling-short': AdultGrapplingShortConfigurator,
   'long-sleeve-rashguard': LongSleeveRashguardConfigurator,
   'short-sleeve-rashguard': ShortSleeveRashguardConfigurator,
