@@ -6,10 +6,6 @@
 {% endcomment %}
 
 {%- liquid
-  capture preview_image
-    render 'dspln-line-item-preview-url', item: item
-  endcapture
-  assign preview_image = preview_image | strip
   assign item_title_key = item.product.title | downcase
   assign is_rashguard_line_item = false
   assign is_grappling_short_line_item = false
@@ -37,18 +33,6 @@
 -%}
 
 <div class="dspln-line-item-properties" data-dspln-line-item-properties>
-  {%- if preview_image != blank -%}
-    <div class="dspln-line-item-properties__preview">
-      <img
-        src="{{ preview_image | escape }}"
-        alt="{{ item.product.title | escape }} customization preview"
-        loading="lazy"
-        width="96"
-        height="96"
-      >
-    </div>
-  {%- endif -%}
-
   <div class="dspln-line-item-properties__details">
     {%- assign group_names = 'Kimono|Belt|Pant|Rashguard|Grappling Short' | split: '|' -%}
     {%- for group_name in group_names -%}

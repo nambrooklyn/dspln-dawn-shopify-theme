@@ -4,19 +4,6 @@
   font-family: Helvetica, Arial, sans-serif;
 }
 
-.dspln-line-item-properties__preview {
-  flex: 0 0 auto;
-}
-
-.dspln-line-item-properties__preview img {
-  display: block;
-  width: 7.2rem;
-  height: 7.2rem;
-  object-fit: contain;
-  border: 1px solid #e2e2e2;
-  background: #fff;
-}
-
 .dspln-line-item-properties__details {
   min-width: 0;
 }
