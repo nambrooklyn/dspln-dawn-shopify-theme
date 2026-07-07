@@ -1,4 +1,8 @@
-{{ 'section-main-page.css' | asset_url | stylesheet_tag }}
+{% if page.handle == 'how-to-use-customizer' %}
+  {{ 'dspln-howto-customizer.css' | asset_url | stylesheet_tag }}
+{% else %}
+  {{ 'section-main-page.css' | asset_url | stylesheet_tag }}
+{% endif %}
 
 {%- style -%}
   .section-{{ section.id }}-padding {
@@ -14,14 +18,99 @@
   }
 {%- endstyle -%}
 
-<div class="page-width page-width--narrow section-{{ section.id }}-padding">
-  <h1 class="main-page-title page-title h0{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--fade-in{% endif %}">
-    {{ page.title | escape }}
-  </h1>
-  <div class="rte{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}">
-    {{ page.content }}
+{% if page.handle == 'how-to-use-customizer' %}
+  <section class="dspln-howto-video" aria-label="HOW TO USE CUSTOMIZER">
+    <div class="dspln-howto-video__inner">
+      <div class="dspln-howto-video__heading-wrap">
+        <h2 class="dspln-howto-video__heading">HOW TO USE CUSTOMIZER</h2>
+        <p class="dspln-howto-video__subheading">WATCH VIDEO</p>
+      </div>
+      <div class="dspln-howto-video__frame" data-dspln-howto-video>
+        <video
+          playsinline
+          preload="metadata"
+          poster="{{ 'dspln-howto-video-desktop-poster.png' | asset_url }}"
+        >
+          <source src="https://dspln.com/cdn/shop/videos/c/vp/c0d51789ec1d4d1da0ec528c3724986f/c0d51789ec1d4d1da0ec528c3724986f.HD-1080p-4.8Mbps-27328259.mp4?v=0" type="video/mp4">
+        </video>
+        <button class="dspln-howto-video__play" type="button" aria-label="Play HOW TO USE CUSTOMIZER">
+          <span class="dspln-howto-video__play-icon"></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="dspln-howto-process" aria-label="Customizer process">
+    <div class="dspln-howto-process__inner">
+      <picture>
+        <source media="(max-width: 749px)" srcset="{{ 'dspln-howto-process-mobile.webp' | asset_url }}">
+        <img
+          src="{{ 'dspln-howto-process-desktop.webp' | asset_url }}"
+          alt="DSPLN customizer process steps"
+          width="1600"
+          height="800"
+          loading="lazy"
+        >
+      </picture>
+    </div>
+  </section>
+
+  <section class="dspln-howto-video" aria-label="CUSTOMIZE ON YOUR PHONE">
+    <div class="dspln-howto-video__inner">
+      <div class="dspln-howto-video__heading-wrap">
+        <h2 class="dspln-howto-video__heading">CUSTOMIZE ON YOUR PHONE</h2>
+        <p class="dspln-howto-video__subheading">WATCH VIDEO</p>
+      </div>
+      <div class="dspln-howto-video__frame" data-dspln-howto-video>
+        <video
+          playsinline
+          preload="metadata"
+          poster="{{ 'dspln-howto-video-phone-poster.png' | asset_url }}"
+        >
+          <source src="https://dspln.com/cdn/shop/videos/c/vp/aad24bef4ea24b5bbee0bc9a15281dd6/aad24bef4ea24b5bbee0bc9a15281dd6.HD-1080p-7.2Mbps-27376173.mp4?v=0" type="video/mp4">
+        </video>
+        <button class="dspln-howto-video__play" type="button" aria-label="Play CUSTOMIZE ON YOUR PHONE">
+          <span class="dspln-howto-video__play-icon"></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const section = document.currentScript.closest('.shopify-section');
+      const frames = section ? section.querySelectorAll('[data-dspln-howto-video]') : [];
+
+      frames.forEach((frame) => {
+        const video = frame.querySelector('video');
+        const button = frame.querySelector('.dspln-howto-video__play');
+
+        if (!video || !button) return;
+
+        button.addEventListener('click', () => {
+          frame.classList.add('is-playing');
+          video.setAttribute('controls', 'controls');
+          video.play();
+        });
+
+        video.addEventListener('pause', () => {
+          if (!video.ended) return;
+          frame.classList.remove('is-playing');
+          video.removeAttribute('controls');
+        });
+      });
+    })();
+  </script>
+{% else %}
+  <div class="page-width page-width--narrow section-{{ section.id }}-padding">
+    <h1 class="main-page-title page-title h0{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--fade-in{% endif %}">
+      {{ page.title | escape }}
+    </h1>
+    <div class="rte{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}">
+      {{ page.content }}
+    </div>
   </div>
-</div>
+{% endif %}
 
 {% schema %}
 {
