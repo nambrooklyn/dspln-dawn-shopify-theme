@@ -11,6 +11,7 @@ const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS.womens;
 const CART_STORAGE_KEY = PRODUCT_CONFIG.testCartStorageKey;
 const CONFIG_STORAGE_PREFIX = PRODUCT_CONFIG.configStoragePrefix;
 const SHOPIFY_CART_ADD_MESSAGE = 'dspln:shopify-cart:add';
+const SHOPIFY_CART_UPDATE_MESSAGE = 'dspln:shopify-cart:update';
 const SHOPIFY_CART_FALLBACK_TIMEOUT_MS = 1800;
 
 const WOMENS_PRICE_VARIANTS_BY_TOTAL: Record<number, number> = {
@@ -90,6 +91,7 @@ export interface ShopifyCartLine {
   quantity: number;
   unitPrice: number;
   thumbnailUrl: string;
+  configData?: unknown;
   properties: CartProperty[];
   charges: ShopifyCartCharge[];
   createdAt: string;
@@ -348,6 +350,7 @@ export function buildShopifyTestCartLine({
   designUrl,
   productionUrl,
   artworkLinks,
+  configData,
 }: {
   spec: GiSerializedState;
   thumbnailUrl: string;
@@ -355,6 +358,7 @@ export function buildShopifyTestCartLine({
   designUrl?: string;
   productionUrl?: string;
   artworkLinks?: ShopifyArtworkLink[];
+  configData?: unknown;
 }): ShopifyCartLine {
   const configuratorId = designId ?? `womens_gi_${Date.now().toString(36)}`;
   const configStorageKey = `${CONFIG_STORAGE_PREFIX}${configuratorId}`;
@@ -390,6 +394,7 @@ export function buildShopifyTestCartLine({
     quantity: 1,
     unitPrice: total,
     thumbnailUrl,
+    configData: configData ?? spec,
     properties,
     charges: buildShopifyCharges({ spec, configuratorId, summary }),
     createdAt: new Date().toISOString(),
@@ -470,7 +475,10 @@ export function waitForShopifyCartParentResult(
       const data = event.data;
       if (!data || typeof data !== 'object') return;
 
-      if (data.type === 'dspln:shopify-cart:added') {
+      if (
+        data.type === 'dspln:shopify-cart:added' ||
+        data.type === 'dspln:shopify-cart:updated'
+      ) {
         window.clearTimeout(timer);
         window.removeEventListener('message', handleMessage);
         resolve('added');
@@ -523,13 +531,20 @@ export function sendLinesToShopifyParent(lines: ShopifyCartLine[]) {
     return false;
   }
 
+  const params = new URLSearchParams(window.location.search);
+  const cartLineKey = params.get('cart_line') || '';
+  const isCartEdit = params.get('mode') === 'cart-edit' && cartLineKey !== '';
+
   window.parent.postMessage(
     {
-      type: SHOPIFY_CART_ADD_MESSAGE,
+      type: isCartEdit ? SHOPIFY_CART_UPDATE_MESSAGE : SHOPIFY_CART_ADD_MESSAGE,
+      ...(isCartEdit ? { cartLineKey } : {}),
       configuredLines: lines.map((line) => ({
         id: line.id,
         quantity: line.quantity,
         configuredTotal: line.unitPrice,
+        previewImageUrl: line.thumbnailUrl,
+        configData: line.configData,
         main: {
           quantity: line.quantity,
           properties: cartPropertiesForShopify(line),

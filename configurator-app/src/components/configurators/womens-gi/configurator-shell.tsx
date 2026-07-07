@@ -11,6 +11,8 @@ interface ConfiguratorShellProps {
   onExport: () => void;
   isAddingToCart?: boolean;
   isExporting?: boolean;
+  cartActionLabel?: string;
+  cartActionLoadingLabel?: string;
   skinnyRailContent?: ReactNode;
   railContent?: ReactNode;
   sceneTopContent?: ReactNode;
@@ -34,6 +36,8 @@ export const ConfiguratorShell = memo(
     onExport,
     isAddingToCart,
     isExporting,
+    cartActionLabel,
+    cartActionLoadingLabel,
     skinnyRailContent,
     railContent,
     sceneTopContent,
@@ -71,6 +75,8 @@ export const ConfiguratorShell = memo(
           <PriceSidebar
             onAddToCart={onAddToCart}
             isAddingToCart={isAddingToCart}
+            cartActionLabel={cartActionLabel}
+            cartActionLoadingLabel={cartActionLoadingLabel}
             headerContent={railContent}
           />
         </div>
@@ -79,6 +85,8 @@ export const ConfiguratorShell = memo(
             <MobileConfiguratorFlow
               onAddToCart={onAddToCart}
               isAddingToCart={isAddingToCart}
+              cartActionLabel={cartActionLabel}
+              cartActionLoadingLabel={cartActionLoadingLabel}
             />
           </div>
         ) : null}

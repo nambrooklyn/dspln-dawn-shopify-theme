@@ -49,6 +49,7 @@ const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS.kids;
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
 const SHOPIFY_GI_PRODUCT_PATH = PRODUCT_CONFIG.shopifyProductPath;
 const SHOPIFY_CART_ADDED_MESSAGE = 'dspln:shopify-cart:added';
+const SHOPIFY_CART_UPDATED_MESSAGE = 'dspln:shopify-cart:updated';
 const SHOPIFY_CART_ERROR_MESSAGE = 'dspln:shopify-cart:error';
 const AUTO_SAVE_DELAY_MS = 800;
 const CUSTOMER_DESIGNS_CHANGED_KEY = 'dspln:customer-designs:changed';
@@ -96,6 +97,12 @@ function getLinkedDesignId() {
   }
 }
 
+function getCartEditMode() {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('mode') === 'cart-edit' && Boolean(params.get('cart_line'));
+}
+
 const GiConfiguratorInner = memo(() => {
   const {
     layers,
@@ -115,6 +122,7 @@ const GiConfiguratorInner = memo(() => {
   const [cartLines, setCartLines] = useState<ShopifyCartLine[]>(() =>
     readShopifyTestCart(),
   );
+  const [isCartEditMode] = useState(getCartEditMode);
   const [savedDesigns, setSavedDesigns] = useState<GiDraftDocument[]>([]);
   const [draftStatus, setDraftStatus] = useState<DraftStatus>('loading');
   const [currentDesignId, setCurrentDesignId] = useState<string | null>(() =>
@@ -162,6 +170,10 @@ const GiConfiguratorInner = memo(() => {
 
       if (data.type === SHOPIFY_CART_ADDED_MESSAGE) {
         toast.success('Added to Shopify cart');
+      }
+
+      if (data.type === SHOPIFY_CART_UPDATED_MESSAGE) {
+        toast.success('Updated Shopify cart');
       }
 
       if (data.type === SHOPIFY_CART_ERROR_MESSAGE) {
@@ -432,6 +444,7 @@ const GiConfiguratorInner = memo(() => {
         designUrl,
         productionUrl,
         artworkLinks,
+        configData: spec,
       });
       const sentToShopifyParent = sendLinesToShopifyParent([line]);
 
@@ -469,6 +482,8 @@ const GiConfiguratorInner = memo(() => {
         onExport={handleExport}
         isAddingToCart={isAddingToCart}
         isExporting={isExporting}
+        cartActionLabel={isCartEditMode ? 'Update Cart' : 'Add to Cart'}
+        cartActionLoadingLabel={isCartEditMode ? 'Updating...' : 'Adding...'}
         skinnyRailContent={
           <ConfiguratorActionRail
             isCustomer={cloudOwnerContext?.isCustomer}

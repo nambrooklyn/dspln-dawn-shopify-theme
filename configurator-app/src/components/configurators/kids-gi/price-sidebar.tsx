@@ -64,11 +64,19 @@ function colorName(hex: string) {
 interface PriceSidebarProps {
   onAddToCart: () => void;
   isAddingToCart?: boolean;
+  cartActionLabel?: string;
+  cartActionLoadingLabel?: string;
   headerContent?: ReactNode;
 }
 
 export const PriceSidebar = memo(
-  ({ onAddToCart, isAddingToCart, headerContent }: PriceSidebarProps) => {
+  ({
+    onAddToCart,
+    isAddingToCart,
+    cartActionLabel = 'Add to Cart',
+    cartActionLoadingLabel = 'Adding...',
+    headerContent,
+  }: PriceSidebarProps) => {
     const {
       partVisibility,
       kimonoSize,
@@ -281,7 +289,7 @@ export const PriceSidebar = memo(
             ) : (
               <ShoppingCart className="h-4 w-4" />
             )}
-            {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+            {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
           </button>
         </div>
 

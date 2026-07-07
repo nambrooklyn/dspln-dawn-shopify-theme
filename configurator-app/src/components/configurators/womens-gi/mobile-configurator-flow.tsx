@@ -175,9 +175,13 @@ export const MobileConfiguratorFlow = memo(
   ({
     onAddToCart,
     isAddingToCart,
+    cartActionLabel = 'Add to Cart',
+    cartActionLoadingLabel = 'Adding...',
   }: {
     onAddToCart: () => void;
     isAddingToCart?: boolean;
+    cartActionLabel?: string;
+    cartActionLoadingLabel?: string;
   }) => {
     const {
       selectedPart,
@@ -515,7 +519,7 @@ export const MobileConfiguratorFlow = memo(
               disabled={isAddingToCart}
               className="bg-foreground text-background h-[2.625rem] w-full rounded-lg text-sm font-semibold tracking-[0.12em] uppercase disabled:opacity-60"
             >
-              {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+              {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
             </button>
           </div>
         </div>
