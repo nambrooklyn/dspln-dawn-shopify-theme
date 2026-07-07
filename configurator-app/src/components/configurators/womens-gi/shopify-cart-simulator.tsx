@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 
 import type { GiSerializedState } from './gi-state';
 import type { GiPart } from './gi-config';
+import { createLineDesignId, productionTechPackUrl } from '../shared/order-flow';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS.womens;
@@ -360,10 +361,12 @@ export function buildShopifyTestCartLine({
   artworkLinks?: ShopifyArtworkLink[];
   configData?: unknown;
 }): ShopifyCartLine {
-  const configuratorId = designId ?? `womens_gi_${Date.now().toString(36)}`;
+  const configuratorId =
+    designId ?? createLineDesignId(PRODUCT_CONFIG.orderDesignIdPrefix);
   const configStorageKey = `${CONFIG_STORAGE_PREFIX}${configuratorId}`;
   const total = calculateConfiguredTotal(spec);
   const summary = buildSummary(spec);
+  const techPackUrl = productionTechPackUrl(productionUrl);
 
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(configStorageKey, JSON.stringify(spec));
@@ -376,6 +379,9 @@ export function buildShopifyTestCartLine({
     { name: '_configurator_id', value: configuratorId, hidden: true },
     { name: '_config_json_storage_key', value: configStorageKey, hidden: true },
     { name: '_preview_image_url', value: thumbnailUrl, hidden: true },
+    ...(designUrl ? [{ name: '3D Design', value: designUrl }] : []),
+    ...(techPackUrl ? [{ name: 'Tech Pack', value: techPackUrl }] : []),
+    ...(productionUrl ? [{ name: 'Production URL', value: productionUrl }] : []),
     ...(designUrl ? [{ name: '_dspln_design_url', value: designUrl, hidden: true }] : []),
     ...(productionUrl
       ? [{ name: '_dspln_production_url', value: productionUrl, hidden: true }]

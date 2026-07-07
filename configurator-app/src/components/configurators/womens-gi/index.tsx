@@ -34,6 +34,7 @@ import {
   snapshotCanvasThumbnail,
 } from './export-pdf';
 import { uploadPreviewImage } from '../shared/preview-upload';
+import { createLineDesignId, getMissingGiSizeMessage } from '../shared/order-flow';
 import {
   addShopifyTestCartLine,
   buildShopifyTestCartLine,
@@ -265,7 +266,7 @@ const GiConfiguratorInner = memo(() => {
       const id =
         currentDesignId ??
         matchingSavedDesign?.id ??
-        `${PRODUCT_CONFIG.savedDesignIdPrefix}_${Date.now().toString(36)}`;
+        createLineDesignId(PRODUCT_CONFIG.savedDesignIdPrefix);
       const existing = await readGiDraftDocument(id);
       const draft = await createGiDraftDocument({
         id,
@@ -393,6 +394,11 @@ const GiConfiguratorInner = memo(() => {
     setIsAddingToCart(true);
     try {
       const spec = serialize();
+      const missingSizeMessage = getMissingGiSizeMessage(spec);
+      if (missingSizeMessage) {
+        toast.error(missingSizeMessage);
+        return;
+      }
       let localThumbnailUrl = '';
 
       setCameraView('front');
@@ -407,16 +413,14 @@ const GiConfiguratorInner = memo(() => {
         ? await uploadPreviewImage(localThumbnailUrl)
         : null;
       const thumbnailUrl = hostedThumbnailUrl ?? localThumbnailUrl;
-      let lineDesignId = currentDesignId ?? undefined;
+      let lineDesignId = createLineDesignId(PRODUCT_CONFIG.orderDesignIdPrefix);
       let designUrl: string | undefined;
       let productionUrl: string | undefined;
       let artworkLinks: CloudArtworkLink[] = [];
 
       try {
         const draft = await createGiDraftDocument({
-          id:
-            lineDesignId ??
-            `${PRODUCT_CONFIG.orderDesignIdPrefix}_${Date.now().toString(36)}`,
+          id: lineDesignId,
           name: currentDesignName || formatDesignName(),
           spec,
           kimonoLogos,

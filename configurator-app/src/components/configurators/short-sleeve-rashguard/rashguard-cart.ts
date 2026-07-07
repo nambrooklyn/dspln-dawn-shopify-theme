@@ -1,9 +1,7 @@
-import {
-  RASHGUARD_ARTWORK_TARGET_LABELS,
-  RASHGUARD_PRODUCT_CONFIG,
-} from './rashguard-config';
+import { RASHGUARD_PRODUCT_CONFIG } from './rashguard-config';
 import type { RashguardSerializedState } from './rashguard-state';
 import type { ShopifyCartLine } from '../shared/shopify-cart-simulator';
+import { createLineDesignId } from '../shared/order-flow';
 
 function colorValue(color: { name: string | null; hex: string }) {
   return color.name ?? color.hex;
@@ -16,25 +14,8 @@ function buildSummary(spec: RashguardSerializedState) {
   return `Size ${spec.size} / Front ${frontColor} / Sleeves ${sleeveColor} / ${artworkCount} artwork layer${artworkCount === 1 ? '' : 's'}`;
 }
 
-function cleanArtworkName(name: string) {
-  return name
-    .replace(/\.(png|jpe?g|webp|svg)$/i, '')
-    .replace(/[-_]+/g, ' ')
-    .trim();
-}
-
 function artworkLayerProperties(spec: RashguardSerializedState) {
-  if (!spec.artworkLayers.length) return [{ name: 'Artwork Layers', value: 'NO' }];
-  return spec.artworkLayers.map((layer, index) => {
-    const layerName =
-      layer.kind === 'text' && layer.text
-        ? layer.text.trim()
-        : cleanArtworkName(layer.filename || `Artwork ${index + 1}`);
-    return {
-      name: `Artwork Layer ${index + 1}`,
-      value: `${layerName} on ${RASHGUARD_ARTWORK_TARGET_LABELS[layer.target]}`,
-    };
-  });
+  return [{ name: 'Artwork Layers', value: spec.artworkLayers.length ? 'YES' : 'NO' }];
 }
 
 function artworkLayerUrlProperties(artworkLayerUrls?: Record<number, string>) {
@@ -72,7 +53,7 @@ export function buildRashguardCartLine({
   artworkLayerUrls?: Record<number, string>;
 }): ShopifyCartLine {
   const configuratorId =
-    designId ?? `${RASHGUARD_PRODUCT_CONFIG.orderDesignIdPrefix}_${Date.now().toString(36)}`;
+    designId ?? createLineDesignId(RASHGUARD_PRODUCT_CONFIG.orderDesignIdPrefix);
   const configStorageKey = `${RASHGUARD_PRODUCT_CONFIG.configStoragePrefix}${configuratorId}`;
   const summary = buildSummary(spec);
 

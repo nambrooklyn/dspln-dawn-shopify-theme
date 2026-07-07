@@ -276,9 +276,9 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
   const [scenePartVisibility, setScenePartVisibilityState] = useState<
     Record<GiPart, boolean>
   >({ jacket: true, pants: true, belt: true });
-  const [kimonoSize, setKimonoSize] = useState<string>('M0');
-  const [pantSize, setPantSize] = useState<string>('M0');
-  const [beltSize, setBeltSize] = useState<string>('M0');
+  const [kimonoSize, setKimonoSize] = useState<string>('');
+  const [pantSize, setPantSize] = useState<string>('');
+  const [beltSize, setBeltSize] = useState<string>('');
   const [beltRank, setBeltRankState] =
     useState<KidsBeltRankName>('White');
   const [kimonoSubColors, setKimonoSubColorsState] = useState<
@@ -613,7 +613,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setScenePartVisibilityState({ ...state.partVisibility });
       setKimonoSize(state.kimono.size);
       setPantSize(state.pant.size);
-      setBeltSize(state.belt.size ?? 'M0');
+      setBeltSize(state.belt.size ?? '');
       setBeltRankState(
         beltSwatchForName(state.belt.rank?.name ?? '')?.name ?? 'White',
       );

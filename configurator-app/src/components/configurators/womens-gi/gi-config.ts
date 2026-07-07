@@ -318,19 +318,19 @@ export type CameraView = 'front' | 'back';
 // Target y = 1.25 = exact vertical center of the model so the gi sits
 // dead-center in the canvas (not biased high or low).
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
-  front: [0, 1.625, 3.95],
-  back: [0, 1.625, -3.95],
+  front: [0, 1.25, 4.35],
+  back: [0, 1.25, -4.35],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
   CameraView,
   [number, number, number]
 > = {
-  front: [0, 1.625, 3.65],
-  back: [0, 1.625, -3.65],
+  front: [0, 1.25, 4.0],
+  back: [0, 1.25, -4.0],
 };
 
-export const CAMERA_TARGET: [number, number, number] = [0, 1.625, 0];
+export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
 
 // Anchor for a logo placed on the jacket chest (front).
 // In world space relative to the placeholder gi origin (0,0,0).

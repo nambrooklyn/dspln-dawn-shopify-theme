@@ -35,7 +35,7 @@ import {
   snapshotCanvasCenteredThumbnail,
   snapshotCanvasThumbnail,
 } from '../shared/export-pdf';
-import { generateGiTechPackPageOne } from '../shared/tech-pack';
+import { createLineDesignId, getMissingGiSizeMessage } from '../shared/order-flow';
 import { uploadPreviewImage } from '../shared/preview-upload';
 import {
   addShopifyTestCartLine,
@@ -248,7 +248,6 @@ const GiConfiguratorInner = memo(() => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isCartEditMode] = useState(getCartEditMode);
   const [isExporting, setIsExporting] = useState(false);
-  const [isGeneratingTechPack, setIsGeneratingTechPack] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartLines, setCartLines] = useState<ShopifyCartLine[]>(() =>
     readShopifyTestCart(),
@@ -419,7 +418,7 @@ const GiConfiguratorInner = memo(() => {
       const id =
         currentDesignId ??
         matchingSavedDesign?.id ??
-        `${PRODUCT_CONFIG.savedDesignIdPrefix}_${Date.now().toString(36)}`;
+        createLineDesignId(PRODUCT_CONFIG.savedDesignIdPrefix);
       const existing = await readGiDraftDocument(id);
       const draft = await createGiDraftDocument({
         id,
@@ -543,53 +542,15 @@ const GiConfiguratorInner = memo(() => {
     }
   }, [cameraView, captureView, layers, serialize, setCameraView]);
 
-  const handleGenerateTechPack = useCallback(async () => {
-    if (isGeneratingTechPack) return;
-
-    setIsGeneratingTechPack(true);
-    try {
-      const startView = cameraView;
-      const spec = serialize();
-      const frontDataUrl = (await captureView('front')) ?? '';
-      const backDataUrl = (await captureView('back')) ?? '';
-      setCameraView(startView);
-
-      if (!frontDataUrl || !backDataUrl) {
-        toast.error('Could not capture tech pack views');
-        return;
-      }
-
-      await generateGiTechPackPageOne({
-        spec,
-        frontDataUrl,
-        backDataUrl,
-        kimonoLogos,
-        pantLogos,
-        orderNumber: 'TEMP',
-      });
-      toast.success('Tech pack generated');
-    } catch (error) {
-      toast.error('Tech pack could not be generated', {
-        description:
-          error instanceof Error ? error.message : 'Check the product views.',
-      });
-    } finally {
-      setIsGeneratingTechPack(false);
-    }
-  }, [
-    cameraView,
-    captureView,
-    isGeneratingTechPack,
-    kimonoLogos,
-    pantLogos,
-    serialize,
-    setCameraView,
-  ]);
-
   const handleAddToCart = useCallback(async () => {
     setIsAddingToCart(true);
     try {
       const spec = serialize();
+      const missingSizeMessage = getMissingGiSizeMessage(spec);
+      if (missingSizeMessage) {
+        toast.error(missingSizeMessage);
+        return;
+      }
       let localThumbnailUrl = '';
 
       setCameraView('front');
@@ -604,7 +565,7 @@ const GiConfiguratorInner = memo(() => {
         ? await uploadPreviewImage(localThumbnailUrl)
         : null;
       const thumbnailUrl = hostedThumbnailUrl ?? localThumbnailUrl;
-      let lineDesignId = currentDesignId ?? undefined;
+      let lineDesignId = createLineDesignId(PRODUCT_CONFIG.orderDesignIdPrefix);
       let designUrl: string | undefined;
       let productionUrl: string | undefined;
       let artworkLinks: CloudArtworkLink[] = [];
@@ -612,9 +573,7 @@ const GiConfiguratorInner = memo(() => {
 
       try {
         const draft = await createGiDraftDocument({
-          id:
-            lineDesignId ??
-            `${PRODUCT_CONFIG.orderDesignIdPrefix}_${Date.now().toString(36)}`,
+          id: lineDesignId,
           name: currentDesignName || formatDesignName(),
           spec,
           kimonoLogos,
@@ -690,7 +649,6 @@ const GiConfiguratorInner = memo(() => {
           <ConfiguratorActionRail
             isCustomer={cloudOwnerContext?.isCustomer}
             onLoginToSave={handleLoginToSave}
-            onGenerateTechPack={handleGenerateTechPack}
           />
         }
         sceneTopContent={

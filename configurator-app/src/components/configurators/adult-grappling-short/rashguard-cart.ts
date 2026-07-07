@@ -1,9 +1,7 @@
-import {
-  RASHGUARD_ARTWORK_TARGET_LABELS,
-  RASHGUARD_PRODUCT_CONFIG,
-} from './rashguard-config';
+import { RASHGUARD_PRODUCT_CONFIG } from './rashguard-config';
 import type { RashguardSerializedState } from './rashguard-state';
 import type { ShopifyCartLine } from '../shared/shopify-cart-simulator';
+import { createLineDesignId } from '../shared/order-flow';
 
 function colorValue(color: { name: string | null; hex: string }) {
   return color.name ?? color.hex;
@@ -17,28 +15,7 @@ function buildSummary(spec: RashguardSerializedState) {
 }
 
 function artworkLayerProperties(spec: RashguardSerializedState) {
-  if (!spec.artworkLayers.length) return [{ name: 'Artwork Layers', value: 'NO' }];
-  return spec.artworkLayers.map((layer, index) => {
-    const layerName =
-      layer.kind === 'text' && layer.text
-        ? layer.text.trim()
-        : cleanArtworkName(layer.filename) || `Artwork ${index + 1}`;
-    return {
-      name: `Artwork Layer ${index + 1}`,
-      value: `${layerName} - ${RASHGUARD_ARTWORK_TARGET_LABELS[layer.target]}`,
-    };
-  });
-}
-
-function cleanArtworkName(filename?: string) {
-  if (!filename) return '';
-  return filename
-    .split('/')
-    .pop()!
-    .replace(/\.(png|jpe?g|webp|svg)$/i, '')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return [{ name: 'Artwork Layers', value: spec.artworkLayers.length ? 'YES' : 'NO' }];
 }
 
 function artworkLayerUrlProperties(artworkLayerUrls?: Record<number, string>) {
@@ -76,7 +53,7 @@ export function buildRashguardCartLine({
   artworkLayerUrls?: Record<number, string>;
 }): ShopifyCartLine {
   const configuratorId =
-    designId ?? `${RASHGUARD_PRODUCT_CONFIG.orderDesignIdPrefix}_${Date.now().toString(36)}`;
+    designId ?? createLineDesignId(RASHGUARD_PRODUCT_CONFIG.orderDesignIdPrefix);
   const configStorageKey = `${RASHGUARD_PRODUCT_CONFIG.configStoragePrefix}${configuratorId}`;
   const summary = buildSummary(spec);
 

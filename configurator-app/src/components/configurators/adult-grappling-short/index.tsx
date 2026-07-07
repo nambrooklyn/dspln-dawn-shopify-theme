@@ -39,6 +39,7 @@ import {
   type RashguardArtworkLayer,
   type RashguardSerializedState,
 } from './rashguard-state';
+import { createLineDesignId } from '../shared/order-flow';
 import { RashguardShell } from './rashguard-shell';
 import { RashguardViewToggle } from './view-toggle';
 
@@ -371,7 +372,7 @@ const RashguardConfiguratorInner = memo(() => {
         const id =
           currentDesignId ??
           matchingSavedDesign?.id ??
-          `${RASHGUARD_PRODUCT_CONFIG.savedDesignIdPrefix}_${Date.now().toString(36)}`;
+          createLineDesignId(RASHGUARD_PRODUCT_CONFIG.savedDesignIdPrefix);
         const existing = readRashguardDraftDocument(id);
         const draft = await createRashguardDraftDocument({
           id,
@@ -476,7 +477,6 @@ const RashguardConfiguratorInner = memo(() => {
       const line = buildRashguardCartLine({
         spec,
         thumbnailUrl,
-        designId: currentDesignId ?? undefined,
         artworkLayerUrls,
       });
       const sentToShopifyParent = sendLinesToShopifyParent([line]);
@@ -493,7 +493,7 @@ const RashguardConfiguratorInner = memo(() => {
     } finally {
       setIsAddingToCart(false);
     }
-  }, [currentDesignId, getCanvasEl, serialize, setCameraView, uploadArtworkLayerUrls]);
+  }, [getCanvasEl, serialize, setCameraView, uploadArtworkLayerUrls]);
 
   return (
     <>
