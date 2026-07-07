@@ -6,7 +6,11 @@
 
   const ADD_MESSAGE_TYPE = 'dspln:shopify-cart:add';
   const UPDATE_MESSAGE_TYPE = 'dspln:shopify-cart:update';
-  const ALLOWED_HOSTS = ['127.0.0.1', 'localhost'];
+  const ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost',
+    'dspln-dawn-shopify-theme.netlify.app',
+  ];
   const LOCAL_PREVIEW_STORAGE_PREFIX = 'dspln:cart-preview:';
   const LOCAL_CONFIG_STORAGE_PREFIX = 'dspln:cart-config:';
   const frame = document.getElementById('dspln-configurator-frame');
