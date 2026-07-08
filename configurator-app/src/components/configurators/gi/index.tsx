@@ -585,40 +585,46 @@ const GiConfiguratorInner = memo(() => {
         ? await uploadPreviewImage(localThumbnailUrl)
         : null;
       const thumbnailUrl = hostedThumbnailUrl ?? localThumbnailUrl;
-      const renders = await captureTechPackRenders();
       let lineDesignId = createLineDesignId(PRODUCT_CONFIG.orderDesignIdPrefix);
       let fallbackUrls = buildGiCloudDesignUrls(lineDesignId);
       let designUrl: string | undefined = fallbackUrls?.designUrl;
       let productionUrl: string | undefined = fallbackUrls?.productionUrl;
       let artworkLinks: CloudArtworkLink[] = [];
       let cartConfigData: GiCartConfigData | undefined;
+      let cartDraft: GiDraftDocument | null = null;
 
       try {
-        const draft = await createGiDraftDocument({
+        cartDraft = await createGiDraftDocument({
           id: lineDesignId,
           name: currentDesignName || formatDesignName(),
           spec,
           kimonoLogos,
           pantLogos,
           thumbnailUrl,
-          renders,
         });
-        cartConfigData = await draftToCartConfigData(draft);
+        cartConfigData = await draftToCartConfigData(cartDraft);
         const cloudResult = await saveGiCloudDesignRecord(
-          draft,
+          cartDraft,
           cloudOwnerContext,
         );
-        if (cloudResult) {
-          lineDesignId = cloudResult.draft.id;
-          setCurrentDesignId(cloudResult.draft.id);
-          broadcastCustomerDesignsChanged();
-          fallbackUrls = buildGiCloudDesignUrls(cloudResult.draft.id);
-          designUrl = cloudResult.designUrl ?? fallbackUrls?.designUrl;
-          productionUrl = cloudResult.productionUrl ?? fallbackUrls?.productionUrl;
-          artworkLinks = cloudResult.artwork;
+        if (!cloudResult) {
+          throw new Error('Design record was not saved.');
         }
-      } catch {
-        // Cart add should still work if cloud save is temporarily unavailable.
+        lineDesignId = cloudResult.draft.id;
+        cartDraft = cloudResult.draft;
+        setCurrentDesignId(cloudResult.draft.id);
+        broadcastCustomerDesignsChanged();
+        fallbackUrls = buildGiCloudDesignUrls(cloudResult.draft.id);
+        designUrl = cloudResult.designUrl ?? fallbackUrls?.designUrl;
+        productionUrl = cloudResult.productionUrl ?? fallbackUrls?.productionUrl;
+        artworkLinks = cloudResult.artwork;
+      } catch (err) {
+        console.error('[GiConfigurator] Cloud design save failed', err);
+        toast.error('Could not save the production design', {
+          description:
+            'The gi was not added to cart because the Tech Pack and 3D Design links would not work.',
+        });
+        return;
       }
 
       const line = buildShopifyTestCartLine({
@@ -630,6 +636,29 @@ const GiConfiguratorInner = memo(() => {
         artworkLinks,
         configData: cartConfigData,
       });
+
+      const saveTechPackRenders = () => {
+        void (async () => {
+          try {
+            if (!cartDraft) return;
+            const renders = await captureTechPackRenders();
+            await saveGiCloudDesignRecord(
+              {
+                ...cartDraft,
+                id: lineDesignId,
+                renders,
+                updatedAt: new Date().toISOString(),
+              },
+              cloudOwnerContext,
+            );
+            broadcastCustomerDesignsChanged();
+          } catch (err) {
+            console.error('[GiConfigurator] Tech pack render save failed', err);
+          }
+        })();
+      };
+
+      saveTechPackRenders();
       const sentToShopifyParent = sendLinesToShopifyParent([line]);
 
       if (sentToShopifyParent) {
@@ -643,7 +672,7 @@ const GiConfiguratorInner = memo(() => {
       setCartLines(nextCart);
       setCartOpen(true);
       // eslint-disable-next-line no-console
-      console.log('[GiConfigurator] Shopify cart line:', line);
+        console.log('[GiConfigurator] Shopify cart line:', line);
       await new Promise((r) => setTimeout(r, 300));
     } finally {
       setIsAddingToCart(false);
