@@ -14,7 +14,7 @@
     "dspln_product_carousel": {
       "type": "dspln-prestige-product-carousel",
       "settings": {
-        "collection": "custom-bjj-gear",
+        "collection": "frontpage",
         "products_to_show": 12,
         "title": "CUSTOM BJJ GEAR",
         "heading_size": "h2",
