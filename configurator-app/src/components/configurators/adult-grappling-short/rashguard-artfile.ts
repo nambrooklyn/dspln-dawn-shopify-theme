@@ -15,6 +15,11 @@ import jsPDF from 'jspdf';
 import patternsJson from './rashguard-patterns.json';
 import { buildZoneArtworkCanvas } from './rashguard-glb-model';
 import {
+  withSrgbOutputIntent,
+  downloadPdfBytes,
+  bytesToBase64,
+} from '../shared/pdf-srgb';
+import {
   RASHGUARD_PART_LABELS,
   type RashguardArtworkTarget,
   type RashguardPart,
@@ -418,14 +423,14 @@ export async function generateRashguardArtFile(
     doc.setFontSize(12);
     doc.setTextColor(20);
     doc.text(
-      `${RASHGUARD_PART_LABELS[part]}  —  ${Math.round(widthCm)} × ${Math.round(heightCm)} cm (actual size)`,
+      `${RASHGUARD_PART_LABELS[part]}  —  ${Math.round(widthCm)} × ${Math.round(heightCm)} cm (actual size)  —  COLOR ${input.partColors[part].toUpperCase()}`,
       mm(margin),
       orderTop + 8,
     );
     doc.setFontSize(8);
     doc.setTextColor(120);
     doc.text(
-      `Print at 100% / "Actual size" — do not "fit to page". Part ${idx + 1} of ${parts.length}.`,
+      `Print at 100% / "Actual size" — do not "fit to page". Part ${idx + 1} of ${parts.length}.  Colours are sRGB — print in RGB, do not convert to CMYK.`,
       mm(margin),
       orderTop + 13,
     );
@@ -441,8 +446,15 @@ export async function generateRashguardArtFile(
   }
 
   if (!doc) return;
-  if (input.options?.output === 'datauri') {
-    return (doc.output('datauristring') as string).split(',')[1];
+  const rawBytes = doc.output('arraybuffer') as ArrayBuffer;
+  let finalBytes: Uint8Array;
+  try {
+    finalBytes = await withSrgbOutputIntent(rawBytes);
+  } catch {
+    finalBytes = new Uint8Array(rawBytes);
   }
-  doc.save(opts.fileName);
+  if (input.options?.output === 'datauri') {
+    return bytesToBase64(finalBytes);
+  }
+  downloadPdfBytes(finalBytes, opts.fileName);
 }
