@@ -39,6 +39,11 @@ type SavedDesignRecord = {
   id: string;
   name?: string;
   thumbnailUrl?: string | null;
+  // Stamped onto the record by the Shopify order webhook once the order is
+  // placed (e.g. orderName "#1042"). Absent for pre-webhook / unpurchased
+  // designs, in which case we fall back to the design id.
+  orderName?: string;
+  orderNumber?: number | string;
   configData?: {
     source?: string;
     spec?: GiSerializedState;
@@ -95,6 +100,23 @@ function mapLogos<TSlot extends string>(
 
 function orderNumberForDesign(id: string) {
   return id.replace(/[^a-z0-9]+/gi, '_').toUpperCase();
+}
+
+// The order number shown in the header: the real Shopify order name once the
+// webhook has stamped it, otherwise the design id as a fallback.
+function orderNumberForRecord(design: SavedDesignRecord) {
+  return (
+    design.orderName ||
+    (design.orderNumber != null ? String(design.orderNumber) : '') ||
+    orderNumberForDesign(design.id)
+  );
+}
+
+// Product name used in the download filename, by garment family.
+function productNameForSource(source?: string) {
+  if (source === 'dspln-womens-gi-configurator') return 'womens-gi';
+  if (source === 'dspln-kids-gi-configurator') return 'kids-gi';
+  return 'mens-gi';
 }
 
 /**
@@ -195,7 +217,8 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           rightBeltEndDataUrl: rightBeltEnd,
           kimonoLogos,
           pantLogos,
-          orderNumber: orderNumberForDesign(design.id),
+          orderNumber: orderNumberForRecord(design),
+          productName: productNameForSource(design.configData?.source),
           includeSizeMeasurements:
             design.configData?.source !== 'dspln-kids-gi-configurator',
         });

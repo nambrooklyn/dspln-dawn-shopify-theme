@@ -26,7 +26,17 @@ interface GenerateGiTechPackInput {
   pantLogos?: Partial<Record<PantLogoSlot, KimonoLogo>>;
   orderDate?: Date;
   orderNumber?: string;
+  productName?: string;
   includeSizeMeasurements?: boolean;
+}
+
+/** Filesystem-safe slug for the download filename (keeps digits + letters). */
+function fileNameSlug(value: string, fallback: string) {
+  const slug = value
+    .replace(/[^a-z0-9]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+  return slug || fallback;
 }
 
 const LOGO_URL = '/tech-pack/dspln-logo.png';
@@ -1686,6 +1696,7 @@ export async function generateGiTechPackPageOne({
   pantLogos,
   orderDate = new Date(),
   orderNumber = buildOrderNumber(orderDate),
+  productName = 'gi',
   includeSizeMeasurements = true,
 }: GenerateGiTechPackInput) {
   const pdf = new jsPDF({
@@ -1851,5 +1862,10 @@ export async function generateGiTechPackPageOne({
     });
   }
 
-  pdf.save(`${orderNumber.toLowerCase()}-gi-tech-pack.pdf`);
+  // Filename: <order_number>_<product_name>.pdf (e.g. 1042_mens-gi.pdf).
+  const fileName = `${fileNameSlug(orderNumber, 'order')}_${fileNameSlug(
+    productName,
+    'gi',
+  )}.pdf`;
+  pdf.save(fileName);
 }
