@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "dspln_sizing_page": {
+      "type": "dspln-sizing-page",
+      "settings": {
+        "iframe_title": "DSPLN sizing page"
+      }
+    }
+  },
+  "order": [
+    "dspln_sizing_page"
+  ]
+}
