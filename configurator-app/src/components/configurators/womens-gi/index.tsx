@@ -441,24 +441,6 @@ const GiConfiguratorInner = memo(() => {
     [getCanvasEl, setCameraView],
   );
 
-  const captureTechPackRenders = useCallback(async () => {
-    const startView = cameraView;
-    const front = await captureView('front');
-    const back = await captureView('back');
-    const left = await captureView('left');
-    const right = await captureView('right');
-    const leftBeltEnd = await captureView('left-belt-end');
-    const rightBeltEnd = await captureView('right-belt-end');
-    setCameraView(startView);
-    return {
-      front: front ?? undefined,
-      back: back ?? undefined,
-      left: left ?? undefined,
-      right: right ?? undefined,
-      leftBeltEnd: leftBeltEnd ?? undefined,
-      rightBeltEnd: rightBeltEnd ?? undefined,
-    };
-  }, [cameraView, captureView, setCameraView]);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
@@ -545,28 +527,8 @@ const GiConfiguratorInner = memo(() => {
         return;
       }
 
-      try {
-        if (cartDraft) {
-          const renders = await captureTechPackRenders();
-          await saveGiCloudDesignRecord(
-            {
-              ...cartDraft,
-              id: lineDesignId,
-              renders,
-              updatedAt: new Date().toISOString(),
-            },
-            cloudOwnerContext,
-          );
-          broadcastCustomerDesignsChanged();
-        }
-      } catch (err) {
-        console.error('[WomensGiConfigurator] Tech pack render save failed', err);
-        toast.error('Could not save the production renders', {
-          description:
-            'The gi was not added to cart because the Tech Pack would use incomplete images.',
-        });
-        return;
-      }
+      // Tech-pack views are no longer captured at add-to-cart — the tech pack
+      // renders on demand from the admin order page (/tech-pack/gi).
 
       const line = buildShopifyTestCartLine({
         spec,
@@ -609,7 +571,6 @@ const GiConfiguratorInner = memo(() => {
     }
   }, [
     cloudOwnerContext,
-    captureTechPackRenders,
     currentDesignId,
     currentDesignName,
     getCanvasEl,

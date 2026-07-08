@@ -198,6 +198,18 @@ export const GiGlbModel = memo(() => {
     };
   }, [cloned]);
 
+  // Signal that the .glb has loaded + mounted so the admin tech-pack page
+  // knows when it is safe to capture views. Flag + event avoids a
+  // listener-attached-after-dispatch race.
+  useEffect(() => {
+    const w = window as unknown as { __giModelReady?: boolean };
+    w.__giModelReady = true;
+    window.dispatchEvent(new Event('dspln:gi-model-ready'));
+    return () => {
+      w.__giModelReady = false;
+    };
+  }, []);
+
   // Apply per-part / per-sub-part colors. Kimono is routed at the
   // sub-part level (body / lapel / reinforcement / stitching). Pants
   // follow the same structure. Belt still uses a single part-level color.

@@ -1,12 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { generateGiTechPackPageOne } from './configurators/shared/tech-pack';
 import {
   snapshotCanvas,
   snapshotCanvasHighResolution,
 } from './configurators/shared/export-pdf';
-import { GiCanvas } from './configurators/gi/gi-canvas';
-import { GiStateProvider, useGiState } from './configurators/gi/gi-state';
+import { GiCanvas as MensCanvas } from './configurators/gi/gi-canvas';
+import {
+  GiStateProvider as MensProvider,
+  useGiState as useMensState,
+} from './configurators/gi/gi-state';
+import { GiCanvas as WomensCanvas } from './configurators/womens-gi/gi-canvas';
+import {
+  GiStateProvider as WomensProvider,
+  useGiState as useWomensState,
+} from './configurators/womens-gi/gi-state';
+import { GiCanvas as KidsCanvas } from './configurators/kids-gi/gi-canvas';
+import {
+  GiStateProvider as KidsProvider,
+  useGiState as useKidsState,
+} from './configurators/kids-gi/gi-state';
 import type { GiSerializedState, KimonoLogo } from './configurators/gi/gi-state';
 import type {
   CameraView,
@@ -35,6 +48,20 @@ type SavedDesignRecord = {
     };
   };
 };
+
+type TechPackLogos = {
+  kimono?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
+  pant?: Partial<Record<PantLogoSlot, KimonoLogo>>;
+};
+
+// The three garment gi-state modules are structurally identical clones, so we
+// drive them through one shared interface. Women's / kids state is cast to
+// this in their wrappers.
+interface TechPackDriver {
+  hydrate: (spec: GiSerializedState, logos: TechPackLogos) => void;
+  setCameraView: (view: CameraView) => void;
+  getCanvasEl: () => HTMLCanvasElement | null;
+}
 
 function apiDesignUrl(id: string) {
   const url = new URL('/api/customer-designs', window.location.origin);
@@ -71,9 +98,9 @@ function orderNumberForDesign(id: string) {
 }
 
 /**
- * Wait until the gi .glb has loaded + mounted (gi-glb-model fires the event
- * and sets the flag). Resolves immediately if it is already ready, and always
- * resolves after `timeoutMs` so a stuck load can't hang the page forever.
+ * Wait until the active garment .glb has loaded + mounted (gi-glb-model fires
+ * the event and sets the flag). Resolves immediately if already ready, and
+ * always resolves after `timeoutMs` so a stuck load can't hang the page.
  */
 function waitForModelReady(timeoutMs = 20000) {
   return new Promise<void>((resolve) => {
@@ -98,13 +125,12 @@ function delay(ms: number) {
 }
 
 /**
- * Runs inside a GiStateProvider so it can hydrate the design and drive the
- * live 3D scene. Captures the six production views ON DEMAND, then builds the
- * PDF — nothing is pre-rendered at add-to-cart.
+ * Drives the live 3D scene for whichever garment mounted us: hydrate the saved
+ * design, capture the six production views ON DEMAND, then build the PDF.
+ * Nothing is pre-rendered at add-to-cart.
  */
-function TechPackGenerator({ id }: { id: string }) {
-  const { hydrate, setCameraView, getCanvasEl } = useGiState();
-  const [status, setStatus] = useState('Loading saved design...');
+function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
+  const [status, setStatus] = useState('Rendering production views...');
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
 
@@ -115,34 +141,26 @@ function TechPackGenerator({ id }: { id: string }) {
     let cancelled = false;
 
     async function captureView(view: CameraView) {
-      setCameraView(view);
+      driver.setCameraView(view);
       // Let the camera-rig lerp settle + a render frame elapse.
       await delay(700);
-      return snapshotCanvasHighResolution() ?? snapshotCanvas(getCanvasEl()) ?? undefined;
+      return (
+        snapshotCanvasHighResolution() ??
+        snapshotCanvas(driver.getCanvasEl()) ??
+        undefined
+      );
     }
 
     async function run() {
       try {
-        const response = await fetch(apiDesignUrl(id), {
-          headers: { Accept: 'application/json' },
-        });
-        if (!response.ok) throw new Error(await response.text());
-
-        const payload = (await response.json()) as {
-          data?: { design?: SavedDesignRecord };
-        };
-        const design = payload.data?.design;
-        const spec = design?.configData?.spec;
-        if (!design || !spec) throw new Error('Saved design record is incomplete.');
+        const spec = design.configData?.spec;
+        if (!spec) throw new Error('Saved design record is incomplete.');
 
         const kimonoLogos = mapLogos(design.configData?.images?.kimono);
         const pantLogos = mapLogos(design.configData?.images?.pant);
 
-        if (cancelled) return;
-        setStatus('Rendering production views...');
-
         // Load the exact configuration into the live 3D scene.
-        hydrate(spec, { kimono: kimonoLogos, pant: pantLogos });
+        driver.hydrate(spec, { kimono: kimonoLogos, pant: pantLogos });
         await waitForModelReady();
         // Give colors / logo decals a couple frames to composite.
         await delay(700);
@@ -190,14 +208,26 @@ function TechPackGenerator({ id }: { id: string }) {
     return () => {
       cancelled = true;
     };
-  }, [id, hydrate, setCameraView, getCanvasEl]);
+  }, [design, driver]);
 
+  return { status, error };
+}
+
+function TechPackFrame({
+  status,
+  error,
+  children,
+}: {
+  status: string;
+  error: string | null;
+  children: ReactNode;
+}) {
   return (
     <main className="relative min-h-screen bg-white">
       {/* The live 3D scene must actually render (WebGL) to be captured, so it
           is on-screen but sits behind the status overlay. */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <GiCanvas />
+        {children}
       </div>
       <div className="absolute inset-0 grid place-items-center bg-white/95 p-8 text-center">
         <div className="max-w-xl">
@@ -211,28 +241,111 @@ function TechPackGenerator({ id }: { id: string }) {
   );
 }
 
+function MensTechPack({ design }: { design: SavedDesignRecord }) {
+  const driver = useMensState() as unknown as TechPackDriver;
+  const { status, error } = useTechPackRun(design, driver);
+  return (
+    <TechPackFrame status={status} error={error}>
+      <MensCanvas />
+    </TechPackFrame>
+  );
+}
+
+function WomensTechPack({ design }: { design: SavedDesignRecord }) {
+  const driver = useWomensState() as unknown as TechPackDriver;
+  const { status, error } = useTechPackRun(design, driver);
+  return (
+    <TechPackFrame status={status} error={error}>
+      <WomensCanvas />
+    </TechPackFrame>
+  );
+}
+
+function KidsTechPack({ design }: { design: SavedDesignRecord }) {
+  const driver = useKidsState() as unknown as TechPackDriver;
+  const { status, error } = useTechPackRun(design, driver);
+  return (
+    <TechPackFrame status={status} error={error}>
+      <KidsCanvas />
+    </TechPackFrame>
+  );
+}
+
+function StatusScreen({ message }: { message: string }) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-white p-8 text-center">
+      <div className="max-w-xl">
+        <h1 className="text-2xl font-semibold tracking-[0.18em] uppercase">
+          DSPLN Tech Pack
+        </h1>
+        <p className="mt-5 text-sm text-neutral-600">{message}</p>
+      </div>
+    </main>
+  );
+}
+
 export function TechPackDownloadPage() {
   const id =
     typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('id')
       : null;
+  const [design, setDesign] = useState<SavedDesignRecord | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!id) {
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch(apiDesignUrl(id), {
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const payload = (await response.json()) as {
+          data?: { design?: SavedDesignRecord };
+        };
+        const record = payload.data?.design;
+        if (!record?.configData?.spec) {
+          throw new Error('Saved design record is incomplete.');
+        }
+        if (!cancelled) setDesign(record);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Unable to load design.');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (!id) return <StatusScreen message="Missing design id." />;
+  if (error) return <StatusScreen message={error} />;
+  if (!design) return <StatusScreen message="Loading saved design..." />;
+
+  // Mount the 3D stack for the garment this design belongs to, so the tech
+  // pack renders the correct model — men's, women's, or kids'.
+  const source = design.configData?.source;
+  if (source === 'dspln-womens-gi-configurator') {
     return (
-      <main className="grid min-h-screen place-items-center bg-white p-8 text-center">
-        <div className="max-w-xl">
-          <h1 className="text-2xl font-semibold tracking-[0.18em] uppercase">
-            DSPLN Tech Pack
-          </h1>
-          <p className="mt-5 text-sm text-neutral-600">Missing design id.</p>
-        </div>
-      </main>
+      <WomensProvider>
+        <WomensTechPack design={design} />
+      </WomensProvider>
     );
   }
-
+  if (source === 'dspln-kids-gi-configurator') {
+    return (
+      <KidsProvider>
+        <KidsTechPack design={design} />
+      </KidsProvider>
+    );
+  }
   return (
-    <GiStateProvider>
-      <TechPackGenerator id={id} />
-    </GiStateProvider>
+    <MensProvider>
+      <MensTechPack design={design} />
+    </MensProvider>
   );
 }
