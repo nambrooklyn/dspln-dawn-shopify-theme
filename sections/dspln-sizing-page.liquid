@@ -6,7 +6,7 @@
     title="{{ section.settings.iframe_title | escape }}"
     loading="eager"
     sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-    src="{{ 'dspln-sizing-page-standalone.html' | asset_url }}"
+    data-src="{{ 'dspln-sizing-page-standalone.html' | asset_url }}"
   ></iframe>
   <noscript>
     <p class="dspln-sizing-page-fallback">
@@ -47,6 +47,7 @@
     if (!iframe || iframe.dataset.loaded === 'true') return;
     iframe.dataset.loaded = 'true';
 
+    var src = iframe.dataset.src;
     var fallbackHeight = 5600;
 
     function resizeFrame() {
@@ -76,7 +77,17 @@
       }, 250);
     });
 
-    if (iframe.contentWindow) resizeFrame();
+    fetch(src)
+      .then(function (response) {
+        if (!response.ok) throw new Error('Unable to load sizing page asset');
+        return response.text();
+      })
+      .then(function (html) {
+        iframe.srcdoc = html;
+      })
+      .catch(function () {
+        iframe.src = src;
+      });
   })();
 </script>
 
