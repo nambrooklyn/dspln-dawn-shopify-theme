@@ -52,7 +52,7 @@ export const RASHGUARD_DEFAULT_COLORS: Record<RashguardPart, string> = {
 
 export const RASHGUARD_COLOR_SWATCHES = [
   { name: 'White', hex: '#ffffff' },
-  { name: 'Blue', hex: '#2947bf' },
+  { name: 'Blue', hex: '#0033ff' },
   { name: 'Purple', hex: '#4b256f' },
   { name: 'Brown', hex: '#4a3000' },
   { name: 'Black', hex: '#2c2c2c' },
