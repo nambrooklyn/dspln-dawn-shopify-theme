@@ -545,6 +545,29 @@ const GiConfiguratorInner = memo(() => {
         return;
       }
 
+      try {
+        if (cartDraft) {
+          const renders = await captureTechPackRenders();
+          await saveGiCloudDesignRecord(
+            {
+              ...cartDraft,
+              id: lineDesignId,
+              renders,
+              updatedAt: new Date().toISOString(),
+            },
+            cloudOwnerContext,
+          );
+          broadcastCustomerDesignsChanged();
+        }
+      } catch (err) {
+        console.error('[WomensGiConfigurator] Tech pack render save failed', err);
+        toast.error('Could not save the production renders', {
+          description:
+            'The gi was not added to cart because the Tech Pack would use incomplete images.',
+        });
+        return;
+      }
+
       const line = buildShopifyTestCartLine({
         spec,
         thumbnailUrl,
@@ -555,28 +578,6 @@ const GiConfiguratorInner = memo(() => {
         configData: cartConfigData,
       });
 
-      const saveTechPackRenders = () => {
-        void (async () => {
-          try {
-            if (!cartDraft) return;
-            const renders = await captureTechPackRenders();
-            await saveGiCloudDesignRecord(
-              {
-                ...cartDraft,
-                id: lineDesignId,
-                renders,
-                updatedAt: new Date().toISOString(),
-              },
-              cloudOwnerContext,
-            );
-            broadcastCustomerDesignsChanged();
-          } catch (err) {
-            console.error('[WomensGiConfigurator] Tech pack render save failed', err);
-          }
-        })();
-      };
-
-      saveTechPackRenders();
       const parentCartResult = isShopifyIframeMode()
         ? waitForShopifyCartParentResult()
         : Promise.resolve<'added' | 'error' | 'timeout'>('timeout');
