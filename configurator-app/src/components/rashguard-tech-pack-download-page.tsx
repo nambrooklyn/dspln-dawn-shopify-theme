@@ -42,6 +42,9 @@ type SavedDesignRecord = {
   id: string;
   name?: string;
   thumbnailUrl?: string | null;
+  // Stamped by the Shopify order webhook once the order is placed.
+  orderName?: string;
+  orderNumber?: number | string;
   configData?: {
     source?: string;
     spec?: RashguardSerializedState;
@@ -71,14 +74,35 @@ function orderNumberForDesign(id: string) {
   return id.replace(/[^a-z0-9]+/gi, '_').toUpperCase();
 }
 
-function buildOrderInfo(id: string): ArtFileOrderInfo {
+// Real Shopify order number once the webhook has stamped it, else the design
+// id fallback (a manual ?order= override still wins for one-off reprints).
+function orderNumberForRecord(design: SavedDesignRecord) {
+  const params = new URLSearchParams(window.location.search);
+  return (
+    design.orderName ||
+    (design.orderNumber != null ? String(design.orderNumber) : '') ||
+    params.get('order')?.trim() ||
+    orderNumberForDesign(design.id)
+  );
+}
+
+/** Filesystem-safe slug for the download filename. */
+function fileNameSlug(value: string, fallback: string) {
+  const slug = value
+    .replace(/[^a-z0-9]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+  return slug || fallback;
+}
+
+function buildOrderInfo(design: SavedDesignRecord): ArtFileOrderInfo {
   const params = new URLSearchParams(window.location.search);
   const orderDate = parseDate(params.get('date'));
   const shipDate = new Date(orderDate.getTime() + 7 * 24 * 60 * 60 * 1000);
   return {
     orderDate: formatDate(orderDate),
     shipDate: formatDate(shipDate),
-    orderNumber: params.get('order')?.trim() || orderNumberForDesign(id),
+    orderNumber: orderNumberForRecord(design),
   };
 }
 
@@ -156,15 +180,28 @@ export function RashguardTechPackDownloadPage() {
       }
 
       try {
-        const response = await fetch(apiDesignUrl(id), {
-          headers: { Accept: 'application/json' },
-        });
-        if (!response.ok) throw new Error(await response.text());
+        // Retry a few times so a freshly placed order picks up its stamped
+        // order number (storage is eventually consistent — see the gi page).
+        const MAX_ATTEMPTS = 4;
+        const RETRY_MS = 2000;
+        let design: SavedDesignRecord | undefined;
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+          const response = await fetch(apiDesignUrl(id), {
+            headers: { Accept: 'application/json' },
+          });
+          if (!response.ok) throw new Error(await response.text());
+          const payload = (await response.json()) as {
+            data?: { design?: SavedDesignRecord };
+          };
+          design = payload.data?.design;
+          if (!design?.configData?.spec) {
+            throw new Error('Saved design record is incomplete.');
+          }
+          if (design.orderName || attempt === MAX_ATTEMPTS - 1) break;
+          await new Promise((r) => setTimeout(r, RETRY_MS));
+          if (cancelled) return;
+        }
 
-        const payload = (await response.json()) as {
-          data?: { design?: SavedDesignRecord };
-        };
-        const design = payload.data?.design;
         const spec = design?.configData?.spec;
         const source = design?.configData?.source;
         if (!design || !spec) throw new Error('Saved design record is incomplete.');
@@ -175,6 +212,12 @@ export function RashguardTechPackDownloadPage() {
         if (cancelled) return;
         setStatus('Generating production PDF...');
 
+        const orderInfo = buildOrderInfo(design);
+        // Filename: <order_number>_<product>.pdf (e.g. 1042_short-sleeve-rashguard.pdf)
+        const fileName = `${fileNameSlug(orderInfo.orderNumber, 'order')}_${fileNameSlug(
+          source,
+          'rashguard',
+        )}.pdf`;
         const sharedInput = {
           partColors: Object.fromEntries(
             Object.entries(spec.partColors).map(([part, color]) => [part, color.hex]),
@@ -182,9 +225,10 @@ export function RashguardTechPackDownloadPage() {
           artworkLayers: buildArtworkLayers(spec, design.configData?.images),
           views: completeViews(design.configData?.renders),
           viewAspect: design.configData?.renders?.aspect,
-          orderInfo: buildOrderInfo(design.id),
+          orderInfo,
           options: {
             output: 'save',
+            fileName,
           } as const,
         };
 
