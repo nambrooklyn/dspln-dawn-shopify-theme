@@ -287,21 +287,18 @@ async function getRecordById(store, id) {
 
 function withLinks(event, record) {
   const designUrl = shopifyDesignUrl(record);
-  const netlifyDesign = new URL('http://127.0.0.1:3002/configurator/gi');
-  netlifyDesign.searchParams.set('shopifyTest', '1');
-  netlifyDesign.searchParams.set('design', record.id);
-  if (record.shopDomain) netlifyDesign.searchParams.set('shop', record.shopDomain);
-  if (record.shopifyCustomerId) {
-    netlifyDesign.searchParams.set('customerId', record.shopifyCustomerId);
-  }
-  if (record.customerEmail) {
-    netlifyDesign.searchParams.set('customerEmail', record.customerEmail);
-  }
-  if (record.productId) netlifyDesign.searchParams.set('productId', record.productId);
-  if (record.productHandle) {
-    netlifyDesign.searchParams.set('productHandle', record.productHandle);
-  }
-  const netlifyDesignUrl = netlifyDesign.toString();
+  // Derive the configurator URL from the request host so it points at the
+  // real deploy (previously hardcoded to http://127.0.0.1:3002 — a dev URL
+  // that must never ship). absoluteAppUrl skips falsy params.
+  const netlifyDesignUrl = absoluteAppUrl(event, '/configurator/gi', {
+    shopifyTest: '1',
+    design: record.id,
+    shop: record.shopDomain,
+    customerId: record.shopifyCustomerId,
+    customerEmail: record.customerEmail,
+    productId: record.productId,
+    productHandle: record.productHandle,
+  });
   const productionUrl = absoluteApiUrl(event, { id: record.id });
   const artwork = [];
   const images = record.configData?.images || {};

@@ -2,6 +2,7 @@ import type { KimonoLogo } from './gi-state';
 import type { GiDraftDocument, GiDraftLogoImage } from './gi-draft-storage';
 import type { KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { currentGiProductConfig } from '../shared/gi-product-config';
+import { uploadArtworkImage } from '../shared/preview-upload';
 
 const PRODUCT_CONFIG = currentGiProductConfig();
 const GUEST_TOKEN_STORAGE_KEY = PRODUCT_CONFIG.guestTokenStorageKey;
@@ -9,7 +10,10 @@ const PRODUCT_HANDLE = PRODUCT_CONFIG.shopifyProductHandle;
 const SHOPIFY_GI_PRODUCT_URL = PRODUCT_CONFIG.shopifyProductUrl;
 
 type CloudLogoImage = Omit<GiDraftLogoImage, 'blob'> & {
-  dataUrl: string;
+  // Lightweight by default: logos are uploaded separately and referenced by
+  // `shopifyUrl`. `dataUrl` (base64) is only present as a fallback when the
+  // upload failed, so the logo still survives in the record.
+  dataUrl?: string;
   shopifyUrl?: string;
 };
 
@@ -156,15 +160,26 @@ async function imagesToCloudImages<TSlot extends string>(
 	    Object.entries(images).map(async ([slot, image]) => {
 	      if (!image) return null;
 	      const draftImage = image as GiDraftLogoImage;
-	      return [
-	        slot,
-	        {
-	          dataUrl: await imageToDataUrl(draftImage),
-	          filename: draftImage.filename,
-	          imageWidth: draftImage.imageWidth,
-	          imageHeight: draftImage.imageHeight,
-	        },
-	      ] as const;
+	      const dataUrl = await imageToDataUrl(draftImage);
+	      // Upload the logo separately and store only its URL. This keeps the
+	      // heavy base64 out of the design-record JSON so the save can't fail
+	      // on logo-heavy designs. If the upload fails, fall back to embedding
+	      // the base64 so the logo is never silently lost.
+	      const uploadedUrl = await uploadArtworkImage(dataUrl);
+	      const stored: CloudLogoImage = uploadedUrl
+	        ? {
+	            shopifyUrl: uploadedUrl,
+	            filename: draftImage.filename,
+	            imageWidth: draftImage.imageWidth,
+	            imageHeight: draftImage.imageHeight,
+	          }
+	        : {
+	            dataUrl,
+	            filename: draftImage.filename,
+	            imageWidth: draftImage.imageWidth,
+	            imageHeight: draftImage.imageHeight,
+	          };
+	      return [slot, stored] as const;
 	    }),
   );
 
@@ -182,8 +197,10 @@ async function imagesToCloudImages<TSlot extends string>(
 async function cloudImageToDraftImage(
   image: CloudLogoImage,
 ): Promise<GiDraftLogoImage> {
+  // Prefer the hosted URL; fall back to the embedded base64 for older records.
+  const source = image.shopifyUrl ?? image.dataUrl;
   return {
-    blob: await dataUrlToBlob(image.dataUrl),
+    blob: source ? await dataUrlToBlob(source) : new Blob(),
     filename: image.filename,
     imageWidth: image.imageWidth,
     imageHeight: image.imageHeight,

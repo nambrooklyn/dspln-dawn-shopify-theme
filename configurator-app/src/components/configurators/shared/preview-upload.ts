@@ -62,6 +62,33 @@ async function uploadPreviewCandidate(imageDataUrl: string): Promise<string | nu
   return typeof data.url === 'string' ? data.url : null;
 }
 
+/**
+ * Upload a full-resolution logo / artwork image and return its hosted URL.
+ * Unlike uploadPreviewImage this does NOT crop or re-encode — logos must keep
+ * their transparency and aspect ratio. Used so logo bytes stay out of the
+ * design-record JSON (see gi-cloud-designs.imagesToCloudImages).
+ */
+export async function uploadArtworkImage(
+  imageDataUrl: string,
+): Promise<string | null> {
+  if (!imageDataUrl.startsWith('data:image/')) return null;
+
+  try {
+    const response = await fetch('/.netlify/functions/upload-artwork', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageDataUrl }),
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as PreviewUploadResponse;
+    return typeof data.url === 'string' ? data.url : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function uploadPreviewImage(
   imageDataUrl: string,
 ): Promise<string | null> {

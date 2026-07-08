@@ -13,3 +13,6 @@ Thumbs.db
 sizing-body.html
 sizing-main-only.html
 sizing-page.html
+
+# Local Netlify folder
+.netlify

@@ -523,25 +523,6 @@ const GiConfiguratorInner = memo(() => {
     [getCanvasEl, setCameraView],
   );
 
-  const captureTechPackRenders = useCallback(async () => {
-    const startView = cameraView;
-    const front = await captureView('front');
-    const back = await captureView('back');
-    const left = await captureView('left');
-    const right = await captureView('right');
-    const leftBeltEnd = await captureView('left-belt-end');
-    const rightBeltEnd = await captureView('right-belt-end');
-    setCameraView(startView);
-    return {
-      front: front ?? undefined,
-      back: back ?? undefined,
-      left: left ?? undefined,
-      right: right ?? undefined,
-      leftBeltEnd: leftBeltEnd ?? undefined,
-      rightBeltEnd: rightBeltEnd ?? undefined,
-    };
-  }, [cameraView, captureView, setCameraView]);
-
   const handleExport = useCallback(async () => {
     setIsExporting(true);
     try {
@@ -627,28 +608,12 @@ const GiConfiguratorInner = memo(() => {
         return;
       }
 
-      try {
-        if (cartDraft) {
-          const renders = await captureTechPackRenders();
-          await saveGiCloudDesignRecord(
-            {
-              ...cartDraft,
-              id: lineDesignId,
-              renders,
-              updatedAt: new Date().toISOString(),
-            },
-            cloudOwnerContext,
-          );
-          broadcastCustomerDesignsChanged();
-        }
-      } catch (err) {
-        console.error('[GiConfigurator] Tech pack render save failed', err);
-        toast.error('Could not save the production renders', {
-          description:
-            'The gi was not added to cart because the Tech Pack would use incomplete images.',
-        });
-        return;
-      }
+      // The tech-pack views are NOT captured here anymore. Rendering the 6
+      // high-res views at add-to-cart was slow (~1 min) and wasteful — it ran
+      // for every cart even though most never convert. The tech pack is now
+      // rendered on demand from the Shopify admin order page (see the "Tech
+      // Pack" link → /tech-pack/gi), which loads this saved design and renders
+      // the views only when someone actually needs the production PDF.
 
       const line = buildShopifyTestCartLine({
         spec,
@@ -680,7 +645,6 @@ const GiConfiguratorInner = memo(() => {
     }
   }, [
     cloudOwnerContext,
-    captureTechPackRenders,
     currentDesignId,
     currentDesignName,
     getCanvasEl,
