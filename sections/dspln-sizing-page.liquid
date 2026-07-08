@@ -1,6 +1,6 @@
 {{ 'dspln-sizing-page-standalone.html' | asset_url | preload_tag: as: 'fetch' }}
 
-<section class="dspln-sizing-page-section" data-dspln-sizing-page>
+<section id="dspln-sizing-page-{{ section.id }}" class="dspln-sizing-page-section" data-dspln-sizing-page>
   <iframe
     class="dspln-sizing-page-frame"
     title="{{ section.settings.iframe_title | escape }}"
@@ -40,7 +40,7 @@
 
 <script>
   (function () {
-    var section = document.currentScript.closest('[data-dspln-sizing-page]');
+    var section = document.getElementById('dspln-sizing-page-{{ section.id }}');
     if (!section) return;
 
     var iframe = section.querySelector('.dspln-sizing-page-frame');
