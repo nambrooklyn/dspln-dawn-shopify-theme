@@ -133,6 +133,12 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
   const [status, setStatus] = useState('Rendering production views...');
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
+  // Hold the driver in a ref so the run effect does NOT depend on the state
+  // object's identity. hydrate() triggers state updates that change `driver`'s
+  // identity mid-capture; if the effect depended on it, React would fire the
+  // cleanup (cancelling the in-flight run) and the PDF would never generate.
+  const driverRef = useRef(driver);
+  driverRef.current = driver;
 
   useEffect(() => {
     // Guard against React StrictMode's double-invoke so we don't render twice.
@@ -141,12 +147,12 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
     let cancelled = false;
 
     async function captureView(view: CameraView) {
-      driver.setCameraView(view);
+      driverRef.current.setCameraView(view);
       // Let the camera-rig lerp settle + a render frame elapse.
       await delay(700);
       return (
         snapshotCanvasHighResolution() ??
-        snapshotCanvas(driver.getCanvasEl()) ??
+        snapshotCanvas(driverRef.current.getCanvasEl()) ??
         undefined
       );
     }
@@ -160,7 +166,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         const pantLogos = mapLogos(design.configData?.images?.pant);
 
         // Load the exact configuration into the live 3D scene.
-        driver.hydrate(spec, { kimono: kimonoLogos, pant: pantLogos });
+        driverRef.current.hydrate(spec, { kimono: kimonoLogos, pant: pantLogos });
         await waitForModelReady();
         // Give colors / logo decals a couple frames to composite.
         await delay(700);
@@ -208,7 +214,9 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
     return () => {
       cancelled = true;
     };
-  }, [design, driver]);
+    // Intentionally depends only on `design` (stable once loaded). `driver` is
+    // read through driverRef so its changing identity can't cancel the run.
+  }, [design]);
 
   return { status, error };
 }
