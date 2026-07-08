@@ -665,7 +665,7 @@ details[open] > summary.header__icon--menu .icon-hamburger {
 }
 
 .section-dspln-product-carousel {
-  --dspln-carousel-mobile-slide: 76%;
+  --dspln-carousel-mobile-slide: 64%;
 }
 
 .section-dspln-product-carousel .dspln-carousel__track {
@@ -685,7 +685,7 @@ details[open] > summary.header__icon--menu .icon-hamburger {
 }
 
 .section-dspln-product-carousel .dspln-carousel__image-frame {
-  height: clamp(27rem, 82vw, 34rem) !important;
+  height: clamp(22rem, 68vw, 28rem) !important;
 }
 
 .section-dspln-product-carousel .dspln-carousel__controls {
