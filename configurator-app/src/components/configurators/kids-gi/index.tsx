@@ -502,8 +502,9 @@ const GiConfiguratorInner = memo(() => {
       const thumbnailUrl = hostedThumbnailUrl ?? localThumbnailUrl;
       const renders = await captureTechPackRenders();
       let lineDesignId = createLineDesignId(PRODUCT_CONFIG.orderDesignIdPrefix);
-      let designUrl: string | undefined;
-      let productionUrl: string | undefined;
+      let fallbackUrls = buildGiCloudDesignUrls(lineDesignId);
+      let designUrl: string | undefined = fallbackUrls?.designUrl;
+      let productionUrl: string | undefined = fallbackUrls?.productionUrl;
       let artworkLinks: CloudArtworkLink[] = [];
       let cartConfigData: GiCartConfigData | undefined;
 
@@ -526,9 +527,9 @@ const GiConfiguratorInner = memo(() => {
           lineDesignId = cloudResult.draft.id;
           setCurrentDesignId(cloudResult.draft.id);
           broadcastCustomerDesignsChanged();
-          const urls = buildGiCloudDesignUrls(cloudResult.draft.id);
-          designUrl = cloudResult.designUrl ?? urls?.designUrl;
-          productionUrl = cloudResult.productionUrl ?? urls?.productionUrl;
+          fallbackUrls = buildGiCloudDesignUrls(cloudResult.draft.id);
+          designUrl = cloudResult.designUrl ?? fallbackUrls?.designUrl;
+          productionUrl = cloudResult.productionUrl ?? fallbackUrls?.productionUrl;
           artworkLinks = cloudResult.artwork;
         }
       } catch {
