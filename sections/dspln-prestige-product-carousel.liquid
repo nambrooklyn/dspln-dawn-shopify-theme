@@ -201,12 +201,8 @@
   if selected_collection != blank and selected_collection.products_count < products_to_display
     assign products_to_display = selected_collection.products_count
   endif
-  assign fallback_product_handles = 'customgi,womens-custom-gi-suit,custom-kids-gi,custom-long-sleeve-rashguard,custom-rashguard,custom-grappling-short-black' | split: ','
   if selected_collection == blank
-    assign products_to_display = fallback_product_handles.size
-    if section.settings.products_to_show < products_to_display
-      assign products_to_display = section.settings.products_to_show
-    endif
+    assign products_to_display = 0
   endif
 -%}
 
@@ -228,34 +224,6 @@
         {%- if selected_collection != blank and selected_collection.products.size > 0 -%}
           {%- for product in selected_collection.products limit: section.settings.products_to_show -%}
             {%- if product.tags contains 'hide' -%}
-              {%- continue -%}
-            {%- endif -%}
-            <li id="Slide-{{ section.id }}-{{ forloop.index }}" class="dspln-carousel__slide slider__slide">
-              <a class="dspln-carousel__item" href="{{ product.url }}">
-                <span class="dspln-carousel__image-frame">
-                  {%- if product.featured_media -%}
-                    {{
-                      product.featured_media
-                      | image_url: width: 900
-                      | image_tag:
-                        class: 'dspln-carousel__image',
-                        loading: 'lazy',
-                        widths: '300, 450, 600, 750, 900',
-                        sizes: '(min-width: 990px) 25vw, (min-width: 750px) 50vw, 78vw',
-                        alt: product.featured_media.alt
-                    }}
-                  {%- else -%}
-                    {{ 'product-apparel-1' | placeholder_svg_tag: 'placeholder-svg' }}
-                  {%- endif -%}
-                </span>
-                <span class="dspln-carousel__title">{{ product.title | escape }}</span>
-              </a>
-            </li>
-          {%- endfor -%}
-        {%- elsif fallback_product_handles.size > 0 -%}
-          {%- for product_handle in fallback_product_handles limit: section.settings.products_to_show -%}
-            {%- assign product = all_products[product_handle] -%}
-            {%- if product == blank or product.tags contains 'hide' -%}
               {%- continue -%}
             {%- endif -%}
             <li id="Slide-{{ section.id }}-{{ forloop.index }}" class="dspln-carousel__slide slider__slide">
