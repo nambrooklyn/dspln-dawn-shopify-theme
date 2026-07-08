@@ -761,3 +761,30 @@ details[open] > summary.header__icon--menu .icon-hamburger {
     height: 4.4rem !important;
   }
 }
+
+.collection-hero__inner {
+  justify-content: center;
+}
+
+.collection-hero__text-wrapper {
+  flex-basis: 100%;
+  text-align: center;
+}
+
+.collection-hero__title {
+  text-align: center;
+}
+
+#ProductGridContainer #product-grid .card__information {
+  text-align: center;
+}
+
+#ProductGridContainer #product-grid .card__heading,
+#ProductGridContainer #product-grid .card__heading a {
+  text-align: center;
+  text-transform: uppercase;
+}
+
+#ProductGridContainer #product-grid .card-information > .price {
+  display: none;
+}
