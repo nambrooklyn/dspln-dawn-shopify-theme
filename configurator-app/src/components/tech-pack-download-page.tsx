@@ -328,19 +328,34 @@ export function TechPackDownloadPage() {
     let cancelled = false;
 
     (async () => {
+      // The order webhook stamps the order number onto the record a few
+      // seconds after checkout (storage is eventually consistent). If we load
+      // a record that has no order number yet, retry a few times so a freshly
+      // placed order shows its real number instead of the design-id fallback.
+      // This ONLY delays that first fetch — it can't affect rendering. Old /
+      // unpurchased designs simply never get a number and fall through.
+      const MAX_ATTEMPTS = 4;
+      const RETRY_MS = 2000;
       try {
-        const response = await fetch(apiDesignUrl(id), {
-          headers: { Accept: 'application/json' },
-        });
-        if (!response.ok) throw new Error(await response.text());
-        const payload = (await response.json()) as {
-          data?: { design?: SavedDesignRecord };
-        };
-        const record = payload.data?.design;
-        if (!record?.configData?.spec) {
-          throw new Error('Saved design record is incomplete.');
+        let record: SavedDesignRecord | undefined;
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+          const response = await fetch(apiDesignUrl(id), {
+            headers: { Accept: 'application/json' },
+          });
+          if (!response.ok) throw new Error(await response.text());
+          const payload = (await response.json()) as {
+            data?: { design?: SavedDesignRecord };
+          };
+          record = payload.data?.design;
+          if (!record?.configData?.spec) {
+            throw new Error('Saved design record is incomplete.');
+          }
+          // Got the order number, or out of attempts → stop waiting.
+          if (record.orderName || attempt === MAX_ATTEMPTS - 1) break;
+          await new Promise((r) => setTimeout(r, RETRY_MS));
+          if (cancelled) return;
         }
-        if (!cancelled) setDesign(record);
+        if (!cancelled && record) setDesign(record);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Unable to load design.');
