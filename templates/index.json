@@ -11,6 +11,19 @@
         "secondary_link": "/pages/how-to-use-customizer"
       }
     },
+    "dspln_product_carousel": {
+      "type": "dspln-prestige-product-carousel",
+      "settings": {
+        "collection": "custom-bjj-gear",
+        "products_to_show": 12,
+        "title": "CUSTOM BJJ GEAR",
+        "heading_size": "h2",
+        "show_view_all": true,
+        "color_scheme": "scheme-1",
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
     "dspln_home_3d_gi": {
       "type": "dspln-home-3d-gi",
       "settings": {
@@ -102,6 +115,7 @@
   },
   "order": [
     "dspln_home_hero",
+    "dspln_product_carousel",
     "dspln_home_3d_gi",
     "dspln_brooklyn_banner",
     "dspln_home_3d_rashguard",
