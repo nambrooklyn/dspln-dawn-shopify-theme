@@ -55,8 +55,27 @@ function designIdsFromOrder(order) {
   const ids = new Set();
   for (const item of order.line_items ?? []) {
     for (const prop of item.properties ?? []) {
-      if (prop?.name === DESIGN_ID_PROPERTY && prop.value) {
-        ids.add(String(prop.value));
+      const name = prop?.name;
+      const value = prop?.value != null ? String(prop.value) : '';
+      if (!value) continue;
+
+      // Direct id property (only present if not stripped as a hidden prop).
+      if (name === DESIGN_ID_PROPERTY || name === '_configurator_id') {
+        ids.add(value);
+        continue;
+      }
+
+      // Robust path: the visible "Tech Pack" / "3D Design" properties carry
+      // the design id in their URL (…/tech-pack/gi?id=<id> or ?design=<id>).
+      // Hidden `_`-prefixed props are stripped before /cart/add, so these
+      // visible URLs are the reliable source of the design id on the order.
+      const match = value.match(/[?&](?:id|design)=([^&\s#]+)/);
+      if (match) {
+        try {
+          ids.add(decodeURIComponent(match[1]));
+        } catch {
+          ids.add(match[1]);
+        }
       }
     }
   }
