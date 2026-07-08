@@ -201,7 +201,7 @@
   if selected_collection != blank and selected_collection.products_count < products_to_display
     assign products_to_display = selected_collection.products_count
   endif
-  assign fallback_product_handles = 'customgi,womens-custom-gi-suit,custom-kids-gi,custom-long-sleeve-rashguard,custom-rashguard' | split: ','
+  assign fallback_product_handles = 'customgi,womens-custom-gi-suit,custom-kids-gi,custom-long-sleeve-rashguard,custom-rashguard,custom-grappling-short-black' | split: ','
   if selected_collection == blank
     assign products_to_display = fallback_product_handles.size
     if section.settings.products_to_show < products_to_display
