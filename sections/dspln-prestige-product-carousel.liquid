@@ -8,6 +8,7 @@
 
   #shopify-section-{{ section.id }} .dspln-carousel {
     background: rgb(var(--color-background));
+    border-bottom: 0.1rem solid rgba(var(--color-foreground), 0.12);
     color: rgb(var(--color-foreground));
   }
 
@@ -89,7 +90,41 @@
   }
 
   #shopify-section-{{ section.id }} .dspln-carousel__controls {
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-counter {
     display: none;
+  }
+
+  #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-button {
+    position: absolute;
+    top: 43%;
+    width: 3.8rem;
+    height: 3.8rem;
+    border: 0.1rem solid rgba(var(--color-foreground), 0.16);
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+    pointer-events: auto;
+    transform: translateY(-50%);
+    transition: transform 180ms ease, border-color 180ms ease;
+  }
+
+  #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-button:hover {
+    border-color: rgba(var(--color-foreground), 0.28);
+    transform: translateY(calc(-50% - 0.25rem));
+  }
+
+  #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-button--prev {
+    left: 0;
+  }
+
+  #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-button--next {
+    right: 0;
   }
 
   #shopify-section-{{ section.id }} .dspln-carousel__view-all {
@@ -142,34 +177,10 @@
       max-width: calc((100% - (var(--dspln-carousel-gap) * 3)) / 4);
     }
 
-    #shopify-section-{{ section.id }} .dspln-carousel__controls {
-      display: block;
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-    }
-
-    #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-counter {
-      display: none;
-    }
-
     #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-button {
-      position: absolute;
       top: 44%;
       width: var(--dspln-carousel-arrow-size);
       height: var(--dspln-carousel-arrow-size);
-      border: 0.1rem solid rgba(var(--color-foreground), 0.16);
-      border-radius: 50%;
-      background: transparent;
-      box-shadow: none;
-      pointer-events: auto;
-      transform: translateY(-50%);
-      transition: transform 180ms ease, border-color 180ms ease;
-    }
-
-    #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-button:hover {
-      border-color: rgba(var(--color-foreground), 0.28);
-      transform: translateY(calc(-50% - 0.25rem));
     }
 
     #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-button--prev {
