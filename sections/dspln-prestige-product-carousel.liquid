@@ -17,7 +17,8 @@
   }
 
   #shopify-section-{{ section.id }} .dspln-carousel__heading {
-    margin: 0 0 3.6rem;
+    margin: 0 0 2.8rem;
+    text-align: center;
   }
 
   #shopify-section-{{ section.id }} .dspln-carousel__viewport {
@@ -75,7 +76,7 @@
     font-family: var(--font-heading-family);
     font-style: var(--font-heading-style);
     font-weight: var(--font-heading-weight);
-    font-size: 1.35rem;
+    font-size: 1.08rem;
     line-height: 1.25;
     text-align: center;
     text-transform: uppercase;
@@ -92,7 +93,7 @@
   }
 
   #shopify-section-{{ section.id }} .dspln-carousel__view-all {
-    margin-top: 3.2rem;
+    margin-top: 2.4rem;
     text-align: center;
   }
 
@@ -110,7 +111,21 @@
 
   @media screen and (min-width: 990px) {
     #shopify-section-{{ section.id }} .dspln-carousel__viewport {
-      padding: 0 calc(var(--dspln-carousel-arrow-size) + 1.6rem);
+      padding: 0;
+    }
+
+    #shopify-section-{{ section.id }} .dspln-carousel__track {
+      overflow-x: auto;
+      scroll-padding-left: 0;
+    }
+
+    #shopify-section-{{ section.id }} .dspln-carousel__track::after {
+      content: none;
+    }
+
+    #shopify-section-{{ section.id }} .dspln-carousel__track .dspln-carousel__slide:first-child {
+      margin-left: 0;
+      scroll-margin-left: 0;
     }
 
     #shopify-section-{{ section.id }} .dspln-carousel__slide {
@@ -136,15 +151,15 @@
       height: var(--dspln-carousel-arrow-size);
       border: 0.1rem solid rgba(var(--color-foreground), 0.16);
       border-radius: 50%;
-      background: rgb(var(--color-background));
-      box-shadow: 0 0.8rem 2.4rem rgba(var(--color-foreground), 0.08);
+      background: transparent;
+      box-shadow: none;
       pointer-events: auto;
       transform: translateY(-50%);
-      transition: transform 180ms ease, box-shadow 180ms ease;
+      transition: transform 180ms ease, border-color 180ms ease;
     }
 
     #shopify-section-{{ section.id }} .dspln-carousel__controls .slider-button:hover {
-      box-shadow: 0 1.2rem 3rem rgba(var(--color-foreground), 0.12);
+      border-color: rgba(var(--color-foreground), 0.28);
       transform: translateY(calc(-50% - 0.25rem));
     }
 
