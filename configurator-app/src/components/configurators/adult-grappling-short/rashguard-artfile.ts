@@ -15,11 +15,6 @@ import jsPDF from 'jspdf';
 import patternsJson from './rashguard-patterns.json';
 import { buildZoneArtworkCanvas } from './rashguard-glb-model';
 import {
-  withSrgbOutputIntent,
-  downloadPdfBytes,
-  bytesToBase64,
-} from '../shared/pdf-srgb';
-import {
   RASHGUARD_PART_LABELS,
   type RashguardArtworkTarget,
   type RashguardPart,
@@ -165,6 +160,40 @@ function drawStitchColorBadge(
   doc.text(stitchHex, swX + sw, swY + sw + 4, { align: 'right' });
 }
 
+/** Attention banner drawn on every page: how to view the true RGB colours. */
+function drawRgbNotice(doc: jsPDF, pageWmm: number, marginMm: number): number {
+  const y = 14;
+  const h = 10;
+  const x0 = marginMm;
+  const w = pageWmm - marginMm * 2;
+  doc.setFillColor(255, 244, 214);
+  doc.setDrawColor(214, 158, 46);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(x0, y, w, h, 1.5, 1.5, 'FD');
+  const cx = x0 + 5;
+  const cy = y + h / 2;
+  doc.setFillColor(214, 158, 46);
+  doc.circle(cx, cy, 2.7, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('!', cx, cy + 1.7, { align: 'center' });
+  const tx = x0 + 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.6);
+  doc.setTextColor(150, 95, 10);
+  doc.text('OPEN IN RGB — NOT CMYK  (colours look dull in CMYK mode)', tx, y + 4.2);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(120, 85, 20);
+  doc.text(
+    'Adobe Illustrator: File > Document Color Mode > RGB Color.   This file is sRGB — never convert it to CMYK.',
+    tx,
+    y + 8,
+  );
+  return y + h;
+}
+
 /** One 8.5×11 render page: header + view label (left) + STITCH COLOR (right) + one big render. */
 function drawRenderPage(
   doc: jsPDF,
@@ -176,9 +205,10 @@ function drawRenderPage(
   marginMm: number,
 ) {
   drawOrderHeader(doc, LETTER_W, marginMm, info);
+  const noticeBottom = drawRgbNotice(doc, LETTER_W, marginMm);
 
   // Sub-header row: view label on the left, stitch-colour badge on the right.
-  const subY = ORDER_HEADER_H + 6;
+  const subY = noticeBottom + 7;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(90);
@@ -366,7 +396,7 @@ export async function generateRashguardArtFile(
 
   const mm = (cm: number) => cm * 10;
   const margin = opts.marginCm;
-  const headerH = 18;
+  const headerH = 26;
   const { orderInfo, views } = input;
   const viewAspect = input.viewAspect ?? 1100 / 1500;
   // Order header sits at the top of every page once an order is placed.
@@ -418,6 +448,7 @@ export async function generateRashguardArtFile(
     else doc.addPage([pageW, pageH], orientation);
 
     if (orderInfo) drawOrderHeader(doc, pageW, mm(margin), orderInfo);
+    const noticeBottom = drawRgbNotice(doc, pageW, mm(margin));
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
@@ -425,14 +456,14 @@ export async function generateRashguardArtFile(
     doc.text(
       `${RASHGUARD_PART_LABELS[part]}  —  ${Math.round(widthCm)} × ${Math.round(heightCm)} cm (actual size)  —  COLOR ${input.partColors[part].toUpperCase()}`,
       mm(margin),
-      orderTop + 8,
+      noticeBottom + 6,
     );
     doc.setFontSize(8);
     doc.setTextColor(120);
     doc.text(
       `Print at 100% / "Actual size" — do not "fit to page". Part ${idx + 1} of ${parts.length}.  Colours are sRGB — print in RGB, do not convert to CMYK.`,
       mm(margin),
-      orderTop + 13,
+      noticeBottom + 11,
     );
 
     const imgData = canvas.toDataURL('image/png');
@@ -446,15 +477,8 @@ export async function generateRashguardArtFile(
   }
 
   if (!doc) return;
-  const rawBytes = doc.output('arraybuffer') as ArrayBuffer;
-  let finalBytes: Uint8Array;
-  try {
-    finalBytes = await withSrgbOutputIntent(rawBytes);
-  } catch {
-    finalBytes = new Uint8Array(rawBytes);
-  }
   if (input.options?.output === 'datauri') {
-    return bytesToBase64(finalBytes);
+    return (doc.output('datauristring') as string).split(',')[1];
   }
-  downloadPdfBytes(finalBytes, opts.fileName);
+  doc.save(opts.fileName);
 }
