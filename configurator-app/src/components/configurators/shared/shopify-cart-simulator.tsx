@@ -338,8 +338,8 @@ export function buildShopifyTestCartLine({
     { name: '_configurator_id', value: configuratorId, hidden: true },
     { name: '_config_json_storage_key', value: configStorageKey, hidden: true },
     { name: '_preview_image_url', value: thumbnailUrl, hidden: true },
-    ...(designUrl ? [{ name: '3D Design', value: designUrl }] : []),
-    ...(techPackUrl ? [{ name: 'Tech Pack', value: techPackUrl }] : []),
+    ...(designUrl ? [{ name: '_3D Design', value: designUrl }] : []),
+    ...(techPackUrl ? [{ name: '_Tech Pack', value: techPackUrl }] : []),
     ...(designUrl ? [{ name: '_dspln_design_url', value: designUrl, hidden: true }] : []),
     ...(productionUrl
       ? [{ name: '_dspln_production_url', value: productionUrl, hidden: true }]
