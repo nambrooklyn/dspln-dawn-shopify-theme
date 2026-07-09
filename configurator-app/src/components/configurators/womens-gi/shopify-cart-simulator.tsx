@@ -426,14 +426,30 @@ export function readShopifyTestCart(): ShopifyCartLine[] {
   }
 }
 
+// Checkout cleanup: every production detail ships as a `_`-prefixed property so
+// Shopify's locked checkout hides it (admin still shows it). The one visible
+// property is the calm customer-facing message below. The theme cart snippet
+// force-displays the `_` details so the cart looks unchanged.
+const CHECKOUT_SAVED_MESSAGE_NAME = 'Custom Design Saved';
+const CHECKOUT_SAVED_MESSAGE_VALUE =
+  'Production details are securely attached to your order.';
+
 function cartPropertiesForShopify(line: ShopifyCartLine) {
-  return line.properties.reduce<Record<string, string>>((acc, property) => {
-    if (property.hidden) {
+  const properties = line.properties.reduce<Record<string, string>>(
+    (acc, property) => {
+      if (property.hidden) {
+        return acc;
+      }
+      const name = property.name.startsWith('_')
+        ? property.name
+        : `_${property.name}`;
+      acc[name] = property.value;
       return acc;
-    }
-    acc[property.name] = property.value;
-    return acc;
-  }, {});
+    },
+    {},
+  );
+  properties[CHECKOUT_SAVED_MESSAGE_NAME] = CHECKOUT_SAVED_MESSAGE_VALUE;
+  return properties;
 }
 
 export function isShopifyIframeMode() {
