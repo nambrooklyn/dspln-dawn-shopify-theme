@@ -2,7 +2,6 @@ import { Toaster } from 'sonner';
 
 import { GiConfigurator } from './components/configurators/gi';
 import { getConfigurator } from './components/configurators/registry';
-import { MobileDeviceNotice } from './components/mobile-device-notice';
 import { ProductionDashboard } from './components/production-dashboard';
 import { RashguardTechPackDownloadPage } from './components/rashguard-tech-pack-download-page';
 import { TechPackDownloadPage } from './components/tech-pack-download-page';
@@ -30,15 +29,9 @@ export function App() {
       ) : isProductionDashboard ? (
         <ProductionDashboard />
       ) : Configurator ? (
-        <>
-          <MobileDeviceNotice />
-          <Configurator />
-        </>
+        <Configurator />
       ) : (
-        <>
-          <MobileDeviceNotice />
-          <GiConfigurator />
-        </>
+        <GiConfigurator />
       )}
       <Toaster richColors position="bottom-right" />
     </>
