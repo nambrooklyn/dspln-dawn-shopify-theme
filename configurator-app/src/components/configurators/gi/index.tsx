@@ -48,6 +48,7 @@ import {
 } from '../shared/shopify-cart-simulator';
 import type { CameraView } from './gi-config';
 import { currentGiProductConfig } from '../shared/gi-product-config';
+import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
 
 const PRODUCT_CONFIG = currentGiProductConfig();
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
@@ -479,13 +480,13 @@ const GiConfiguratorInner = memo(() => {
     const savedId = await handleSaveDesign(currentDesignName || formatDesignName());
     const designId = savedId ?? currentDesignId;
     if (!designId || typeof window === 'undefined') {
-      window.open('https://dspln.com/account/login', '_top');
+      window.open(storefrontUrl('/account/login'), '_top');
       return;
     }
 
-    const returnUrl = new URL(SHOPIFY_GI_PRODUCT_PATH, 'https://dspln.com');
+    const returnUrl = new URL(SHOPIFY_GI_PRODUCT_PATH, storefrontOrigin());
     returnUrl.searchParams.set('design', designId);
-    const loginUrl = new URL('/account/login', 'https://dspln.com');
+    const loginUrl = new URL('/account/login', storefrontOrigin());
     loginUrl.searchParams.set('return_url', `${returnUrl.pathname}${returnUrl.search}`);
     window.open(loginUrl.toString(), '_top');
   }, [currentDesignId, currentDesignName, handleSaveDesign]);
@@ -679,7 +680,7 @@ const GiConfiguratorInner = memo(() => {
                 {cloudOwnerContext.customerEmail}
               </span>
               <a
-                href="https://dspln.com/account/logout"
+                href={storefrontUrl('/account/logout')}
                 target="_top"
                 className="text-foreground hover:text-muted-foreground shrink-0"
               >

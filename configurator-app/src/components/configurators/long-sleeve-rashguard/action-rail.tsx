@@ -1,14 +1,15 @@
 import { memo } from 'react';
 import { FolderHeart, HelpCircle, ImageIcon, LogIn } from 'lucide-react';
 
+import { openStorefrontPage } from '../shared/storefront-links';
+
 function dispatchRailEvent(name: string) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(name));
 }
 
 function openGuide() {
-  if (typeof window === 'undefined') return;
-  window.open('https://dspln.com/pages/how-to-use-customizer', '_top');
+  openStorefrontPage('/pages/how-to-use-customizer');
 }
 
 const railButtonClass =

@@ -8,6 +8,8 @@ import {
   UserRound,
 } from 'lucide-react';
 
+import { openStorefrontPage } from '../shared/storefront-links';
+
 function openSavedDesigns() {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('dspln:configurator-rail:saved'));
@@ -19,13 +21,11 @@ function openUploadedLogos() {
 }
 
 function openShopifyAccount() {
-  if (typeof window === 'undefined') return;
-  window.open('https://dspln.com/account', '_top');
+  openStorefrontPage('/account');
 }
 
 function openGuide() {
-  if (typeof window === 'undefined') return;
-  window.open('https://dspln.com/pages/how-to-use-customizer', '_top');
+  openStorefrontPage('/pages/how-to-use-customizer');
 }
 
 const railButtonClass =

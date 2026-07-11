@@ -3,11 +3,11 @@ import type { GiDraftDocument, GiDraftLogoImage } from './gi-draft-storage';
 import type { KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { currentGiProductConfig } from '../shared/gi-product-config';
 import { uploadArtworkImage } from '../shared/preview-upload';
+import { storefrontOrigin } from '../shared/storefront-links';
 
 const PRODUCT_CONFIG = currentGiProductConfig();
 const GUEST_TOKEN_STORAGE_KEY = PRODUCT_CONFIG.guestTokenStorageKey;
 const PRODUCT_HANDLE = PRODUCT_CONFIG.shopifyProductHandle;
-const SHOPIFY_GI_PRODUCT_URL = PRODUCT_CONFIG.shopifyProductUrl;
 
 type CloudLogoImage = Omit<GiDraftLogoImage, 'blob'> & {
   // Lightweight by default: logos are uploaded separately and referenced by
@@ -370,12 +370,12 @@ export async function getGiCloudDesign(id: string) {
 export function buildGiCloudDesignUrls(id: string) {
   const base = apiBaseUrl();
   if (!base) return null;
-  const designUrl = new URL(SHOPIFY_GI_PRODUCT_URL);
+  const designUrl = new URL(PRODUCT_CONFIG.shopifyProductPath, storefrontOrigin());
   designUrl.searchParams.set('design', id);
 
   return {
     designUrl: designUrl.toString(),
-    netlifyDesignUrl: `http://127.0.0.1:3002${PRODUCT_CONFIG.netlifyPath}?design=${encodeURIComponent(id)}`,
+    netlifyDesignUrl: `${base}${PRODUCT_CONFIG.netlifyPath}?design=${encodeURIComponent(id)}`,
     productionUrl: `${base}/api/customer-designs?id=${encodeURIComponent(id)}`,
   };
 }

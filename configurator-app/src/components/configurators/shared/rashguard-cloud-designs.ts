@@ -1,3 +1,5 @@
+import { storefrontOrigin } from './storefront-links';
+
 type RashguardProductConfig = {
   shopifyProductHandle: string;
   shopifyProductPath: string;
@@ -199,7 +201,7 @@ export function buildRashguardCloudDesignUrls(
 ) {
   const base = apiBaseUrl();
   if (!base) return null;
-  const designUrl = new URL(config.shopifyProductPath, 'https://dspln.com');
+  const designUrl = new URL(config.shopifyProductPath, storefrontOrigin());
   designUrl.searchParams.set('design', id);
 
   return {
