@@ -43,21 +43,22 @@ export const ConfiguratorActionRail = memo(
   }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
-        <button
-          type="button"
-          className={railButtonClass}
-          onClick={() => (isCustomer ? openShopifyAccount() : onLoginToSave?.())}
-          title={isCustomer ? 'Account' : 'Log in to save'}
-        >
-          {isCustomer ? (
+        {/* The logged-out Login button is hidden until the account flow
+            ships — the theme doesn't pass customer identity yet, so the
+            login round-trip appears broken to customers. */}
+        {isCustomer ? (
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={openShopifyAccount}
+            title="Account"
+          >
             <UserRound className="h-6 w-6 stroke-[1.7]" />
-          ) : (
-            <LogIn className="h-6 w-6 stroke-[1.7]" />
-          )}
-          <span className="text-[11px] font-medium leading-none">
-            {isCustomer ? 'Account' : 'Login'}
-          </span>
-        </button>
+            <span className="text-[11px] font-medium leading-none">
+              Account
+            </span>
+          </button>
+        ) : null}
 
         <button
           type="button"
