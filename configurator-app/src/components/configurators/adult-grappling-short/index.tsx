@@ -565,18 +565,6 @@ const RashguardConfiguratorInner = memo(() => {
         skinnyRailContent={
           <RashguardActionRail onLoginToSave={handleLoginToSave} />
         }
-        railContent={
-          <RashguardSavedDesignsPanel
-            status={draftStatus}
-            savedDesigns={savedDesigns}
-            defaultDesignName={currentDesignName || formatDesignName()}
-            onSaveDesign={handleSaveDesign}
-            activeDesignId={currentDesignId}
-            activeDesignName={currentDesignName}
-            onLoadDesign={handleLoadDesign}
-            onDeleteDesign={handleDeleteDesign}
-          />
-        }
       >
         <RashguardCanvas />
         <RashguardViewToggle />

@@ -617,27 +617,6 @@ const GiConfiguratorInner = memo(() => {
           // the theme doesn't pass customer identity yet, so the login
           // round-trip appears broken to customers.
         }
-        railContent={
-          <SavedDesignsRail
-            status={draftStatus}
-            savedDesigns={savedDesigns}
-            defaultDesignName={currentDesignName || formatDesignName()}
-            storageLabel={
-              cloudOwnerContext?.isCustomer
-                ? 'Saved to your account'
-                : 'Cloud saved for this browser'
-            }
-            onSaveDesign={handleSaveDesign}
-            activeDesignId={currentDesignId}
-            activeDesignName={currentDesignName}
-            onLoadDesign={handleLoadDesign}
-            onDeleteDesign={handleDeleteDesign}
-            onApplyKimonoLogo={setKimonoLogo}
-            onApplyPantLogo={setPantLogo}
-            currentKimonoLogos={kimonoLogos}
-            currentPantLogos={pantLogos}
-          />
-        }
       >
         <GiCanvas />
         <SceneVisibilityControls />

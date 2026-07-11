@@ -18,26 +18,8 @@ export const RashguardActionRail = memo(
   ({ onLoginToSave }: { onLoginToSave?: () => void }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
-        {/* Login button hidden until the rashguard account flow ships. */}
-        <button
-          type="button"
-          className={railButtonClass}
-          onClick={() => dispatchRailEvent('dspln:rashguard-rail:saved')}
-          title="Saved designs"
-        >
-          <FolderHeart className="h-6 w-6 stroke-[1.7]" />
-          <span className="text-[11px] font-medium leading-none">Saved</span>
-        </button>
-
-        <button
-          type="button"
-          className={railButtonClass}
-          onClick={() => dispatchRailEvent('dspln:rashguard-rail:artwork')}
-          title="Artwork"
-        >
-          <ImageIcon className="h-6 w-6 stroke-[1.7]" />
-          <span className="text-[11px] font-medium leading-none">Uploads</span>
-        </button>
+        {/* Login, Saved, and Uploads are hidden on the live site until the
+            account/saved-designs experience ships. */}
 
       </div>
 
