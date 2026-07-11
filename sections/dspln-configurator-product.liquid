@@ -80,6 +80,36 @@
     const nextSrc = frameUrl.toString();
     if (frame.src !== nextSrc) frame.src = nextSrc;
 
+    // The configurator reports its content height; on small screens size
+    // the iframe to match so the section doesn't reserve empty space under
+    // the mobile flow. Desktop keeps the CSS viewport-height layout.
+    const mobileQuery = window.matchMedia('(max-width: 749px)');
+    const frameWrap = frame.closest('.dspln-configurator-product__frame-wrap');
+    let reportedHeight = 0;
+    const applyFrameHeight = () => {
+      if (mobileQuery.matches && reportedHeight > 0) {
+        frame.style.height = Math.max(reportedHeight, 420) + 'px';
+        frame.style.minHeight = '0';
+        if (frameWrap) frameWrap.style.minHeight = '0';
+      } else {
+        frame.style.height = '';
+        frame.style.minHeight = '';
+        if (frameWrap) frameWrap.style.minHeight = '';
+      }
+    };
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || data.type !== 'dspln:configurator:height') return;
+      if (frame.contentWindow && event.source !== frame.contentWindow) return;
+      const height = Number(data.height);
+      if (!Number.isFinite(height) || height <= 0) return;
+      reportedHeight = height;
+      applyFrameHeight();
+    });
+    if (typeof mobileQuery.addEventListener === 'function') {
+      mobileQuery.addEventListener('change', applyFrameHeight);
+    }
+
     if (designId && mode === 'cart-edit') {
       const sendCartDesign = () => {
         let configData = null;
