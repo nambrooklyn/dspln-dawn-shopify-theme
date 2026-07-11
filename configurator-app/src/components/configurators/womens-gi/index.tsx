@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { GiStateProvider, useGiState } from './gi-state';
@@ -51,9 +51,15 @@ import {
 import type { CameraView } from './gi-config';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
+import {
+  logoSetSignature,
+  readActiveDesignLink,
+  writeActiveDesignLink,
+} from '../shared/active-design-link';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS.womens;
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
+const ACTIVE_DESIGN_LINK_KEY = `${PRODUCT_CONFIG.configStoragePrefix}active-design-link:v1`;
 const SHOPIFY_GI_PRODUCT_PATH = PRODUCT_CONFIG.shopifyProductPath;
 const SHOPIFY_CART_ADDED_MESSAGE = 'dspln:shopify-cart:added';
 const SHOPIFY_CART_UPDATED_MESSAGE = 'dspln:shopify-cart:updated';
@@ -201,12 +207,53 @@ const GiConfiguratorInner = memo(() => {
   const [isCartEditMode] = useState(getCartEditMode);
   const [savedDesigns, setSavedDesigns] = useState<GiDraftDocument[]>([]);
   const [draftStatus, setDraftStatus] = useState<DraftStatus>('loading');
-  const [currentDesignId, setCurrentDesignId] = useState<string | null>(() =>
-    getLinkedDesignId(),
+  const [currentDesignId, setCurrentDesignId] = useState<string | null>(
+    () =>
+      getLinkedDesignId() ?? readActiveDesignLink(ACTIVE_DESIGN_LINK_KEY)?.id ?? null,
   );
-  const [currentDesignName, setCurrentDesignName] = useState(formatDesignName);
+  const [currentDesignName, setCurrentDesignName] = useState(() =>
+    getLinkedDesignId()
+      ? formatDesignName()
+      : readActiveDesignLink(ACTIVE_DESIGN_LINK_KEY)?.name || formatDesignName(),
+  );
+  const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(
+    () =>
+      getLinkedDesignId()
+        ? null
+        : (readActiveDesignLink(ACTIVE_DESIGN_LINK_KEY)?.signature ?? null),
+  );
+  const [isSavingDesign, setIsSavingDesign] = useState(false);
   const [cloudOwnerContext] = useState(() => getGiCloudOwnerContext());
   const draftReadyRef = useRef(false);
+  const savingDesignRef = useRef(false);
+  const markCleanRef = useRef(false);
+
+  const designSignature = useMemo(
+    () =>
+      JSON.stringify({
+        spec: serialize(),
+        kimono: logoSetSignature(kimonoLogos),
+        pant: logoSetSignature(pantLogos),
+      }),
+    [kimonoLogos, pantLogos, serialize],
+  );
+  const hasUnsavedChanges = designSignature !== lastSavedSignature;
+
+  // Loading a saved design changes state asynchronously; the loader flips
+  // this ref so the freshly hydrated content is recorded as "saved" once the
+  // new signature lands.
+  useEffect(() => {
+    if (!markCleanRef.current) return;
+    markCleanRef.current = false;
+    setLastSavedSignature(designSignature);
+    if (currentDesignId) {
+      writeActiveDesignLink(ACTIVE_DESIGN_LINK_KEY, {
+        id: currentDesignId,
+        name: currentDesignName,
+        signature: designSignature,
+      });
+    }
+  }, [currentDesignId, currentDesignName, designSignature]);
 
   const refreshSavedDesigns = useCallback(async () => {
     const [localResult, cloudResult] = await Promise.allSettled([
@@ -228,10 +275,16 @@ const GiConfiguratorInner = memo(() => {
   const loadDraftDocument = useCallback(
     (draft: GiDraftDocument, showToast = true) => {
       hydrate(draft.spec, createDraftLogoObjectUrls(draft));
-      setCurrentDesignId(draft.id === AUTO_GI_DRAFT_ID ? null : draft.id);
-      setCurrentDesignName(
-        draft.id === AUTO_GI_DRAFT_ID ? formatDesignName() : draft.name,
-      );
+      if (draft.id !== AUTO_GI_DRAFT_ID) {
+        // A real saved design becomes the active one; its freshly hydrated
+        // content is by definition saved.
+        setCurrentDesignId(draft.id);
+        setCurrentDesignName(draft.name);
+        markCleanRef.current = true;
+      }
+      // The autosave draft keeps whatever active-design link was restored
+      // from the previous session, so "Save" keeps updating that design
+      // across reloads instead of minting a duplicate.
       if (showToast) {
         toast.success('Saved design loaded');
       }
@@ -328,6 +381,12 @@ const GiConfiguratorInner = memo(() => {
   }, [kimonoLogos, pantLogos, serialize]);
 
   const handleSaveDesign = useCallback(async (name: string) => {
+    // A save can take a few seconds (thumbnail + uploads); a second press in
+    // that window must not mint a second design record.
+    if (savingDesignRef.current) return null;
+    savingDesignRef.current = true;
+    setIsSavingDesign(true);
+    const signatureAtSave = designSignature;
     setDraftStatus('saving');
     try {
       const cleanName = name.trim() || currentDesignName || formatDesignName();
@@ -365,6 +424,14 @@ const GiConfiguratorInner = memo(() => {
       }
 
       const savedId = cloudDraft?.id ?? draft.id;
+      const savedName = cloudDraft?.name ?? draft.name;
+
+      setLastSavedSignature(signatureAtSave);
+      writeActiveDesignLink(ACTIVE_DESIGN_LINK_KEY, {
+        id: savedId,
+        name: savedName,
+        signature: signatureAtSave,
+      });
 
       await refreshSavedDesigns();
       broadcastCustomerDesignsChanged();
@@ -381,11 +448,15 @@ const GiConfiguratorInner = memo(() => {
       setDraftStatus('error');
       toast.error('Design could not be saved');
       return null;
+    } finally {
+      savingDesignRef.current = false;
+      setIsSavingDesign(false);
     }
   }, [
     cloudOwnerContext,
     currentDesignId,
     currentDesignName,
+    designSignature,
     getCanvasEl,
     kimonoLogos,
     pantLogos,
@@ -426,6 +497,8 @@ const GiConfiguratorInner = memo(() => {
       broadcastCustomerDesignsChanged();
       if (currentDesignId === id) {
         setCurrentDesignId(null);
+        setLastSavedSignature(null);
+        writeActiveDesignLink(ACTIVE_DESIGN_LINK_KEY, null);
       }
       toast.success('Saved design removed');
     },
@@ -631,8 +704,12 @@ const GiConfiguratorInner = memo(() => {
             storageLabel={
               cloudOwnerContext?.isCustomer
                 ? 'Saved to your account'
-                : 'Cloud saved for this browser'
+                : 'Saved for this browser only'
             }
+            isSaving={isSavingDesign}
+            hasUnsavedChanges={hasUnsavedChanges}
+            isCustomer={cloudOwnerContext?.isCustomer}
+            onLoginToSave={handleLoginToSave}
             onSaveDesign={handleSaveDesign}
             activeDesignId={currentDesignId}
             activeDesignName={currentDesignName}

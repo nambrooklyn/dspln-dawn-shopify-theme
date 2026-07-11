@@ -1,7 +1,9 @@
 import { memo, useEffect, useState } from 'react';
 import {
+  Check,
   Clock3,
   ImageIcon,
+  LogIn,
   RotateCcw,
   Save,
   Trash2,
@@ -78,6 +80,10 @@ export const SavedDesignsRail = memo(
     defaultDesignName,
     activeDesignId,
     activeDesignName,
+    isSaving,
+    hasUnsavedChanges,
+    isCustomer,
+    onLoginToSave,
     onSaveDesign,
     onLoadDesign,
     onDeleteDesign,
@@ -92,6 +98,10 @@ export const SavedDesignsRail = memo(
     defaultDesignName: string;
     activeDesignId?: string | null;
     activeDesignName?: string;
+    isSaving?: boolean;
+    hasUnsavedChanges?: boolean;
+    isCustomer?: boolean;
+    onLoginToSave?: () => void;
     onSaveDesign: (name: string) => void;
     onLoadDesign: (design: GiDraftDocument) => void;
     onDeleteDesign: (id: string) => void;
@@ -235,7 +245,15 @@ export const SavedDesignsRail = memo(
       setNameDialogOpen(true);
     };
 
+    // Undefined means the caller doesn't track dirty state; keep the old
+    // always-saveable behavior in that case.
+    const dirty = hasUnsavedChanges ?? true;
+    const isUpdate = Boolean(effectiveActiveDesignId);
+    const saveDisabled = Boolean(isSaving) || (isUpdate && !dirty);
+    const isCleanSaved = isUpdate && !dirty && !isSaving;
+
     const saveCurrentDesign = () => {
+      if (saveDisabled) return;
       if (effectiveActiveDesignId) {
         onSaveDesign(effectiveActiveDesignName.trim() || defaultDesignName);
         return;
@@ -291,14 +309,41 @@ export const SavedDesignsRail = memo(
         </div>
         <button
           type="button"
-          title={effectiveActiveDesignId ? 'Update this saved design' : 'Save this design'}
-          aria-label={effectiveActiveDesignId ? 'Update this saved design' : 'Save this design'}
+          title={
+            isSaving
+              ? 'Saving design'
+              : isCleanSaved
+                ? 'All changes saved'
+                : isUpdate
+                  ? 'Update this saved design'
+                  : 'Save this design'
+          }
+          aria-label={
+            isSaving
+              ? 'Saving design'
+              : isCleanSaved
+                ? 'All changes saved'
+                : isUpdate
+                  ? 'Update this saved design'
+                  : 'Save this design'
+          }
           onClick={saveCurrentDesign}
-          className="bg-foreground text-background hover:bg-foreground/90 flex h-7 w-1/2 shrink-0 items-center justify-center gap-1 rounded px-1.5 font-semibold tracking-0 uppercase shadow-sm transition-colors"
+          disabled={saveDisabled}
+          className="bg-foreground text-background hover:bg-foreground/90 disabled:hover:bg-foreground flex h-7 w-1/2 shrink-0 items-center justify-center gap-1 rounded px-1.5 font-semibold tracking-0 uppercase shadow-sm transition-colors disabled:cursor-default disabled:opacity-60"
         >
-          <Save className="h-3 w-3 shrink-0" />
+          {isCleanSaved ? (
+            <Check className="h-3 w-3 shrink-0" />
+          ) : (
+            <Save className="h-3 w-3 shrink-0" />
+          )}
           <span className="whitespace-nowrap text-[12px] leading-none">
-            {effectiveActiveDesignId ? 'Update' : 'Save Design'}
+            {isSaving
+              ? 'Saving…'
+              : isCleanSaved
+                ? 'Saved'
+                : isUpdate
+                  ? 'Update'
+                  : 'Save Design'}
           </span>
         </button>
         {statusLabel ? (
@@ -345,11 +390,36 @@ export const SavedDesignsRail = memo(
               <button
                 type="button"
                 onClick={saveCurrentDesign}
-                className="bg-foreground text-background hover:bg-foreground/90 flex h-10 w-full items-center justify-center gap-2 rounded-md text-xs font-semibold tracking-[0.12em] uppercase transition-colors"
+                disabled={saveDisabled}
+                className="bg-foreground text-background hover:bg-foreground/90 disabled:hover:bg-foreground flex h-10 w-full items-center justify-center gap-2 rounded-md text-xs font-semibold tracking-[0.12em] uppercase transition-colors disabled:cursor-default disabled:opacity-60"
               >
-                <Save className="h-4 w-4" />
-                {effectiveActiveDesignId ? 'Update Current Design' : 'Save Current Design'}
+                {isCleanSaved ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {isSaving
+                  ? 'Saving…'
+                  : isCleanSaved
+                    ? 'Current Design Saved'
+                    : isUpdate
+                      ? 'Update Current Design'
+                      : 'Save Current Design'}
               </button>
+
+              {!isCustomer && onLoginToSave ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onLoginToSave();
+                  }}
+                  className="border-border hover:bg-muted mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-md border text-xs font-semibold tracking-[0.12em] uppercase transition-colors"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Log In To Keep Your Designs
+                </button>
+              ) : null}
 
               {savedDesigns.length === 0 ? (
                 <div className="text-muted-foreground flex min-h-32 flex-col items-center justify-center gap-2 text-center text-xs">
