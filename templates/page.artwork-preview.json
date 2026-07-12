@@ -1,0 +1,30 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "artwork_faq": {
+      "type": "dspln-artwork-faq",
+      "settings": {}
+    },
+    "artwork_intro": {
+      "type": "dspln-artwork-intro",
+      "settings": {}
+    },
+    "artwork_guide": {
+      "type": "dspln-artwork-guide",
+      "settings": {}
+    }
+  },
+  "order": [
+    "artwork_faq",
+    "artwork_intro",
+    "artwork_guide"
+  ]
+}

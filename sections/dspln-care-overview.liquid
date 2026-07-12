@@ -1,0 +1,60 @@
+{{ 'dspln-care-page.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-care dspln-care-overview" aria-label="Care instructions overview">
+  <div class="dspln-care__inner">
+    <div class="dspln-care-overview__grid">
+      <div class="dspln-care-overview__media">
+        <img src="{{ 'dspln-care-overview-gi.webp' | asset_url }}" alt="" width="1200" height="1200" loading="lazy">
+      </div>
+      <div class="dspln-care-overview__content">
+        <p class="dspln-care__eyebrow">THE PROPER WAY TO WASH YOUR GI</p>
+        <h2 class="dspln-care__heading">CARE INSTRUCTIONS</h2>
+        <p class="dspln-care__text">Here's a brief overview of the optimal method for washing, drying, and storing your gi. For detailed instructions, please continue reading below to explore all available options.</p>
+
+        <div class="dspln-care-overview__steps">
+          <div class="dspln-care-step">
+            <span class="dspln-care-step__svg" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M7.372 7.319c.66.176 1.29.346 1.92.513.576.153 1.156.31 1.732.467.317.086.48.336.403.62-.073.273-.343.41-.65.326-1.466-.393-2.932-.786-4.395-1.18-.403-.11-.536-.316-.433-.71.393-1.49.793-2.975 1.193-4.462a.489.489 0 1 1 .95.237c-.254.963-.517 1.926-.777 2.89-.01.033-.023.066-.043.123.203-.074.366-.184.536-.277a8.379 8.379 0 0 1 2.996-1.04 8.217 8.217 0 0 1 4.702.703c1.733.803 3.056 2.05 3.942 3.746.754 1.443 1.043 2.982.89 4.605-.163 1.75-.803 3.31-1.943 4.65-1.32 1.555-2.999 2.512-5.015 2.832-2.593.413-4.915-.23-6.901-1.953-1.47-1.276-2.356-2.906-2.713-4.819-.24-1.3-.17-2.586.2-3.852.07-.243.233-.387.453-.403a.497.497 0 0 1 .487.31c.05.12.04.236.003.356a7.379 7.379 0 0 0-.246 2.98c.2 1.569.816 2.949 1.882 4.121 1.23 1.354 2.766 2.127 4.572 2.35a7.31 7.31 0 0 0 7.322-3.722c1.496-2.716 1.256-6.155-.94-8.561-1.21-1.327-2.713-2.123-4.492-2.376-1.903-.267-3.642.173-5.229 1.25-.13.09-.256.176-.406.276Z" fill="currentColor"/>
+              </svg>
+            </span>
+            <p>Turn gi and pant inside out to protect outer fabric surface.</p>
+          </div>
+          <div class="dspln-care-step">
+            <img src="{{ 'dspln-care-turn-inside.png' | asset_url }}" alt="" width="300" height="300" loading="lazy">
+            <p>Scrub stains and pre soak gi in cold vinegar water for up to 24 hours to loosen up dirt.</p>
+          </div>
+          <div class="dspln-care-step">
+            <img src="{{ 'dspln-care-presoak.jpg' | asset_url }}" alt="" width="300" height="297" loading="lazy">
+            <p>Wash by hand in cold water with detergent. Gently scrub gi in to itself.</p>
+          </div>
+          <div class="dspln-care-step">
+            <img src="{{ 'dspln-care-hang-dry-overview.png' | asset_url }}" alt="" width="300" height="300" loading="lazy">
+            <p>Squeeze extra water and do not ring. Hang dry in low moisture, ventilated environment.</p>
+          </div>
+          <div class="dspln-care-step">
+            <img src="{{ 'dspln-care-hanger-overview.png' | asset_url }}" alt="" width="300" height="300" loading="lazy">
+            <p>Store gi by hanging on a blazer hanger. Try not to fold it.</p>
+          </div>
+        </div>
+
+        <div class="dspln-care-overview__buttons">
+          <a class="dspln-care-button dspln-care-button--primary" href="#dspln-care-hand-wash">INSTRUCTIONS BY HAND</a>
+          <a class="dspln-care-button dspln-care-button--secondary" href="#dspln-care-machine-wash">INSTRUCTIONS BY MACHINE</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN care overview",
+  "settings": [],
+  "presets": [
+    {
+      "name": "DSPLN care overview"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,250 @@
+{{ 'component-price.css' | asset_url | stylesheet_tag }}
+{{ 'dspln-configurator.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'dspln-configurator-cart-bridge.js' | asset_url }}" defer="defer"></script>
+
+{%- liquid
+  assign platform_origin = section.settings.platform_origin | strip
+  assign configurator_slug = section.settings.configurator_slug | strip
+  assign product_family = section.settings.product_family | strip
+  assign customization_mode = section.settings.customization_mode | strip
+  assign product_group_label = section.settings.product_group_label | strip
+  assign selected_variant = product.selected_or_first_available_variant
+  assign dspln_design_id = request.params.design | default: '' | strip
+  assign embed_src = platform_origin | append: '/configurator/' | append: configurator_slug
+-%}
+
+{%- style -%}
+  #shopify-section-{{ section.id }} {
+    --dspln-configurator-min-height: {{ section.settings.desktop_min_height }}px;
+    --dspln-configurator-mobile-min-height: {{ section.settings.mobile_min_height }}px;
+  }
+{%- endstyle -%}
+
+<section
+  class="dspln-configurator-product dspln-configurator-product--{{ product_family | handleize }}"
+  data-product-id="{{ product.id }}"
+  data-product-handle="{{ product.handle }}"
+  data-product-family="{{ product_family | escape }}"
+  data-customization-mode="{{ customization_mode | escape }}"
+>
+  <div class="dspln-configurator-product__inner">
+    {%- if section.settings.show_header -%}
+      <header class="dspln-configurator-product__header">
+        <div>
+          <h1 class="dspln-configurator-product__title">{{ product.title | escape }}</h1>
+        </div>
+        <div class="dspln-configurator-product__price" id="price-{{ section.id }}" role="status">
+          {%- render 'price',
+            product: product,
+            use_variant: true,
+            show_badges: false,
+            price_class: 'price--large'
+          -%}
+        </div>
+      </header>
+    {%- endif -%}
+
+    <div class="dspln-configurator-product__frame-wrap">
+      <iframe
+        class="dspln-configurator-product__frame"
+        title="{{ product.title | escape }} configurator"
+        id="dspln-configurator-frame"
+        src="{{ embed_src }}?shopifyTest=1&productId={{ product.id }}&productHandle={{ product.handle | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&shopifyProductHandle={{ product.handle | url_encode }}&shopifyProductId={{ product.id }}&variantId={{ selected_variant.id }}&themeProductTemplate=dspln-configurator&productFamily={{ product_family | url_encode }}&customizationMode={{ customization_mode | url_encode }}&productGroup={{ product_group_label | url_encode }}{% if dspln_design_id != blank %}&design={{ dspln_design_id | url_encode }}{% endif %}"
+        loading="eager"
+        allow="clipboard-write; fullscreen"
+        data-dspln-configurator-frame
+      ></iframe>
+    </div>
+  </div>
+</section>
+
+<script>
+  (() => {
+    const frame = document.querySelector('[data-dspln-configurator-frame]');
+    const searchParams = new URLSearchParams(window.location.search);
+    const designId = searchParams.get('design');
+    const mode = searchParams.get('mode');
+
+    if (!frame) return;
+
+    const frameUrl = new URL(frame.src);
+    if (designId && !frameUrl.searchParams.has('design')) {
+      frameUrl.searchParams.set('design', designId);
+    }
+
+    ['mode', 'cart_line'].forEach((param) => {
+      const value = searchParams.get(param);
+      if (value) frameUrl.searchParams.set(param, value);
+    });
+
+    const nextSrc = frameUrl.toString();
+    if (frame.src !== nextSrc) frame.src = nextSrc;
+
+    // The configurator reports its content height; on small screens size
+    // the iframe to match so the section doesn't reserve empty space under
+    // the mobile flow. Desktop keeps the CSS viewport-height layout.
+    const mobileQuery = window.matchMedia('(max-width: 749px)');
+    const frameWrap = frame.closest('.dspln-configurator-product__frame-wrap');
+    let reportedHeight = 0;
+    const applyFrameHeight = () => {
+      if (mobileQuery.matches && reportedHeight > 0) {
+        frame.style.height = Math.max(reportedHeight, 420) + 'px';
+        frame.style.minHeight = '0';
+        if (frameWrap) frameWrap.style.minHeight = '0';
+      } else {
+        frame.style.height = '';
+        frame.style.minHeight = '';
+        if (frameWrap) frameWrap.style.minHeight = '';
+      }
+    };
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || data.type !== 'dspln:configurator:height') return;
+      if (frame.contentWindow && event.source !== frame.contentWindow) return;
+      const height = Number(data.height);
+      if (!Number.isFinite(height) || height <= 0) return;
+      reportedHeight = height;
+      applyFrameHeight();
+    });
+    if (typeof mobileQuery.addEventListener === 'function') {
+      mobileQuery.addEventListener('change', applyFrameHeight);
+    }
+
+    if (designId && mode === 'cart-edit') {
+      const sendCartDesign = () => {
+        let configData = null;
+        try {
+          const raw = window.localStorage.getItem(`dspln:cart-config:${designId}`);
+          configData = raw ? JSON.parse(raw) : null;
+        } catch {
+          configData = null;
+        }
+
+        if (!configData || !frame.contentWindow) return;
+
+        frame.contentWindow.postMessage(
+          {
+            type: 'dspln:cart-design:hydrate',
+            designId,
+            configData,
+          },
+          frameUrl.origin,
+        );
+      };
+
+      frame.addEventListener('load', sendCartDesign);
+      window.setTimeout(sendCartDesign, 1000);
+      window.setTimeout(sendCartDesign, 2500);
+    }
+  })();
+</script>
+
+<script type="application/json" id="dspln-price-variants">
+  {
+    {%- assign rendered_price_variant = false -%}
+    {%- for variant in product.variants -%}
+      {%- assign price_option = variant.option1 | downcase -%}
+      {%- if price_option contains 'tda_price_' -%}
+        {%- if rendered_price_variant -%},{%- endif -%}
+        "{{ price_option | remove: 'tda_price_' | plus: 0 }}": {{ variant.id | json }}
+        {%- assign rendered_price_variant = true -%}
+      {%- endif -%}
+    {%- endfor -%}
+  }
+</script>
+
+{% schema %}
+{
+  "name": "DSPLN configurator",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "platform_origin",
+      "label": "Configurator platform origin",
+      "default": "https://dspln-dawn-shopify-theme.netlify.app",
+      "info": "Use the configurator platform origin without a trailing slash."
+    },
+    {
+      "type": "text",
+      "id": "configurator_slug",
+      "label": "Configurator slug",
+      "default": "gi"
+    },
+    {
+      "type": "select",
+      "id": "product_family",
+      "label": "Product family",
+      "default": "gi",
+      "options": [
+        {
+          "value": "gi",
+          "label": "Gi"
+        },
+        {
+          "value": "rashguard",
+          "label": "Rashguard"
+        },
+        {
+          "value": "grappling-short",
+          "label": "Grappling short"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "customization_mode",
+      "label": "Customization mode",
+      "default": "color-logo",
+      "options": [
+        {
+          "value": "color-logo",
+          "label": "Color and logo"
+        },
+        {
+          "value": "sublimation",
+          "label": "Sublimation"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "product_group_label",
+      "label": "Product group label",
+      "default": "Custom product"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_header",
+      "label": "Show product title and price",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "desktop_min_height",
+      "min": 560,
+      "max": 1200,
+      "step": 20,
+      "unit": "px",
+      "label": "Desktop minimum height",
+      "default": 820
+    },
+    {
+      "type": "range",
+      "id": "mobile_min_height",
+      "min": 560,
+      "max": 1200,
+      "step": 20,
+      "unit": "px",
+      "label": "Mobile minimum height",
+      "default": 780
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN configurator"
+    }
+  ]
+}
+{% endschema %}

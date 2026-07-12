@@ -1,0 +1,59 @@
+{{ 'dspln-about-sections.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-about-mission" aria-label="{{ section.settings.heading | escape }}">
+  <div class="dspln-about-mission__inner">
+    <div class="dspln-about-mission__media">
+      {% if section.settings.image != blank %}
+        <img
+          src="{{ section.settings.image | image_url: width: 900 }}"
+          alt="{{ section.settings.image.alt | default: section.settings.heading | escape }}"
+          width="{{ section.settings.image.width }}"
+          height="{{ section.settings.image.height }}"
+          loading="lazy"
+        >
+      {% else %}
+        <img
+          src="{{ 'dspln-about-mission-fighter.png' | asset_url }}"
+          alt="{{ section.settings.heading | escape }}"
+          width="1200"
+          height="923"
+          loading="lazy"
+        >
+      {% endif %}
+    </div>
+    <div class="dspln-about-mission__copy">
+      <h2 class="dspln-about-heading">{{ section.settings.heading }}</h2>
+      <p class="dspln-about-text">{{ section.settings.text }}</p>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN about mission",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "OUR MISSION"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "Is to empower jiu jitsu disciples with garments that not only meet their functional needs but also reflect their unique style and personality. Through meticulous craftsmanship, innovative design, and attention to detail, we aim to provide you with gis that inspire confidence, elevate performance, and foster a deeper connection to their martial arts journey. We believe that every stitch tells a story, and it's our passion to help you write yours."
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN about mission"
+    }
+  ]
+}
+{% endschema %}

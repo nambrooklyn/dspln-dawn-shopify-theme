@@ -1,0 +1,114 @@
+{{ 'dspln-process.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-process" aria-label="{{ section.settings.heading | escape }}">
+  <div class="dspln-process__inner">
+    <div class="dspln-process__header">
+      {% if section.settings.heading != blank %}
+        <h2 class="dspln-process__heading">{{ section.settings.heading }}</h2>
+      {% endif %}
+    </div>
+
+    <div class="dspln-process__timeline">
+      {% for block in section.blocks %}
+        <div class="dspln-process__step" {{ block.shopify_attributes }}>
+          <div class="dspln-process__media">
+            {% if block.settings.image != blank %}
+              <img
+                src="{{ block.settings.image | image_url: width: 760 }}"
+                alt="{{ block.settings.image.alt | default: block.settings.heading | escape }}"
+                width="{{ block.settings.image.width }}"
+                height="{{ block.settings.image.height }}"
+                loading="lazy"
+              >
+            {% elsif forloop.index == 1 %}
+              <img src="{{ 'dspln-process-step-1.gif' | asset_url }}" alt="{{ block.settings.heading | escape }}" width="700" height="450" loading="lazy">
+            {% elsif forloop.index == 2 %}
+              <img src="{{ 'dspln-process-step-2.gif' | asset_url }}" alt="{{ block.settings.heading | escape }}" width="700" height="450" loading="lazy">
+            {% elsif forloop.index == 3 %}
+              <img src="{{ 'dspln-process-step-3.png' | asset_url }}" alt="{{ block.settings.heading | escape }}" width="700" height="450" loading="lazy">
+            {% endif %}
+          </div>
+
+          <div class="dspln-process__marker" aria-hidden="true"></div>
+
+          <div class="dspln-process__content">
+            <span class="dspln-process__label">STEP {{ forloop.index }}</span>
+            {% if block.settings.heading != blank %}
+              <h3 class="dspln-process__step-heading">{{ block.settings.heading }}</h3>
+            {% endif %}
+            {% if block.settings.text != blank %}
+              <p class="dspln-process__step-text">{{ block.settings.text }}</p>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN process",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "THE PROCESS"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "step",
+      "name": "Process step",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Pick your parts"
+        },
+        {
+          "type": "textarea",
+          "id": "text",
+          "label": "Text",
+          "default": "Decide what components you want. Pick your kimono, belt and/or pants, or any combination of the three. All parts can be different sizes as well."
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN process",
+      "blocks": [
+        {
+          "type": "step",
+          "settings": {
+            "heading": "Pick your parts",
+            "text": "Decide what components you want. Pick your kimono, belt and/or pants, or any combination of the three. All parts can be different sizes as well."
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "heading": "Customize your gi",
+            "text": "Pick your size, colors and your graphics to add to your kimono, belt and/or pant. Our design tool lets you customize your gi exactly how you want it in 3D. Make it unique and one of a kind."
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "heading": "Review and check out",
+            "text": "Once you place your order we will send you a 3D model of your personal gi. You can ask any questions and once we have your approval we will begin making your gi and send tracking details when it ships."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

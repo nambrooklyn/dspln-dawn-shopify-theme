@@ -1,0 +1,33 @@
+{{ 'dspln-vision-band.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-vision-band" aria-label="Your vision brought to life">
+  <div class="dspln-vision-band__inner">
+    <h2 class="dspln-vision-band__heading">{{ section.settings.heading }}</h2>
+    <p class="dspln-vision-band__text">{{ section.settings.text }}</p>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN vision band",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Your Vision Brought To Life"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "At DSPLN we are committed to crafting more than just a kimono; we strive to create a personalized experience that embodies the spirit of tradition, quality, and individuality. We are not just artisans; we are collaborators, working hand in hand with our customers to achieve perfection in every stitch, and bring your Jiu-Jitsu journey to life."
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN vision band"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,28 @@
+.dspln-process-image {
+  background: #eeeeee;
+  overflow: hidden;
+  padding: 3.2rem 0;
+}
+
+.dspln-process-image__picture,
+.dspln-process-image__image {
+  display: block;
+}
+
+.dspln-process-image__image {
+  width: min(100%, 160rem);
+  height: auto;
+  margin: 0 auto;
+}
+
+@media screen and (min-width: 750px) {
+  .dspln-process-image__image {
+    object-fit: cover;
+  }
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-process-image {
+    padding: 2rem 0;
+  }
+}
