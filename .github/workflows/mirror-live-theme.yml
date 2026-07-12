@@ -1,0 +1,66 @@
+name: Mirror theme to main-store-theme
+
+# The live Shopify store's theme connects to the `main-store-theme` branch
+# (Shopify caps connected branches at 50MB; this repo also carries the
+# configurator app, so the full repo is too large). This workflow keeps that
+# branch current with theme changes on main.
+#
+# Customizer-state files are OWNED BY THE BRANCH, not by main: Shopify
+# commits theme-editor changes (customizer settings, template/section
+# arrangements) back to main-store-theme, and this mirror must never
+# clobber them. Code files are owned by main.
+#
+#   main wins:   assets/**, layout/**, snippets/**, locales/**,
+#                sections/*.liquid, config/settings_schema.json
+#   branch wins: config/settings_data.json, templates/**, sections/*.json
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/**'
+      - 'config/**'
+      - 'layout/**'
+      - 'locales/**'
+      - 'sections/**'
+      - 'snippets/**'
+      - 'templates/**'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update code files on main-store-theme
+        run: |
+          set -euo pipefail
+          git config user.name "theme-mirror[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if ! git ls-remote --exit-code origin main-store-theme >/dev/null; then
+            echo "main-store-theme does not exist yet; create it manually first." >&2
+            exit 0
+          fi
+
+          git fetch origin main-store-theme
+          git checkout -B mirror origin/main-store-theme
+
+          # Code files flow from main; state files stay as the branch has them.
+          git checkout "${GITHUB_SHA}" -- \
+            assets layout snippets locales \
+            'sections/*.liquid' \
+            config/settings_schema.json
+
+          if git diff --cached --quiet && git diff --quiet; then
+            echo "No code changes to mirror."
+            exit 0
+          fi
+
+          git add -A assets layout snippets locales sections config/settings_schema.json
+          git commit -m "Mirror theme code from main @ ${GITHUB_SHA}"
+          git push origin mirror:main-store-theme
