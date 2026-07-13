@@ -722,10 +722,7 @@ const GiConfiguratorInner = memo(() => {
         railContent={
           isStudio ? (
             <>
-            <StudioTextTool
-              onApplyKimonoLogo={setKimonoLogo}
-              onApplyPantLogo={setPantLogo}
-            />
+            <StudioTextTool />
             <SavedDesignsRail
               status={draftStatus}
               savedDesigns={savedDesigns}

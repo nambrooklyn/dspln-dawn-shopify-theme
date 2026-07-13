@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls, useProgress } from '@react-three/drei';
-import { Euler, Matrix4, Vector2, Vector3, type Mesh } from 'three';
+import { Euler, Matrix4, Quaternion, Vector2, Vector3, type Mesh } from 'three';
 
 import { GiGlbModel } from './gi-glb-model';
 import { useGiState, cameraViewToPosition, cameraViewToTarget } from './gi-state';
@@ -27,6 +27,8 @@ import { useDirectionalCanvasTouch } from '../shared/use-directional-canvas-touc
 import { LayerDecal } from '../shared/layer-decal';
 import { IN_TO_WORLD, ProjectedDecal } from '../shared/projected-decal';
 import { isStudioMode } from '../shared/studio-mode';
+import { renderTextImage } from '../shared/text-image';
+import type { GiTextLayer } from './gi-state';
 
 const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
@@ -212,6 +214,56 @@ CanvasBridge.displayName = 'CanvasBridge';
 
 const MOBILE_CAMERA_QUERY = '(max-width: 1023px)';
 
+// Base physical height of a text layer at 100% scale.
+const TEXT_LAYER_BASE_HEIGHT_IN = 1.6;
+
+/** One free-placement text decal. The PNG regenerates from the layer's
+ *  parameters, and the in-plane rotation is composed onto the surface
+ *  orientation captured while dragging. */
+const TextLayerDecal = memo(
+  ({ layer, meshes }: { layer: GiTextLayer; meshes: Mesh[] }) => {
+    const image = useMemo(
+      () => renderTextImage(layer.text, layer.font, layer.colorHex),
+      [layer.text, layer.font, layer.colorHex],
+    );
+    const rotation = useMemo(() => {
+      const surface = new Quaternion().setFromEuler(
+        new Euler(...layer.rotation),
+      );
+      surface.multiply(
+        new Quaternion().setFromAxisAngle(
+          new Vector3(0, 0, 1),
+          (layer.rotateDeg * Math.PI) / 180,
+        ),
+      );
+      const euler = new Euler().setFromQuaternion(surface);
+      return [euler.x, euler.y, euler.z] as [number, number, number];
+    }, [layer.rotation, layer.rotateDeg]);
+
+    if (!image) return null;
+    const heightIn = TEXT_LAYER_BASE_HEIGHT_IN * (layer.scalePct / 100);
+    const widthIn = heightIn * (image.width / image.height);
+    // One projection per target surface: on the chest the lapel overlaps
+    // the body, so text must land on whichever surface is on top.
+    return meshes.map((mesh) => (
+      <ProjectedDecal
+        key={mesh.uuid}
+        mesh={mesh}
+        imageUrl={image.dataUrl}
+        position={layer.position}
+        rotation={rotation}
+        widthWorld={widthIn * IN_TO_WORLD}
+        heightWorld={heightIn * IN_TO_WORLD}
+        depthWorld={0.3}
+        surfaceOffsetWorld={0.008}
+        depthTest
+        normalCullMinDot={0.18}
+      />
+    ));
+  },
+);
+TextLayerDecal.displayName = 'TextLayerDecal';
+
 const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   const {
     layers,
@@ -222,6 +274,8 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     kimonoLogos,
     kimonoLogoAnchors,
     setKimonoLogoAnchor,
+    textLayers,
+    updateTextLayer,
     computedKimonoAnchors,
     kimonoBodyMesh,
     kimonoLogoMeshes,
@@ -307,22 +361,34 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   // serialized with the design, so customers see the moved artwork.
   const isStudio = useMemo(() => isStudioMode(), []);
   const draggingSlotRef = useRef<KimonoLogoSlot | null>(null);
+  const draggingTextIdRef = useRef<string | null>(null);
   const lastDragUpdateRef = useRef(0);
+
+  // Draggable artwork lands on whichever jacket surface is on top: the
+  // lapel overlaps the body across the chest, so both are drag targets
+  // and projection surfaces.
+  const kimonoDragSurfaces = useMemo(() => {
+    if (!kimonoBodyMesh) return [];
+    const lapel = kimonoBodyMesh.parent?.getObjectByName('Kimono_Lapel');
+    return lapel && (lapel as Mesh).isMesh
+      ? [kimonoBodyMesh, lapel as Mesh]
+      : [kimonoBodyMesh];
+  }, [kimonoBodyMesh]);
 
   const anchorFromPointer = useCallback(
     (clientX: number, clientY: number) => {
-      if (!kimonoBodyMesh) return null;
+      if (kimonoDragSurfaces.length === 0) return null;
       const rect = gl.domElement.getBoundingClientRect();
       const ndc = new Vector2(
         ((clientX - rect.left) / rect.width) * 2 - 1,
         -((clientY - rect.top) / rect.height) * 2 + 1,
       );
       raycaster.setFromCamera(ndc, camera);
-      const hit = raycaster.intersectObject(kimonoBodyMesh, false)[0];
+      const hit = raycaster.intersectObjects(kimonoDragSurfaces, false)[0];
       if (!hit?.face) return null;
       const normal = hit.face.normal
         .clone()
-        .transformDirection(kimonoBodyMesh.matrixWorld)
+        .transformDirection(hit.object.matrixWorld)
         .normalize();
       // Anchor floats just off the fabric, like the static anchors do.
       const position = hit.point.clone().addScaledVector(normal, 0.012);
@@ -344,14 +410,14 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
         rotation: [euler.x, euler.y, euler.z] as [number, number, number],
       };
     },
-    [camera, gl, kimonoBodyMesh, raycaster],
+    [camera, gl, kimonoDragSurfaces, raycaster],
   );
 
   useEffect(() => {
     if (!isStudio) return;
 
     const handleMove = (event: PointerEvent) => {
-      if (!draggingSlotRef.current) return;
+      if (!draggingSlotRef.current && !draggingTextIdRef.current) return;
       event.preventDefault();
       // DecalGeometry rebuilds on every anchor change — throttle so the
       // drag stays smooth on the dense gi mesh.
@@ -359,15 +425,23 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       if (now - lastDragUpdateRef.current < 90) return;
       lastDragUpdateRef.current = now;
       const anchor = anchorFromPointer(event.clientX, event.clientY);
-      if (anchor) setKimonoLogoAnchor(draggingSlotRef.current, anchor);
+      if (!anchor) return;
+      if (draggingSlotRef.current) {
+        setKimonoLogoAnchor(draggingSlotRef.current, anchor);
+      } else if (draggingTextIdRef.current) {
+        updateTextLayer(draggingTextIdRef.current, anchor);
+      }
     };
 
     const handleUp = (event: PointerEvent) => {
       const slot = draggingSlotRef.current;
-      if (!slot) return;
+      const textId = draggingTextIdRef.current;
+      if (!slot && !textId) return;
       draggingSlotRef.current = null;
+      draggingTextIdRef.current = null;
       const anchor = anchorFromPointer(event.clientX, event.clientY);
-      if (anchor) setKimonoLogoAnchor(slot, anchor);
+      if (anchor && slot) setKimonoLogoAnchor(slot, anchor);
+      if (anchor && textId) updateTextLayer(textId, anchor);
       if (controlsRef.current) controlsRef.current.enabled = true;
       document.body.style.cursor = '';
     };
@@ -378,7 +452,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
     };
-  }, [anchorFromPointer, isStudio, setKimonoLogoAnchor]);
+  }, [anchorFromPointer, isStudio, setKimonoLogoAnchor, updateTextLayer]);
 
   return (
     <>
@@ -468,8 +542,9 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
             // A dragged decal can be anywhere, so it always projects onto
             // the body mesh with generic free-placement settings.
             const isBackPanel = slot === 'back' || slot === 'back-skirt';
-            const targetMeshes =
-              !override && !isBackPanel && kimonoLogoMeshes.length > 0
+            const targetMeshes = override
+              ? kimonoDragSurfaces
+              : !isBackPanel && kimonoLogoMeshes.length > 0
                 ? kimonoLogoMeshes
                 : [kimonoBodyMesh];
             const decals = targetMeshes.map((mesh) => (
@@ -547,6 +622,45 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                 }}
               >
                 {decals}
+              </group>
+            );
+          })
+        : null}
+
+      {/* Free-placement text layers (studio-created, +$10 each). They
+          render for everyone; only dragging is studio-gated. */}
+      {partVisibility.jacket && scenePartVisibility.jacket && kimonoBodyMesh
+        ? textLayers.map((layer) => {
+            const decal = (
+              <TextLayerDecal
+                key={layer.id}
+                layer={layer}
+                meshes={kimonoDragSurfaces}
+              />
+            );
+            if (!isStudio) return decal;
+            return (
+              <group
+                key={layer.id}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  draggingTextIdRef.current = layer.id;
+                  lastDragUpdateRef.current = 0;
+                  if (controlsRef.current) controlsRef.current.enabled = false;
+                  document.body.style.cursor = 'grabbing';
+                }}
+                onPointerOver={() => {
+                  if (!draggingSlotRef.current && !draggingTextIdRef.current) {
+                    document.body.style.cursor = 'grab';
+                  }
+                }}
+                onPointerOut={() => {
+                  if (!draggingSlotRef.current && !draggingTextIdRef.current) {
+                    document.body.style.cursor = '';
+                  }
+                }}
+              >
+                {decal}
               </group>
             );
           })

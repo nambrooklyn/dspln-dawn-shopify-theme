@@ -215,6 +215,7 @@ export const MobileConfiguratorFlow = memo(
       pantLogos,
       setPantLogo,
       removePantLogo,
+      textLayers,
     } = useGiState();
 
     const steps = useMemo<MobileStep[]>(() => {
@@ -482,7 +483,9 @@ export const MobileConfiguratorFlow = memo(
       (partVisibility.belt
         ? (beltEmbroidery.leftEnd.trim() ? ADD_ON_PRICE : 0) +
           (beltEmbroidery.rightEnd.trim() ? ADD_ON_PRICE : 0)
-        : 0);
+        : 0) +
+      // Free-placement text layers render on the jacket, $10 each.
+      (partVisibility.jacket ? textLayers.length * ADD_ON_PRICE : 0);
     const total =
       Object.entries(partVisibility).reduce(
         (sum, [part, visible]) =>

@@ -71,6 +71,24 @@ export interface KimonoLogoAnchorOverride {
   rotation: [number, number, number];
 }
 
+/** A free-placement text decal (studio feature). Pure data — the PNG is
+ *  regenerated from these parameters at render time, so the layer
+ *  serializes losslessly into the design spec and costs no storage. */
+export interface GiTextLayer {
+  id: string;
+  text: string;
+  /** CSS font-family stack from TEXT_FONTS. */
+  font: string;
+  colorHex: string;
+  position: [number, number, number];
+  /** Surface orientation from the drag raycast (no roll). */
+  rotation: [number, number, number];
+  /** In-plane rotation applied on top of the surface orientation. */
+  rotateDeg: number;
+  /** 100 = base text height of 1.6 in. */
+  scalePct: number;
+}
+
 export interface GiSerializedState {
   kind: 'gi';
   partColors: Record<GiPart, string>;
@@ -132,6 +150,8 @@ export interface GiSerializedState {
     >;
   };
   layers: Array<Omit<GiLayer, 'imageUrl'> & { imageDataUrl?: string }>;
+  // Optional so designs saved before free text layers still hydrate.
+  textLayers?: GiTextLayer[];
   cameraView: CameraView;
 }
 
@@ -200,6 +220,12 @@ interface GiStateValue {
     slot: KimonoLogoSlot,
     anchor: KimonoLogoAnchorOverride | null,
   ) => void;
+
+  // Free-placement text decals (studio-created, +$10 each).
+  textLayers: GiTextLayer[];
+  addTextLayer: (layer: GiTextLayer) => void;
+  updateTextLayer: (id: string, patch: Partial<Omit<GiTextLayer, 'id'>>) => void;
+  removeTextLayer: (id: string) => void;
   pantLogos: Partial<Record<PantLogoSlot, KimonoLogo>>;
   setPantLogo: (slot: PantLogoSlot, logo: KimonoLogo) => void;
   removePantLogo: (slot: PantLogoSlot) => void;
@@ -324,6 +350,22 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     },
     [],
   );
+  const [textLayers, setTextLayersState] = useState<GiTextLayer[]>([]);
+  const addTextLayer = useCallback((layer: GiTextLayer) => {
+    setTextLayersState((prev) => [...prev, layer]);
+  }, []);
+  const updateTextLayer = useCallback(
+    (id: string, patch: Partial<Omit<GiTextLayer, 'id'>>) => {
+      setTextLayersState((prev) =>
+        prev.map((layer) => (layer.id === id ? { ...layer, ...patch } : layer)),
+      );
+    },
+    [],
+  );
+  const removeTextLayer = useCallback((id: string) => {
+    setTextLayersState((prev) => prev.filter((layer) => layer.id !== id));
+  }, []);
+
   const [kimonoLogoAnchors, setKimonoLogoAnchorsState] = useState<
     Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>
   >({});
@@ -563,6 +605,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
         },
       },
       layers: layers.map(({ imageUrl: _imageUrl, ...rest }) => rest),
+      textLayers,
       cameraView,
     };
   }, [
@@ -578,6 +621,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     pantSize,
     pantSubColors,
     layers,
+    textLayers,
     cameraView,
   ]);
 
@@ -612,6 +656,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setKimonoLogosState({ ...(logoImages?.kimono ?? {}) });
       setKimonoLogoAnchorsState({ ...(state.kimono.logoAnchors ?? {}) });
       setPantLogosState({ ...(logoImages?.pant ?? {}) });
+      setTextLayersState([...(state.textLayers ?? [])]);
       setLayers([]);
       setSelectedLayerId(null);
       setCameraView(state.cameraView);
@@ -648,6 +693,10 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       removeKimonoLogo,
       kimonoLogoAnchors,
       setKimonoLogoAnchor,
+      textLayers,
+      addTextLayer,
+      updateTextLayer,
+      removeTextLayer,
       pantLogos,
       setPantLogo,
       removePantLogo,
@@ -698,6 +747,10 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       removeKimonoLogo,
       kimonoLogoAnchors,
       setKimonoLogoAnchor,
+      textLayers,
+      addTextLayer,
+      updateTextLayer,
+      removeTextLayer,
       pantLogos,
       setPantLogo,
       removePantLogo,

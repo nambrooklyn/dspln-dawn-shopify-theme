@@ -170,10 +170,12 @@ function calculateConfiguredTotal(spec: GiSerializedState) {
   const beltTextTotal =
     (spec.belt.embroidery.leftEnd.trim() ? 10 : 0) +
     (spec.belt.embroidery.rightEnd.trim() ? 10 : 0);
+  // Free-placement text layers render on the jacket, $10 each.
+  const textLayerTotal = (spec.textLayers?.length ?? 0) * 10;
 
   return (
     baseTotal +
-    (spec.partVisibility.jacket ? kimonoLogoTotal : 0) +
+    (spec.partVisibility.jacket ? kimonoLogoTotal + textLayerTotal : 0) +
     (spec.partVisibility.pants ? pantLogoTotal : 0) +
     (spec.partVisibility.belt ? beltTextTotal : 0)
   );
@@ -249,6 +251,26 @@ function buildShopifyCharges({
         variantKey: isBackLogo ? 'backLogo25' : 'logo10',
         quantity: 1,
         unitPrice: isBackLogo ? 25 : 10,
+        properties: buildChargeProperties({
+          configuratorId,
+          label,
+          summary,
+        }),
+      });
+    });
+  }
+
+  if (spec.partVisibility.jacket) {
+    (spec.textLayers ?? []).forEach((layer, index) => {
+      const label = `Custom Text ${index + 1}: ${layer.text}`;
+      charges.push({
+        key: `${configuratorId}-text-${layer.id}`,
+        label,
+        // Bills through the existing $10 add-on variant — no Shopify
+        // admin changes needed.
+        variantKey: 'logo10',
+        quantity: 1,
+        unitPrice: 10,
         properties: buildChargeProperties({
           configuratorId,
           label,
