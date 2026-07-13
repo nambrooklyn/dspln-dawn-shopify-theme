@@ -2,6 +2,7 @@ import { Toaster } from 'sonner';
 
 import { GiConfigurator } from './components/configurators/gi';
 import { getConfigurator } from './components/configurators/registry';
+import { MobileOverflowDiagnostic } from './components/mobile-overflow-diagnostic';
 import { ProductionDashboard } from './components/production-dashboard';
 import { RashguardTechPackDownloadPage } from './components/rashguard-tech-pack-download-page';
 import { TechPackDownloadPage } from './components/tech-pack-download-page';
@@ -34,6 +35,7 @@ export function App() {
         <GiConfigurator />
       )}
       <Toaster richColors position="bottom-right" />
+      <MobileOverflowDiagnostic />
     </>
   );
 }
