@@ -4,7 +4,7 @@ import {
   FolderHeart,
   HelpCircle,
   ImageIcon,
-  LogIn,
+  Type,
   UserRound,
 } from 'lucide-react';
 import { isStudioMode } from '../shared/studio-mode';
@@ -17,6 +17,11 @@ function openSavedDesigns() {
 function openUploadedLogos() {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('dspln:configurator-rail:uploads'));
+}
+
+function openTextTool() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('dspln:configurator-rail:text'));
 }
 
 function openShopifyAccount() {
@@ -35,7 +40,6 @@ const railButtonClass =
 export const ConfiguratorActionRail = memo(
   ({
     isCustomer,
-    onLoginToSave,
     onGenerateTechPack,
   }: {
     isCustomer?: boolean;
@@ -61,7 +65,7 @@ export const ConfiguratorActionRail = memo(
           </button>
         ) : null}
 
-        {/* Save/uploads UI is owner-only (?studio=1) until the
+        {/* Save/uploads/text UI is owner-only (?studio=1) until the
             account experience ships for customers. */}
         {isStudioMode() ? (
           <>
@@ -83,6 +87,16 @@ export const ConfiguratorActionRail = memo(
           >
             <ImageIcon className="h-6 w-6 stroke-[1.7]" />
             <span className="text-[11px] font-medium leading-none">Uploads</span>
+          </button>
+
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={openTextTool}
+            title="Add text"
+          >
+            <Type className="h-6 w-6 stroke-[1.7]" />
+            <span className="text-[11px] font-medium leading-none">Text</span>
           </button>
           </>
         ) : null}

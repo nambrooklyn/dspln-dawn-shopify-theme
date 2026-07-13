@@ -193,7 +193,15 @@ export const KIMONO_LOGO_SLOTS = [
   'left-sleeve',
   'right-sleeve',
   'back',
+  'back-skirt',
 ] as const;
+
+/** Slots that only appear in studio mode (?studio=1) — used for special
+ *  customer requests. Customers still see artwork placed there when they
+ *  open a shared design link; they just don't get the upload control. */
+export const STUDIO_ONLY_KIMONO_LOGO_SLOTS: readonly KimonoLogoSlot[] = [
+  'back-skirt',
+];
 export type KimonoLogoSlot = (typeof KIMONO_LOGO_SLOTS)[number];
 
 export const KIMONO_LOGO_SLOT_LABEL: Record<KimonoLogoSlot, string> = {
@@ -201,6 +209,7 @@ export const KIMONO_LOGO_SLOT_LABEL: Record<KimonoLogoSlot, string> = {
   'left-sleeve': 'Logo on Left Sleeve',
   'right-sleeve': 'Logo on Right Sleeve',
   back: 'Big Logo on Back',
+  'back-skirt': 'Logo Below Belt (Back)',
 };
 
 export interface KimonoLogoAnchor {
@@ -241,6 +250,16 @@ export const KIMONO_LOGO_ANCHORS: Record<KimonoLogoSlot, KimonoLogoAnchor> = {
     position: [0, 1.73, -0.42],
     rotation: [0, Math.PI, 0],
     defaultSizeIn: { w: 3.7, h: 3.7 },
+  },
+  // Wide strip on the back skirt, just below the belt (studio-only
+  // placement for special requests). Sits on the draped skirt panel, so
+  // it protrudes slightly more than the upper back.
+  'back-skirt': {
+    // 4.2 in wide: the back panel curves away at the side seams, so a
+    // wider strip gets its first/last letters culled by the projector.
+    position: [0, 1.43, -0.46],
+    rotation: [0, Math.PI, 0],
+    defaultSizeIn: { w: 4.2, h: 1.6 },
   },
 };
 

@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react';
 import {
   Clock3,
   ImageIcon,
+  Link2,
   RotateCcw,
   Save,
   Trash2,
@@ -66,6 +67,7 @@ const KIMONO_UPLOAD_LABEL: Record<KimonoLogoSlot, string> = {
   'left-sleeve': 'Left Sleeve',
   'right-sleeve': 'Right Sleeve',
   back: 'Back',
+  'back-skirt': 'Below Belt (Back)',
 };
 
 const PANT_UPLOAD_LABEL: Record<PantLogoSlot, string> = {
@@ -101,6 +103,7 @@ export const SavedDesignsRail = memo(
     onSaveDesign,
     onLoadDesign,
     onDeleteDesign,
+    onCopyCustomerLink,
     onApplyKimonoLogo,
     onApplyPantLogo,
     currentKimonoLogos,
@@ -115,6 +118,7 @@ export const SavedDesignsRail = memo(
     onSaveDesign: (name: string) => void;
     onLoadDesign: (design: GiDraftDocument) => void;
     onDeleteDesign: (id: string) => void;
+    onCopyCustomerLink?: (design: GiDraftDocument) => void;
     onApplyKimonoLogo?: (slot: KimonoLogoSlot, logo: KimonoLogo) => void;
     onApplyPantLogo?: (slot: PantLogoSlot, logo: KimonoLogo) => void;
     currentKimonoLogos?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
@@ -412,6 +416,17 @@ export const SavedDesignsRail = memo(
                               <RotateCcw className="h-3.5 w-3.5" />
                               Load
                             </button>
+                            {onCopyCustomerLink ? (
+                              <button
+                                type="button"
+                                onClick={() => onCopyCustomerLink(design)}
+                                title="Copy the customer link for this design"
+                                className="border-border hover:bg-muted flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium"
+                              >
+                                <Link2 className="h-3.5 w-3.5" />
+                                Copy Link
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => copyShareLink(design.id)}

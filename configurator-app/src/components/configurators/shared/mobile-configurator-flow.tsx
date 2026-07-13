@@ -21,8 +21,10 @@ import {
   PANT_LOGO_SLOTS,
   PANT_SUBPART_LABEL,
   PANT_SUBPARTS,
+  STUDIO_ONLY_KIMONO_LOGO_SLOTS,
   type GiPart,
 } from '../gi/gi-config';
+import { isStudioMode } from './studio-mode';
 import { SectionAddRemove } from './part-sections/section-add-remove';
 import { SectionColorSwatches } from './part-sections/section-color-swatches';
 import { SectionKimonoSize } from './part-sections/section-kimono-size';
@@ -39,7 +41,14 @@ const KIMONO_LOGO_PRICE_LABEL: Record<
   'left-sleeve': '+$10',
   'right-sleeve': '+$10',
   back: '+$25',
+  'back-skirt': '+$25',
 };
+
+// Studio-only slots never show their upload step to customers; the
+// artwork itself still renders for anyone viewing a shared design.
+const VISIBLE_KIMONO_LOGO_SLOTS = KIMONO_LOGO_SLOTS.filter(
+  (slot) => isStudioMode() || !STUDIO_ONLY_KIMONO_LOGO_SLOTS.includes(slot),
+);
 
 const ADD_ON_PRICE = 10;
 const BACK_LOGO_PRICE = 25;
@@ -243,7 +252,7 @@ export const MobileConfiguratorFlow = memo(
             />
           ),
         })),
-        ...KIMONO_LOGO_SLOTS.map<MobileStep>((slot) => {
+        ...VISIBLE_KIMONO_LOGO_SLOTS.map<MobileStep>((slot) => {
           const logo = kimonoLogos[slot];
           return {
             key: `kimono-logo-${slot}`,

@@ -33,6 +33,7 @@ const SLOT_NORMAL: Record<KimonoLogoSlot, [number, number, number]> = {
   'left-sleeve': [0.707, 0, 0.707],
   'right-sleeve': [-0.707, 0, 0.707],
   back: [0, 0, -1],
+  'back-skirt': [0, 0, -1],
 };
 
 const BELT_TEXT_PLACEMENTS = {
@@ -368,8 +369,11 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
             );
             const position = computedKimonoAnchors?.[slot] ?? cfg.position;
             const isSleeve = slot === 'left-sleeve' || slot === 'right-sleeve';
+            // Both back slots project onto the body mesh itself — the
+            // dedicated logo placement meshes only cover chest/sleeves.
+            const isBackPanel = slot === 'back' || slot === 'back-skirt';
             const targetMeshes =
-              slot !== 'back' && kimonoLogoMeshes.length > 0
+              !isBackPanel && kimonoLogoMeshes.length > 0
                 ? kimonoLogoMeshes
                 : [kimonoBodyMesh];
             return targetMeshes.map((mesh) => (
@@ -388,16 +392,18 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                       // bottom of a full-size back logo. The box is too
                       // narrow to ever reach the front panel (z ≈ +0.42).
                       0.7
-                    : slot === 'left-chest'
-                      ? 0.18
-                      : isSleeve
-                        ? 0.32
-                        : undefined
+                    : slot === 'back-skirt'
+                      ? 0.36
+                      : slot === 'left-chest'
+                        ? 0.18
+                        : isSleeve
+                          ? 0.32
+                          : undefined
                 }
-                surfaceOffsetWorld={slot === 'back' ? 0.008 : 0.003}
+                surfaceOffsetWorld={isBackPanel ? 0.008 : 0.003}
                 depthTest
-                polygonOffsetFactor={slot === 'back' ? -2 : undefined}
-                polygonOffsetUnits={slot === 'back' ? -2 : undefined}
+                polygonOffsetFactor={isBackPanel ? -2 : undefined}
+                polygonOffsetUnits={isBackPanel ? -2 : undefined}
                 normalCullMinDot={
                   // The deeper back box can catch sleeve fabric hanging
                   // beside the torso; sleeves face sideways, so culling
@@ -405,7 +411,16 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                   // keeping the back panel (and its waist taper).
                   slot === 'back' ? 0.35 : 0.18
                 }
-                surfaceIsland={slot === 'back' ? 'largest' : 'frontmost'}
+                surfaceIsland={
+                  // The skirt strip spans the waist seam, so island
+                  // filtering would clip it; its shallow projection box
+                  // can't reach the front, so no filter is needed.
+                  slot === 'back'
+                    ? 'largest'
+                    : slot === 'back-skirt'
+                      ? undefined
+                      : 'frontmost'
+                }
               />
             ));
           })

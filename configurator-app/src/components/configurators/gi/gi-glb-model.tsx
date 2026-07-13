@@ -304,6 +304,12 @@ export const GiGlbModel = memo(() => {
       // Square print area on the flatter upper-back panel. Kept high
       // enough that all four corners stay inside the jacket's taper.
       back: [center.x, center.y + size.y * 0.075 - 0.025, bbox.min.z - out],
+      // Wide strip on the back skirt just below the belt (studio-only
+      // placement). Measured on the real mesh: the belt's back band ends
+      // at ~33% up the body bbox and the BACK hem is at ~7% (the front
+      // skirt hangs lower and owns bbox.min.y), so 21.5% centers the
+      // strip in the visible below-belt band.
+      'back-skirt': [center.x, bbox.min.y + size.y * 0.215, bbox.min.z - out],
     };
     setComputedKimonoAnchors(anchors);
     if (typeof window !== 'undefined') {

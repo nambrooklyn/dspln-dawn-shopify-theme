@@ -6,6 +6,9 @@
  * create designs and copy share links. Opening the configurator with
  * ?studio=1 (the theme forwards the param into the iframe) enables the
  * hidden UI for the rest of the browser session.
+ *
+ * It is an unlisted door, not authentication — anyone who knows the exact
+ * URL could open it, so it must never unlock pricing or admin data.
  */
 const STORAGE_KEY = 'dspln:studio-mode';
 
@@ -26,5 +29,29 @@ export function isStudioMode(): boolean {
     return window.sessionStorage.getItem(STORAGE_KEY) === '1';
   } catch {
     return false;
+  }
+}
+
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // The async clipboard API can be blocked inside the Shopify iframe;
+    // fall back to the legacy hidden-textarea copy.
+    try {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.setAttribute('readonly', '');
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      const ok = document.execCommand('copy');
+      el.remove();
+      return ok;
+    } catch {
+      return false;
+    }
   }
 }

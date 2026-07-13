@@ -28,6 +28,7 @@ import {
   type CloudArtworkLink,
 } from './gi-cloud-designs';
 import { SavedDesignsRail, type DraftStatus } from './saved-designs-rail';
+import { StudioTextTool } from './studio-text-tool';
 import { ConfiguratorShell } from '../shared/configurator-shell';
 import {
   exportGiPdf,
@@ -37,6 +38,7 @@ import {
   snapshotCanvasThumbnail,
 } from '../shared/export-pdf';
 import { createLineDesignId, getMissingGiSizeMessage } from '../shared/order-flow';
+import { copyTextToClipboard, isStudioMode } from '../shared/studio-mode';
 import { uploadPreviewImage } from '../shared/preview-upload';
 import {
   addShopifyTestCartLine,
@@ -48,7 +50,6 @@ import {
 } from '../shared/shopify-cart-simulator';
 import type { CameraView } from './gi-config';
 import { currentGiProductConfig } from '../shared/gi-product-config';
-import { isStudioMode } from '../shared/studio-mode';
 
 const PRODUCT_CONFIG = currentGiProductConfig();
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
@@ -261,6 +262,7 @@ const GiConfiguratorInner = memo(() => {
   );
   const [currentDesignName, setCurrentDesignName] = useState(formatDesignName);
   const [cloudOwnerContext] = useState(() => getGiCloudOwnerContext());
+  const [isStudio] = useState(isStudioMode);
   const draftReadyRef = useRef(false);
 
   const refreshSavedDesigns = useCallback(async () => {
@@ -433,7 +435,11 @@ const GiConfiguratorInner = memo(() => {
       });
       await saveGiDraftDocument(draft);
 
-      const cloudDraft = await saveGiCloudDesign(draft, cloudOwnerContext);
+      // Cloud save is best-effort: if the API is unreachable the design
+      // still lives in this browser and the toast says so.
+      const cloudDraft = await saveGiCloudDesign(draft, cloudOwnerContext).catch(
+        () => null,
+      );
       if (cloudDraft) {
         await saveGiDraftDocument(cloudDraft);
         if (cloudDraft.id !== draft.id) {
@@ -512,6 +518,48 @@ const GiConfiguratorInner = memo(() => {
       toast.success('Saved design removed');
     },
     [cloudOwnerContext, currentDesignId, refreshSavedDesigns],
+  );
+
+  const handleCopyCustomerLink = useCallback(
+    async (design: GiDraftDocument) => {
+      try {
+        // The link only works when the design exists in the cloud — a
+        // local-only draft would open blank for the customer.
+        let cloudId = design.id;
+        const existing = await getGiCloudDesign(design.id).catch(() => null);
+        if (!existing) {
+          const cloudDraft = await saveGiCloudDesign(
+            design,
+            cloudOwnerContext,
+          ).catch(() => null);
+          if (!cloudDraft) {
+            toast.error('Design is not in the cloud yet', {
+              description:
+                'Cloud saving is unavailable, so a customer could not open this link.',
+            });
+            return;
+          }
+          cloudId = cloudDraft.id;
+          await refreshSavedDesigns();
+        }
+
+        const url = buildGiCloudDesignUrls(cloudId)?.designUrl;
+        if (!url) {
+          toast.error('Could not build the customer link');
+          return;
+        }
+
+        const copied = await copyTextToClipboard(url);
+        if (copied) {
+          toast.success('Customer link copied', { description: url });
+        } else {
+          toast.info('Copy this link', { description: url, duration: 15000 });
+        }
+      } catch {
+        toast.error('Could not copy the customer link');
+      }
+    },
+    [cloudOwnerContext, refreshSavedDesigns],
   );
 
   const captureView = useCallback(
@@ -668,7 +716,38 @@ const GiConfiguratorInner = memo(() => {
           <ConfiguratorActionRail
             isCustomer={cloudOwnerContext?.isCustomer}
             onLoginToSave={handleLoginToSave}
+            showSavedTools={isStudio}
           />
+        }
+        railContent={
+          isStudio ? (
+            <>
+            <StudioTextTool
+              onApplyKimonoLogo={setKimonoLogo}
+              onApplyPantLogo={setPantLogo}
+            />
+            <SavedDesignsRail
+              status={draftStatus}
+              savedDesigns={savedDesigns}
+              defaultDesignName={currentDesignName || formatDesignName()}
+              storageLabel={
+                cloudOwnerContext?.isCustomer
+                  ? 'Saved to your account'
+                  : 'Cloud saved for this browser'
+              }
+              onSaveDesign={handleSaveDesign}
+              activeDesignId={currentDesignId}
+              activeDesignName={currentDesignName}
+              onLoadDesign={handleLoadDesign}
+              onDeleteDesign={handleDeleteDesign}
+              onCopyCustomerLink={handleCopyCustomerLink}
+              onApplyKimonoLogo={setKimonoLogo}
+              onApplyPantLogo={setPantLogo}
+              currentKimonoLogos={kimonoLogos}
+              currentPantLogos={pantLogos}
+            />
+            </>
+          ) : null
         }
         sceneTopContent={
           cloudOwnerContext?.isCustomer ? (
