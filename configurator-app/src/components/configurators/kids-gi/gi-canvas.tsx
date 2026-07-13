@@ -629,14 +629,14 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                 }
                 surfaceOffsetWorld={slot === 'back' ? 0.008 : 0.003}
                 depthTest
-                polygonOffsetFactor={slot === 'back' ? -16 : undefined}
-                polygonOffsetUnits={slot === 'back' ? -16 : undefined}
+                polygonOffsetFactor={slot === 'back' ? -2 : undefined}
+                polygonOffsetUnits={slot === 'back' ? -2 : undefined}
                 normalCullMinDot={
                   // The deeper back box can catch sleeve fabric hanging
                   // beside the torso; sleeves face sideways, so culling
                   // triangles that don't face backwards drops them while
                   // keeping the back panel (and its waist taper).
-                  slot === 'back' ? 0.2 : 0.18
+                  slot === 'back' ? 0.35 : 0.18
                 }
                 surfaceIsland={slot === 'back' ? 'largest' : 'frontmost'}
               />
