@@ -88,23 +88,19 @@ async function compressPreviewImage(
         return;
       }
 
-      const cropSize = Math.min(image.naturalWidth, image.naturalHeight);
-      const cropX = Math.max(0, Math.round((image.naturalWidth - cropSize) / 2));
-      const cropY = Math.max(0, Math.round((image.naturalHeight - cropSize) / 2));
+      // Fit the whole image into the square (white padding) instead of
+      // center-cropping — portrait captures from mobile would otherwise
+      // lose the top/bottom of the model.
+      const scale =
+        outputSize / Math.max(image.naturalWidth, image.naturalHeight);
+      const drawWidth = Math.round(image.naturalWidth * scale);
+      const drawHeight = Math.round(image.naturalHeight * scale);
+      const drawX = Math.round((outputSize - drawWidth) / 2);
+      const drawY = Math.round((outputSize - drawHeight) / 2);
 
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, outputSize, outputSize);
-      context.drawImage(
-        image,
-        cropX,
-        cropY,
-        cropSize,
-        cropSize,
-        0,
-        0,
-        outputSize,
-        outputSize,
-      );
+      context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
 
       resolve(canvas.toDataURL('image/jpeg', quality));
     };
