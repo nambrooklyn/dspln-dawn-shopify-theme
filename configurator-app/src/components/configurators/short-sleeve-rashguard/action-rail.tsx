@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { FolderHeart, HelpCircle, ImageIcon, LogIn } from 'lucide-react';
+import { isStudioMode } from '../shared/studio-mode';
 
 function dispatchRailEvent(name: string) {
   if (typeof window === 'undefined') return;
@@ -18,8 +19,32 @@ export const RashguardActionRail = memo(
   ({ onLoginToSave }: { onLoginToSave?: () => void }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
-        {/* Login, Saved, and Uploads are hidden on the live site until the
-            account/saved-designs experience ships. */}
+        {/* Login button hidden until the rashguard account flow ships. */}
+        {/* Save/uploads UI is owner-only (?studio=1) until the
+            account experience ships for customers. */}
+        {isStudioMode() ? (
+          <>
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={() => dispatchRailEvent('dspln:rashguard-rail:saved')}
+            title="Saved designs"
+          >
+            <FolderHeart className="h-6 w-6 stroke-[1.7]" />
+            <span className="text-[11px] font-medium leading-none">Saved</span>
+          </button>
+          </>
+        ) : null}
+
+        <button
+          type="button"
+          className={railButtonClass}
+          onClick={() => dispatchRailEvent('dspln:rashguard-rail:artwork')}
+          title="Artwork"
+        >
+          <ImageIcon className="h-6 w-6 stroke-[1.7]" />
+          <span className="text-[11px] font-medium leading-none">Uploads</span>
+        </button>
 
       </div>
 

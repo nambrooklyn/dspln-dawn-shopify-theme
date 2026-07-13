@@ -6,6 +6,7 @@ import {
   LogIn,
   UserRound,
 } from 'lucide-react';
+import { isStudioMode } from '../shared/studio-mode';
 
 function openSavedDesigns() {
   if (typeof window === 'undefined') return;
@@ -57,8 +58,31 @@ export const ConfiguratorActionRail = memo(
           </button>
         ) : null}
 
-        {/* Saved and Uploads are hidden on the live site until the
-            account/saved-designs experience ships. */}
+        {/* Save/uploads UI is owner-only (?studio=1) until the
+            account experience ships for customers. */}
+        {isStudioMode() ? (
+          <>
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={openSavedDesigns}
+            title="Saved designs"
+          >
+            <FolderHeart className="h-6 w-6 stroke-[1.7]" />
+            <span className="text-[11px] font-medium leading-none">Saved</span>
+          </button>
+
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={openUploadedLogos}
+            title="Uploads"
+          >
+            <ImageIcon className="h-6 w-6 stroke-[1.7]" />
+            <span className="text-[11px] font-medium leading-none">Uploads</span>
+          </button>
+          </>
+        ) : null}
       </div>
 
       <div className="mt-auto w-full pb-4">
