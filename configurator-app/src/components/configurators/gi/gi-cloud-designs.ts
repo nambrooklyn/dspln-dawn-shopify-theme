@@ -2,7 +2,7 @@ import type { KimonoLogo } from './gi-state';
 import type { GiDraftDocument, GiDraftLogoImage } from './gi-draft-storage';
 import type { KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { currentGiProductConfig } from '../shared/gi-product-config';
-import { uploadArtworkImage } from '../shared/preview-upload';
+import { shrinkArtworkDataUrl, uploadArtworkImage } from '../shared/preview-upload';
 
 const PRODUCT_CONFIG = currentGiProductConfig();
 const GUEST_TOKEN_STORAGE_KEY = PRODUCT_CONFIG.guestTokenStorageKey;
@@ -160,7 +160,7 @@ async function imagesToCloudImages<TSlot extends string>(
 	    Object.entries(images).map(async ([slot, image]) => {
 	      if (!image) return null;
 	      const draftImage = image as GiDraftLogoImage;
-	      const dataUrl = await imageToDataUrl(draftImage);
+	      const dataUrl = await shrinkArtworkDataUrl(await imageToDataUrl(draftImage));
 	      // Upload the logo separately and store only its URL. This keeps the
 	      // heavy base64 out of the design-record JSON so the save can't fail
 	      // on logo-heavy designs. If the upload fails, fall back to embedding
