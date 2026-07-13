@@ -360,10 +360,6 @@ export function snapshotCanvasCenteredThumbnail(
     const sourceHeight = canvasEl.height;
     if (!sourceWidth || !sourceHeight) return null;
 
-    const cropSize = Math.min(sourceWidth, sourceHeight);
-    const cropX = Math.max(0, Math.round((sourceWidth - cropSize) / 2));
-    const cropY = Math.max(0, Math.round((sourceHeight - cropSize) / 2));
-
     const thumbnailCanvas = document.createElement('canvas');
     thumbnailCanvas.width = outputSize;
     thumbnailCanvas.height = outputSize;
@@ -371,19 +367,19 @@ export function snapshotCanvasCenteredThumbnail(
     const context = thumbnailCanvas.getContext('2d');
     if (!context) return null;
 
+    // Fit the whole canvas into the square (white padding) instead of
+    // center-cropping. On mobile the render canvas is portrait, and a
+    // square center-crop cuts the top/bottom off the model in the cart
+    // thumbnail.
+    const scale = outputSize / Math.max(sourceWidth, sourceHeight);
+    const drawWidth = Math.round(sourceWidth * scale);
+    const drawHeight = Math.round(sourceHeight * scale);
+    const drawX = Math.round((outputSize - drawWidth) / 2);
+    const drawY = Math.round((outputSize - drawHeight) / 2);
+
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, outputSize, outputSize);
-    context.drawImage(
-      canvasEl,
-      cropX,
-      cropY,
-      cropSize,
-      cropSize,
-      0,
-      0,
-      outputSize,
-      outputSize,
-    );
+    context.drawImage(canvasEl, drawX, drawY, drawWidth, drawHeight);
 
     return thumbnailCanvas.toDataURL('image/jpeg', quality);
   } catch {
