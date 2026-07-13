@@ -327,10 +327,24 @@
   }
   #dspln-sr .sr-cta:hover { background: #5a1212; }
 
+  /* Keep the section from ever forcing the page wider than the screen.
+     Flex children and form controls default to min-width:auto (their intrinsic
+     content width), which on a phone expands the mobile layout viewport and
+     makes the whole configurator page drift sideways. Clamp them to 0/100%. */
+  #dspln-sr, #dspln-sr * { min-width: 0; }
+  #dspln-sr select,
+  #dspln-sr input,
+  #dspln-sr textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   /* Mobile */
   @media (max-width: 820px) {
     #dspln-sr { flex-direction: column; margin: 48px auto !important; }
     #dspln-sr .sr-left { padding: 40px 24px; text-align: center; align-items: center; }
+    #dspln-sr .sr-left h2 { white-space: normal; }
     #dspln-sr .sr-right { width: 100%; border: none; border-top: 1px solid #e0e0e0; }
     #dspln-sr .sr-calc-header { padding: 18px 20px 14px; }
     #dspln-sr .sr-calc { padding: 20px 20px 18px; }
