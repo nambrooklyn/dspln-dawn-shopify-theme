@@ -111,6 +111,31 @@
     gap: 0.8rem;
   }
 
+  /* Keep each customization on a single line: the label and value flow
+     inline ("STITCHING COLOR: BLUE") instead of a flex pair that wraps
+     mid-label in the narrow mobile column. Slightly smaller type so the
+     longest labels fit. */
+  .dspln-line-item-properties__row {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    line-height: 1.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dspln-line-item-properties__row dt,
+  .dspln-line-item-properties__row dd {
+    display: inline;
+    margin: 0;
+  }
+
+  .dspln-line-item-properties__heading {
+    font-size: 9px;
+    margin: 10px 0 6px;
+  }
+
   .cart-item__dspln-actions {
     gap: 10px;
   }
