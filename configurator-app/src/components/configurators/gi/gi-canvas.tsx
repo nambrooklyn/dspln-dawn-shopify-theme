@@ -1,7 +1,15 @@
-import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls, useProgress } from '@react-three/drei';
-import { Vector3, type Mesh } from 'three';
+import { Euler, Matrix4, Vector2, Vector3, type Mesh } from 'three';
 
 import { GiGlbModel } from './gi-glb-model';
 import { useGiState, cameraViewToPosition, cameraViewToTarget } from './gi-state';
@@ -18,6 +26,7 @@ import {
 import { useDirectionalCanvasTouch } from '../shared/use-directional-canvas-touch';
 import { LayerDecal } from '../shared/layer-decal';
 import { IN_TO_WORLD, ProjectedDecal } from '../shared/projected-decal';
+import { isStudioMode } from '../shared/studio-mode';
 
 const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
@@ -211,6 +220,8 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     cameraView,
     cameraViewResetKey,
     kimonoLogos,
+    kimonoLogoAnchors,
+    setKimonoLogoAnchor,
     computedKimonoAnchors,
     kimonoBodyMesh,
     kimonoLogoMeshes,
@@ -221,7 +232,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     scenePartVisibility,
     beltMesh,
   } = useGiState();
-  const { camera } = useThree();
+  const { camera, gl, raycaster } = useThree();
   // OrbitControls instance ref; the impl type is awkward to import so we
   // pull it from the ref's runtime value when we need methods on it.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -288,6 +299,86 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       );
     };
   }, [camera, useMobileCamera]);
+
+  // ——— Studio drag-to-move for kimono artwork ———
+  // Grab a logo/text decal and slide it along the jacket: the pointer is
+  // raycast onto the body mesh and the decal's anchor + orientation
+  // follow the surface. The final placement is stored in gi-state and
+  // serialized with the design, so customers see the moved artwork.
+  const isStudio = useMemo(() => isStudioMode(), []);
+  const draggingSlotRef = useRef<KimonoLogoSlot | null>(null);
+  const lastDragUpdateRef = useRef(0);
+
+  const anchorFromPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!kimonoBodyMesh) return null;
+      const rect = gl.domElement.getBoundingClientRect();
+      const ndc = new Vector2(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(ndc, camera);
+      const hit = raycaster.intersectObject(kimonoBodyMesh, false)[0];
+      if (!hit?.face) return null;
+      const normal = hit.face.normal
+        .clone()
+        .transformDirection(kimonoBodyMesh.matrixWorld)
+        .normalize();
+      // Anchor floats just off the fabric, like the static anchors do.
+      const position = hit.point.clone().addScaledVector(normal, 0.012);
+      // Orient the projector so +Z runs along the surface normal while
+      // world-up keeps the artwork upright (no roll).
+      const euler = new Euler().setFromRotationMatrix(
+        new Matrix4().lookAt(
+          position.clone().add(normal),
+          position,
+          new Vector3(0, 1, 0),
+        ),
+      );
+      return {
+        position: [position.x, position.y, position.z] as [
+          number,
+          number,
+          number,
+        ],
+        rotation: [euler.x, euler.y, euler.z] as [number, number, number],
+      };
+    },
+    [camera, gl, kimonoBodyMesh, raycaster],
+  );
+
+  useEffect(() => {
+    if (!isStudio) return;
+
+    const handleMove = (event: PointerEvent) => {
+      if (!draggingSlotRef.current) return;
+      event.preventDefault();
+      // DecalGeometry rebuilds on every anchor change — throttle so the
+      // drag stays smooth on the dense gi mesh.
+      const now = performance.now();
+      if (now - lastDragUpdateRef.current < 90) return;
+      lastDragUpdateRef.current = now;
+      const anchor = anchorFromPointer(event.clientX, event.clientY);
+      if (anchor) setKimonoLogoAnchor(draggingSlotRef.current, anchor);
+    };
+
+    const handleUp = (event: PointerEvent) => {
+      const slot = draggingSlotRef.current;
+      if (!slot) return;
+      draggingSlotRef.current = null;
+      const anchor = anchorFromPointer(event.clientX, event.clientY);
+      if (anchor) setKimonoLogoAnchor(slot, anchor);
+      if (controlsRef.current) controlsRef.current.enabled = true;
+      document.body.style.cursor = '';
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [anchorFromPointer, isStudio, setKimonoLogoAnchor]);
 
   return (
     <>
@@ -367,40 +458,47 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
               logo.imageWidth,
               logo.imageHeight,
             );
-            const position = computedKimonoAnchors?.[slot] ?? cfg.position;
+            const override = kimonoLogoAnchors[slot];
+            const position =
+              override?.position ?? computedKimonoAnchors?.[slot] ?? cfg.position;
+            const rotation = override?.rotation ?? cfg.rotation;
             const isSleeve = slot === 'left-sleeve' || slot === 'right-sleeve';
             // Both back slots project onto the body mesh itself — the
             // dedicated logo placement meshes only cover chest/sleeves.
+            // A dragged decal can be anywhere, so it always projects onto
+            // the body mesh with generic free-placement settings.
             const isBackPanel = slot === 'back' || slot === 'back-skirt';
             const targetMeshes =
-              !isBackPanel && kimonoLogoMeshes.length > 0
+              !override && !isBackPanel && kimonoLogoMeshes.length > 0
                 ? kimonoLogoMeshes
                 : [kimonoBodyMesh];
-            return targetMeshes.map((mesh) => (
+            const decals = targetMeshes.map((mesh) => (
               <ProjectedDecal
                 key={`${slot}-${mesh.uuid}`}
                 mesh={mesh}
                 imageUrl={logo.imageUrl}
                 position={position}
-                rotation={cfg.rotation}
+                rotation={rotation}
                 widthWorld={decalSize.w * IN_TO_WORLD}
                 heightWorld={decalSize.h * IN_TO_WORLD}
                 depthWorld={
-                  slot === 'back'
-                    ? // Deep enough to keep projecting where the jacket
-                      // tapers inward at the waist — 0.36 clipped the
-                      // bottom of a full-size back logo. The box is too
-                      // narrow to ever reach the front panel (z ≈ +0.42).
-                      0.7
-                    : slot === 'back-skirt'
-                      ? 0.36
-                      : slot === 'left-chest'
-                        ? 0.18
-                        : isSleeve
-                          ? 0.32
-                          : undefined
+                  override
+                    ? 0.3
+                    : slot === 'back'
+                      ? // Deep enough to keep projecting where the jacket
+                        // tapers inward at the waist — 0.36 clipped the
+                        // bottom of a full-size back logo. The box is too
+                        // narrow to ever reach the front panel (z ≈ +0.42).
+                        0.7
+                      : slot === 'back-skirt'
+                        ? 0.36
+                        : slot === 'left-chest'
+                          ? 0.18
+                          : isSleeve
+                            ? 0.32
+                            : undefined
                 }
-                surfaceOffsetWorld={isBackPanel ? 0.008 : 0.003}
+                surfaceOffsetWorld={override || isBackPanel ? 0.008 : 0.003}
                 depthTest
                 polygonOffsetFactor={isBackPanel ? -2 : undefined}
                 polygonOffsetUnits={isBackPanel ? -2 : undefined}
@@ -409,20 +507,48 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                   // beside the torso; sleeves face sideways, so culling
                   // triangles that don't face backwards drops them while
                   // keeping the back panel (and its waist taper).
-                  slot === 'back' ? 0.35 : 0.18
+                  slot === 'back' && !override ? 0.35 : 0.18
                 }
                 surfaceIsland={
                   // The skirt strip spans the waist seam, so island
                   // filtering would clip it; its shallow projection box
-                  // can't reach the front, so no filter is needed.
-                  slot === 'back'
-                    ? 'largest'
-                    : slot === 'back-skirt'
-                      ? undefined
-                      : 'frontmost'
+                  // can't reach the front, so no filter is needed. Same
+                  // reasoning for dragged (override) placements.
+                  override
+                    ? undefined
+                    : slot === 'back'
+                      ? 'largest'
+                      : slot === 'back-skirt'
+                        ? undefined
+                        : 'frontmost'
                 }
               />
             ));
+            if (!isStudio) return decals;
+            return (
+              <group
+                key={slot}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  draggingSlotRef.current = slot;
+                  lastDragUpdateRef.current = 0;
+                  if (controlsRef.current) controlsRef.current.enabled = false;
+                  document.body.style.cursor = 'grabbing';
+                }}
+                onPointerOver={() => {
+                  if (!draggingSlotRef.current) {
+                    document.body.style.cursor = 'grab';
+                  }
+                }}
+                onPointerOut={() => {
+                  if (!draggingSlotRef.current) {
+                    document.body.style.cursor = '';
+                  }
+                }}
+              >
+                {decals}
+              </group>
+            );
           })
         : null}
 

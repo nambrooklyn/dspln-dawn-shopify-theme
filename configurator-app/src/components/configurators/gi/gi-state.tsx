@@ -63,6 +63,14 @@ export interface GiLayer {
   visible: boolean;
 }
 
+/** Custom world-space placement for a logo slot, set by dragging the
+ *  artwork in studio mode. Serialized with the design so a customer
+ *  opening a shared link sees the artwork exactly where it was left. */
+export interface KimonoLogoAnchorOverride {
+  position: [number, number, number];
+  rotation: [number, number, number];
+}
+
 export interface GiSerializedState {
   kind: 'gi';
   partColors: Record<GiPart, string>;
@@ -89,6 +97,8 @@ export interface GiSerializedState {
         }
       >
     >;
+    // Optional so designs saved before drag-to-move still hydrate.
+    logoAnchors?: Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>;
   };
   belt: {
     size: string;
@@ -184,6 +194,12 @@ interface GiStateValue {
   kimonoLogos: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   setKimonoLogo: (slot: KimonoLogoSlot, logo: KimonoLogo) => void;
   removeKimonoLogo: (slot: KimonoLogoSlot) => void;
+  // Drag-to-move placements (studio). Missing entry = default anchor.
+  kimonoLogoAnchors: Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>;
+  setKimonoLogoAnchor: (
+    slot: KimonoLogoSlot,
+    anchor: KimonoLogoAnchorOverride | null,
+  ) => void;
   pantLogos: Partial<Record<PantLogoSlot, KimonoLogo>>;
   setPantLogo: (slot: PantLogoSlot, logo: KimonoLogo) => void;
   removePantLogo: (slot: PantLogoSlot) => void;
@@ -308,8 +324,29 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     },
     [],
   );
+  const [kimonoLogoAnchors, setKimonoLogoAnchorsState] = useState<
+    Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>
+  >({});
+  const setKimonoLogoAnchor = useCallback(
+    (slot: KimonoLogoSlot, anchor: KimonoLogoAnchorOverride | null) => {
+      setKimonoLogoAnchorsState((prev) => {
+        const next = { ...prev };
+        if (anchor) next[slot] = anchor;
+        else delete next[slot];
+        return next;
+      });
+    },
+    [],
+  );
   const removeKimonoLogo = useCallback((slot: KimonoLogoSlot) => {
     setKimonoLogosState((prev) => {
+      const next = { ...prev };
+      delete next[slot];
+      return next;
+    });
+    // A removed logo's custom placement must not leak onto the next
+    // upload in that slot.
+    setKimonoLogoAnchorsState((prev) => {
       const next = { ...prev };
       delete next[slot];
       return next;
@@ -489,6 +526,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
           },
         },
         logos,
+        logoAnchors: kimonoLogoAnchors,
       },
       belt: {
         size: beltSize,
@@ -533,6 +571,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     kimonoSize,
     kimonoSubColors,
     kimonoLogos,
+    kimonoLogoAnchors,
     pantLogos,
     beltEmbroidery,
     beltSize,
@@ -571,6 +610,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
 	        rightThreadColor: state.belt.embroidery.rightThreadColor,
 	      });
       setKimonoLogosState({ ...(logoImages?.kimono ?? {}) });
+      setKimonoLogoAnchorsState({ ...(state.kimono.logoAnchors ?? {}) });
       setPantLogosState({ ...(logoImages?.pant ?? {}) });
       setLayers([]);
       setSelectedLayerId(null);
@@ -606,6 +646,8 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       kimonoLogos,
       setKimonoLogo,
       removeKimonoLogo,
+      kimonoLogoAnchors,
+      setKimonoLogoAnchor,
       pantLogos,
       setPantLogo,
       removePantLogo,
@@ -654,6 +696,8 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       kimonoLogos,
       setKimonoLogo,
       removeKimonoLogo,
+      kimonoLogoAnchors,
+      setKimonoLogoAnchor,
       pantLogos,
       setPantLogo,
       removePantLogo,
