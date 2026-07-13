@@ -619,7 +619,10 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                 heightWorld={decalSize.h * IN_TO_WORLD}
                 depthWorld={
                   slot === 'back'
-                    ? 0.36
+                    ? // Deep enough to keep projecting where the jacket
+                      // tapers inward at the waist — 0.36 clipped the
+                      // bottom of a full-size back logo.
+                      0.7
                     : isSleeve
                         ? 0.32
                         : undefined
