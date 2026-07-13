@@ -72,7 +72,7 @@
       frameUrl.searchParams.set('design', designId);
     }
 
-    ['mode', 'cart_line', 'dspln_diag'].forEach((param) => {
+    ['mode', 'cart_line'].forEach((param) => {
       const value = searchParams.get(param);
       if (value) frameUrl.searchParams.set(param, value);
     });
@@ -108,44 +108,6 @@
     });
     if (typeof mobileQuery.addEventListener === 'function') {
       mobileQuery.addEventListener('change', applyFrameHeight);
-    }
-
-    // Temporary: parent-page horizontal-overflow probe. Only runs with
-    // ?dspln_diag=1 so it never shows for customers. Reports the page's own
-    // scroll width vs the viewport and names the widest element past the edge
-    // (usually the culprit for "the page moves around" on iOS).
-    if (searchParams.get('dspln_diag') === '1') {
-      const bar = document.createElement('div');
-      bar.style.cssText =
-        'position:fixed;top:0;left:0;right:0;z-index:2147483647;' +
-        'font:600 12px/1.35 ui-monospace,Menlo,monospace;color:#fff;' +
-        'padding:8px 10px;white-space:pre-wrap;pointer-events:none';
-      document.body.appendChild(bar);
-      const probe = () => {
-        const de = document.documentElement;
-        const vw = window.innerWidth;
-        let worst = 'none';
-        let worstRight = vw;
-        document.querySelectorAll('body *').forEach((el) => {
-          if (el === bar) return;
-          const r = el.getBoundingClientRect();
-          if (r.width > 0 && r.right > worstRight + 1) {
-            worstRight = r.right;
-            const cls = typeof el.className === 'string' ? el.className.slice(0, 34) : '';
-            worst = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + '.' + cls + ' →' + Math.round(r.right);
-          }
-        });
-        const overflow = de.scrollWidth - vw;
-        bar.style.background = overflow > 0 ? '#b91c1c' : '#166534';
-        bar.textContent =
-          'PAGE  screenW ' + (window.screen ? window.screen.width : '?') +
-          ' · innerW ' + vw + ' · pageSW ' + de.scrollWidth + ' · overflow ' + overflow +
-          '\nwidest: ' + worst;
-      };
-      probe();
-      window.setInterval(probe, 700);
-      window.addEventListener('resize', probe);
-      window.addEventListener('scroll', probe, { passive: true });
     }
 
     if (designId && mode === 'cart-edit') {
