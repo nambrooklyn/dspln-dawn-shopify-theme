@@ -50,6 +50,7 @@ import {
 } from './shopify-cart-simulator';
 import type { CameraView } from './gi-config';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
+import { isStudioMode } from '../shared/studio-mode';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS.womens;
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
@@ -616,6 +617,27 @@ const GiConfiguratorInner = memo(() => {
           // Login entry points are hidden until the account flow ships:
           // the theme doesn't pass customer identity yet, so the login
           // round-trip appears broken to customers.
+        }
+        railContent={!isStudioMode() ? undefined :
+          <SavedDesignsRail
+            status={draftStatus}
+            savedDesigns={savedDesigns}
+            defaultDesignName={currentDesignName || formatDesignName()}
+            storageLabel={
+              cloudOwnerContext?.isCustomer
+                ? 'Saved to your account'
+                : 'Cloud saved for this browser'
+            }
+            onSaveDesign={handleSaveDesign}
+            activeDesignId={currentDesignId}
+            activeDesignName={currentDesignName}
+            onLoadDesign={handleLoadDesign}
+            onDeleteDesign={handleDeleteDesign}
+            onApplyKimonoLogo={setKimonoLogo}
+            onApplyPantLogo={setPantLogo}
+            currentKimonoLogos={kimonoLogos}
+            currentPantLogos={pantLogos}
+          />
         }
       >
         <GiCanvas />

@@ -72,7 +72,8 @@
       frameUrl.searchParams.set('design', designId);
     }
 
-    ['mode', 'cart_line'].forEach((param) => {
+    // studio=1 enables the owner-only save/share UI inside the configurator.
+    ['mode', 'cart_line', 'studio'].forEach((param) => {
       const value = searchParams.get(param);
       if (value) frameUrl.searchParams.set(param, value);
     });

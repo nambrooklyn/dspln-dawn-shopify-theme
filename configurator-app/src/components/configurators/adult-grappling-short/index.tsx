@@ -47,6 +47,7 @@ import {
 import { createLineDesignId } from '../shared/order-flow';
 import { RashguardShell } from './rashguard-shell';
 import { RashguardViewToggle } from './view-toggle';
+import { isStudioMode } from '../shared/studio-mode';
 
 const SHOPIFY_CART_ADDED_MESSAGE = 'dspln:shopify-cart:added';
 const SHOPIFY_CART_UPDATED_MESSAGE = 'dspln:shopify-cart:updated';
@@ -564,6 +565,18 @@ const RashguardConfiguratorInner = memo(() => {
         cartActionLoadingLabel={isCartEditMode ? 'Updating...' : 'Adding...'}
         skinnyRailContent={
           <RashguardActionRail onLoginToSave={handleLoginToSave} />
+        }
+        railContent={!isStudioMode() ? undefined :
+          <RashguardSavedDesignsPanel
+            status={draftStatus}
+            savedDesigns={savedDesigns}
+            defaultDesignName={currentDesignName || formatDesignName()}
+            onSaveDesign={handleSaveDesign}
+            activeDesignId={currentDesignId}
+            activeDesignName={currentDesignName}
+            onLoadDesign={handleLoadDesign}
+            onDeleteDesign={handleDeleteDesign}
+          />
         }
       >
         <RashguardCanvas />
