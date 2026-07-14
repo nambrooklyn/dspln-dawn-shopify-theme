@@ -906,18 +906,23 @@ function drawSummarySection({
   size,
   rows,
   y,
+  notOrdered = false,
 }: {
   pdf: jsPDF;
   title: string;
   size: string;
   rows: SummaryRow[];
   y: number;
-}) {
+  notOrdered?: boolean;
+}): number {
   const x = 14;
   const width = 584;
   const titleHeight = 34;
   const rowHeight = 23;
-  const height = titleHeight + rows.length * rowHeight;
+  // When a part wasn't purchased, collapse the block to just its title bar with
+  // a hard "NO" and no customization rows — the factory makes only what's bought.
+  const effectiveRows = notOrdered ? [] : rows;
+  const height = titleHeight + effectiveRows.length * rowHeight;
   const labelX = 244;
   const valueX = 314;
   const checkboxX = x + width - 32;
@@ -929,14 +934,18 @@ function drawSummarySection({
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(15);
   pdf.setTextColor(35);
-  pdf.text(`${title} SIZE:`, labelX, y + 23, { align: 'right' });
-  pdf.text(size, valueX, y + 23);
+  pdf.text(notOrdered ? `${title}:` : `${title} SIZE:`, labelX, y + 23, {
+    align: 'right',
+  });
+  pdf.text(notOrdered ? 'NO' : size, valueX, y + 23);
   drawCheckbox(pdf, checkboxX, y + 7);
 
-  pdf.setLineWidth(0.35);
-  pdf.line(x, y + titleHeight, x + width, y + titleHeight);
+  if (effectiveRows.length > 0) {
+    pdf.setLineWidth(0.35);
+    pdf.line(x, y + titleHeight, x + width, y + titleHeight);
+  }
 
-  rows.forEach((row, index) => {
+  effectiveRows.forEach((row, index) => {
     const rowTop = y + titleHeight + index * rowHeight;
     const textY = rowTop + 15.5;
     if (index > 0) {
@@ -963,6 +972,8 @@ function drawSummarySection({
 
     drawCheckbox(pdf, checkboxX, rowTop + 1.5);
   });
+
+  return height;
 }
 
 async function drawSummaryPage({
@@ -1055,11 +1066,15 @@ async function drawSummaryPage({
     });
   }
 
-  drawSummarySection({
+  const SECTION_GAP = 36;
+  let sectionY = 86;
+
+  sectionY += drawSummarySection({
     pdf,
     title: 'KIMONO',
     size: spec.kimono.size,
-    y: 86,
+    y: sectionY,
+    notOrdered: !spec.partVisibility.jacket,
     rows: [
       {
         label: 'Kimono Body Color:',
@@ -1108,11 +1123,13 @@ async function drawSummaryPage({
     ],
   });
 
-  drawSummarySection({
+  sectionY += SECTION_GAP;
+  sectionY += drawSummarySection({
     pdf,
     title: 'BELT',
     size: spec.belt.size,
-    y: 344,
+    y: sectionY,
+    notOrdered: !spec.partVisibility.belt,
     rows: beltRows,
   });
 
@@ -1120,7 +1137,8 @@ async function drawSummaryPage({
     pdf,
     title: 'PANT',
     size: spec.pant.size,
-    y: 344 + 34 + beltRows.length * 23 + 36,
+    y: sectionY + SECTION_GAP,
+    notOrdered: !spec.partVisibility.pants,
     rows: [
       {
         label: 'Pant Body Color:',
