@@ -38,6 +38,7 @@ interface ProductionDesign {
       pant?: Record<string, StoredArtworkImage | undefined>;
     };
     spec?: {
+      partVisibility?: { jacket?: boolean; belt?: boolean; pants?: boolean };
       kimono?: {
         size?: string;
         colors?: Record<string, { name?: string | null; hex?: string }>;
@@ -79,10 +80,17 @@ function designSummary(design: ProductionDesign) {
   const spec = design.configData?.spec;
   const kimono = spec?.kimono;
   const pant = spec?.pant;
+  const vis = spec?.partVisibility;
+  // Default to included when the flag is absent (older saved designs predate it).
+  const has = (v?: boolean) => v !== false;
   return [
-    `Kimono ${kimono?.size ?? 'N/A'} ${colorName(kimono?.colors?.body)}`,
-    `Belt ${colorName(spec?.belt?.color)}`,
-    `Pant ${pant?.size ?? 'N/A'} ${colorName(pant?.colors?.body)}`,
+    has(vis?.jacket)
+      ? `Kimono ${kimono?.size ?? 'N/A'} ${colorName(kimono?.colors?.body)}`
+      : 'Kimono NO',
+    has(vis?.belt) ? `Belt ${colorName(spec?.belt?.color)}` : 'Belt NO',
+    has(vis?.pants)
+      ? `Pant ${pant?.size ?? 'N/A'} ${colorName(pant?.colors?.body)}`
+      : 'Pant NO',
   ].join(' / ');
 }
 
