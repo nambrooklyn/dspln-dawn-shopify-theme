@@ -432,11 +432,15 @@ export const GiGlbModel = memo(() => {
   }, [cloned, partVisibility, scenePartVisibility]);
 
   // Click-to-select: clicking a mesh figures out which part it belongs to.
-  const handlePointerDown = (e: {
+  // Fires on click (not pointer-down) and ignores drags — orbiting the
+  // model must not yank the panel between parts.
+  const handleModelClick = (e: {
     stopPropagation: () => void;
+    delta?: number;
     object?: Object3D;
   }) => {
     e.stopPropagation();
+    if ((e.delta ?? 0) > 6) return;
     const part = e.object ? partForColorObject(e.object) : undefined;
     if (part) setSelectedPart(part);
   };
@@ -584,7 +588,7 @@ export const GiGlbModel = memo(() => {
       ref={groupRef}
       position={offset}
       scale={scale}
-      onPointerDown={handlePointerDown}
+      onClick={handleModelClick}
     >
       <primitive object={cloned} />
     </group>

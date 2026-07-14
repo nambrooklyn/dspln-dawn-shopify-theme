@@ -1,0 +1,49 @@
+name: Mirror theme to dev-store-theme
+
+# Shopify's GitHub theme integration caps a connected branch at 50MB, and
+# this repo also carries the configurator app (3D models push it well past
+# that). This workflow mirrors just the theme directories to the
+# `dev-store-theme` branch, rewriting the configurator platform origin to
+# this branch's Netlify deploy so the dev store always runs the latest
+# branch build. Shopify is connected to `dev-store-theme`.
+#
+# The mirror force-pushes: the source branch is the single source of truth,
+# so make theme edits in the repo, not in the dev store's theme editor.
+
+on:
+  push:
+    branches: [cleanup-checkout-page]
+    paths:
+      - 'assets/**'
+      - 'config/**'
+      - 'layout/**'
+      - 'locales/**'
+      - 'sections/**'
+      - 'snippets/**'
+      - 'templates/**'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and push theme mirror
+        run: |
+          set -euo pipefail
+          DEV_ORIGIN="https://cleanup-checkout-page--dspln-dawn-shopify-theme.netlify.app"
+
+          STAGE="$(mktemp -d)"
+          cp -r assets config layout locales sections snippets templates "$STAGE"/
+          sed -i "s#https://dspln-dawn-shopify-theme\.netlify\.app#${DEV_ORIGIN}#g" "$STAGE"/templates/*.json
+
+          git config user.name "theme-mirror[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan mirror-tmp
+          git rm -rfq .
+          cp -r "$STAGE"/. .
+          git add -A
+          git commit -m "Mirror theme from ${GITHUB_SHA}"
+          git push -f origin mirror-tmp:dev-store-theme

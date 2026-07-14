@@ -1,6 +1,7 @@
 import { memo } from 'react';
 
 import { useGiState } from '../../gi/gi-state';
+import { storefrontUrl } from '../storefront-links';
 import { SectionSizeRecommender } from './section-size-recommender';
 import { SectionSizeWheelPicker } from './section-size-wheel-picker';
 import { CUSTOM_MEASUREMENTS } from './size-options';
@@ -28,7 +29,7 @@ export const SectionKimonoSize = memo(() => {
 
       <p className="mb-3 text-[12px] leading-snug max-lg:hidden">
         <a
-          href="https://dspln.com/pages/sizing"
+          href={storefrontUrl('/pages/sizing')}
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary font-medium hover:underline"
@@ -41,7 +42,7 @@ export const SectionKimonoSize = memo(() => {
 
       <p className="mt-3 mb-3 text-center text-[12px] leading-snug lg:hidden">
         <a
-          href="https://dspln.com/pages/sizing"
+          href={storefrontUrl('/pages/sizing')}
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary font-medium hover:underline"
