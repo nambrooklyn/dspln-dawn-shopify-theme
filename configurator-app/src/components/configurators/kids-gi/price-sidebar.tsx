@@ -225,7 +225,10 @@ export const PriceSidebar = memo(
               {PART_ORDER.map((part) => {
                 const isIn = partVisibility[part];
                 const price = GI_PART_PRICES[part];
-                const isOpen = !!openParts[part];
+                // A removed part collapses to just its struck-through header —
+                // no customization details for something that isn't purchased
+                // (same rule as the tech pack and cart). Reopens on re-add.
+                const isOpen = isIn && !!openParts[part];
                 return (
                   <li
                     key={part}

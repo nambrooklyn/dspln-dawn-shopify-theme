@@ -116,69 +116,97 @@ function logoYesNo(filename?: string) {
 }
 
 function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
-  return [
-    { name: 'Kimono Size', value: spec.kimono.size },
-    { name: 'Kimono Body Color', value: colorValue(spec.kimono.colors.body) },
-    { name: 'Kimono Lapel Color', value: colorValue(spec.kimono.colors.lapel) },
-    {
-      name: 'Kimono Reinforcements Color',
-      value: colorValue(spec.kimono.colors.reinforcement),
-    },
-    {
-      name: 'Kimono Stitching Color',
-      value: colorValue(spec.kimono.colors.stitching),
-    },
-    {
-      name: 'Kimono Left Chest Logo',
-      value: logoYesNo(spec.kimono.logos['left-chest']?.filename),
-    },
-    {
-      name: 'Kimono Left Sleeve Logo',
-      value: logoYesNo(spec.kimono.logos['left-sleeve']?.filename),
-    },
-    {
-      name: 'Kimono Right Sleeve Logo',
-      value: logoYesNo(spec.kimono.logos['right-sleeve']?.filename),
-    },
-    { name: 'Kimono Back Logo', value: logoYesNo(spec.kimono.logos.back?.filename) },
-    { name: 'Belt Size', value: spec.belt.size },
-    { name: 'Belt Color', value: colorValue(spec.belt.color) },
-    { name: 'Belt Left Text', value: spec.belt.embroidery.leftEnd.trim() || 'NO' },
-    { name: 'Belt Left Font', value: spec.belt.embroidery.leftFont },
-    {
-      name: 'Belt Left Thread Color',
-      value:
-        spec.belt.embroidery.leftThreadColorName ||
-        spec.belt.embroidery.leftThreadColor,
-    },
-    { name: 'Belt Right Text', value: spec.belt.embroidery.rightEnd.trim() || 'NO' },
-    { name: 'Belt Right Font', value: spec.belt.embroidery.rightFont },
-    {
-      name: 'Belt Right Thread Color',
-      value:
-        spec.belt.embroidery.rightThreadColorName ||
-        spec.belt.embroidery.rightThreadColor,
-    },
-    { name: 'Pant Size', value: spec.pant.size },
-    { name: 'Pant Body Color', value: colorValue(spec.pant.colors.body) },
-    {
-      name: 'Pant Reinforcements Color',
-      value: colorValue(spec.pant.colors.reinforcement),
-    },
-    {
-      name: 'Pant Stitching Color',
-      value: colorValue(spec.pant.colors.stitching),
-    },
-    { name: 'Pant Drawcord Color', value: colorValue(spec.pant.colors.drawcord) },
-    {
-      name: 'Pant Left Thigh Logo',
-      value: logoYesNo(spec.pant.logos['left-pant']?.filename),
-    },
-    {
-      name: 'Pant Right Thigh Logo',
-      value: logoYesNo(spec.pant.logos['right-pant']?.filename),
-    },
-  ];
+  const props: CartProperty[] = [];
+
+  // Only list a part's customizations when it was actually purchased. An
+  // un-bought part (partVisibility === false) collapses to a single "NO" so the
+  // cart, checkout, and order admin never show details for something not ordered.
+  if (spec.partVisibility.jacket) {
+    props.push(
+      { name: 'Kimono Size', value: spec.kimono.size },
+      { name: 'Kimono Body Color', value: colorValue(spec.kimono.colors.body) },
+      { name: 'Kimono Lapel Color', value: colorValue(spec.kimono.colors.lapel) },
+      {
+        name: 'Kimono Reinforcements Color',
+        value: colorValue(spec.kimono.colors.reinforcement),
+      },
+      {
+        name: 'Kimono Stitching Color',
+        value: colorValue(spec.kimono.colors.stitching),
+      },
+      {
+        name: 'Kimono Left Chest Logo',
+        value: logoYesNo(spec.kimono.logos['left-chest']?.filename),
+      },
+      {
+        name: 'Kimono Left Sleeve Logo',
+        value: logoYesNo(spec.kimono.logos['left-sleeve']?.filename),
+      },
+      {
+        name: 'Kimono Right Sleeve Logo',
+        value: logoYesNo(spec.kimono.logos['right-sleeve']?.filename),
+      },
+      {
+        name: 'Kimono Back Logo',
+        value: logoYesNo(spec.kimono.logos.back?.filename),
+      },
+    );
+  } else {
+    props.push({ name: 'Kimono', value: 'NO' });
+  }
+
+  if (spec.partVisibility.belt) {
+    props.push(
+      { name: 'Belt Size', value: spec.belt.size },
+      { name: 'Belt Color', value: colorValue(spec.belt.color) },
+      { name: 'Belt Left Text', value: spec.belt.embroidery.leftEnd.trim() || 'NO' },
+      { name: 'Belt Left Font', value: spec.belt.embroidery.leftFont },
+      {
+        name: 'Belt Left Thread Color',
+        value:
+          spec.belt.embroidery.leftThreadColorName ||
+          spec.belt.embroidery.leftThreadColor,
+      },
+      { name: 'Belt Right Text', value: spec.belt.embroidery.rightEnd.trim() || 'NO' },
+      { name: 'Belt Right Font', value: spec.belt.embroidery.rightFont },
+      {
+        name: 'Belt Right Thread Color',
+        value:
+          spec.belt.embroidery.rightThreadColorName ||
+          spec.belt.embroidery.rightThreadColor,
+      },
+    );
+  } else {
+    props.push({ name: 'Belt', value: 'NO' });
+  }
+
+  if (spec.partVisibility.pants) {
+    props.push(
+      { name: 'Pant Size', value: spec.pant.size },
+      { name: 'Pant Body Color', value: colorValue(spec.pant.colors.body) },
+      {
+        name: 'Pant Reinforcements Color',
+        value: colorValue(spec.pant.colors.reinforcement),
+      },
+      {
+        name: 'Pant Stitching Color',
+        value: colorValue(spec.pant.colors.stitching),
+      },
+      { name: 'Pant Drawcord Color', value: colorValue(spec.pant.colors.drawcord) },
+      {
+        name: 'Pant Left Thigh Logo',
+        value: logoYesNo(spec.pant.logos['left-pant']?.filename),
+      },
+      {
+        name: 'Pant Right Thigh Logo',
+        value: logoYesNo(spec.pant.logos['right-pant']?.filename),
+      },
+    );
+  } else {
+    props.push({ name: 'Pant', value: 'NO' });
+  }
+
+  return props;
 }
 
 function formatArtworkLabel(link: ShopifyArtworkLink) {
