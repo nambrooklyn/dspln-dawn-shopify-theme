@@ -114,12 +114,10 @@ export function useDirectionalCanvasTouch() {
           Math.abs(dy) > Math.abs(dx) ? 'vertical' : 'horizontal';
       }
 
-      if (directionRef.current === 'vertical') {
-        const scrollDelta = lastYRef.current - event.clientY;
-        lastYRef.current = event.clientY;
-        window.scrollBy(0, scrollDelta);
-        stopForPageScroll(event);
-      }
+      // Nike-pattern stability: vertical drags no longer synthesize page
+      // scrolling (window.scrollBy) — every canvas touch belongs to the 3D
+      // controls, so the page can never lurch mid-rotation. Users scroll the
+      // page from outside the canvas. Pinch-zoom above is unaffected.
     };
 
     const handlePointerEnd = (event: globalThis.PointerEvent) => {
@@ -187,9 +185,8 @@ export function useDirectionalCanvasTouch() {
         Math.abs(dy) > Math.abs(dx) ? 'vertical' : 'horizontal';
     }
 
-    if (directionRef.current === 'vertical') {
-      event.stopPropagation();
-    }
+    // Vertical gestures are no longer swallowed — with touch-action: none on
+    // the canvas they flow to the 3D controls like every other drag.
   }, []);
 
   const onPointerUp = useCallback((event: PointerEvent) => {

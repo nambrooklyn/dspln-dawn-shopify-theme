@@ -770,13 +770,13 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
       onPointerUp={touchHandlers.onPointerUp}
       className={
         className ??
-        'gi-mobile-scroll-canvas relative h-full w-full touch-pan-y bg-white'
+        'gi-mobile-scroll-canvas relative h-full w-full touch-none bg-white'
       }
     >
       <Canvas
         shadows
         frameloop="always"
-        style={{ touchAction: 'pan-y' }}
+        style={{ touchAction: 'none' }}
         camera={{ position: initialPosition, fov: 42 }}
         onPointerMissed={() => selectLayer(null)}
         gl={{

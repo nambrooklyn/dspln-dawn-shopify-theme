@@ -84,10 +84,13 @@ textarea {
   overflow: hidden;
 }
 
+/* Nike-pattern canvas stability: the browser may NEVER scroll the page from
+   a canvas touch — every gesture on the model belongs to the 3D controls.
+   Page scrolling happens from touches outside the canvas. */
 .gi-mobile-scroll-canvas,
 .gi-mobile-scroll-canvas div,
 .gi-mobile-scroll-canvas canvas {
-  touch-action: pan-y !important;
+  touch-action: none !important;
 }
 
 .dspln-configurator-root {
