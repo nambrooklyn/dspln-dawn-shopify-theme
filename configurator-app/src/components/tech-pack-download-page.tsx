@@ -147,6 +147,32 @@ function delay(ms: number) {
 }
 
 /**
+ * Wait until the 3D scene has ACTUALLY rendered `minFrames` new frames
+ * (counter maintained by <FrameTicker /> inside each gi canvas). Wall-clock
+ * delays are unsafe here: browsers pause a hidden/covered window's render
+ * loop while timers keep firing, so a fixed 700ms wait used to capture
+ * half-turned or stale frames whenever the user clicked away mid-generation.
+ * With frame-based waits the pipeline simply pauses alongside the renderer
+ * and resumes when the window is visible again. The timeout is a last-resort
+ * escape so a dead render loop can't hang the page forever.
+ */
+function waitForRenderedFrames(minFrames: number, timeoutMs = 120000) {
+  return new Promise<void>((resolve) => {
+    const started = Date.now();
+    const base = window.__dsplnRenderedFrames ?? 0;
+    const poll = () => {
+      const rendered = (window.__dsplnRenderedFrames ?? 0) - base;
+      if (rendered >= minFrames || Date.now() - started > timeoutMs) {
+        resolve();
+        return;
+      }
+      window.setTimeout(poll, 100);
+    };
+    poll();
+  });
+}
+
+/**
  * Wait until every decal texture (uploaded logos, belt text) has finished
  * loading/decoding. ProjectedDecal maintains a pending-texture counter; heavy
  * uploads can take well over the old fixed 700ms settle, which is why logos
@@ -205,7 +231,9 @@ function preloadImage(url: string, timeoutMs = 10000) {
  * Nothing is pre-rendered at add-to-cart.
  */
 function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
-  const [status, setStatus] = useState('Rendering production views...');
+  const [status, setStatus] = useState(
+    'Rendering production views — keep this window visible until the PDF downloads...',
+  );
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
   // Hold the driver in a ref so the run effect does NOT depend on the state
@@ -223,8 +251,10 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
 
     async function captureView(view: CameraView) {
       driverRef.current.setCameraView(view);
-      // Let the camera-rig lerp settle + a render frame elapse.
-      await delay(700);
+      // Wait for ~45 real rendered frames so the camera lerp fully settles.
+      // Frame-based (not time-based) so a hidden/covered window pauses the
+      // capture instead of photographing a half-turned model.
+      await waitForRenderedFrames(45);
       return (
         snapshotCanvasHighResolution() ??
         snapshotCanvas(driverRef.current.getCanvasEl()) ??
@@ -254,8 +284,9 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         // Wait for every decal texture (logos, belt text) to finish
         // loading/decoding — heavy uploads take longer than any fixed delay.
         await waitForDecalTextures();
-        // Give colors / decals a couple frames to composite.
-        await delay(700);
+        // Give colors / decals real rendered frames to composite (see
+        // waitForRenderedFrames — wall-clock waits break in hidden windows).
+        await waitForRenderedFrames(30);
 
         const front = await captureView('front');
         const back = await captureView('back');

@@ -26,6 +26,7 @@ import {
 } from './gi-config';
 import { useDirectionalCanvasTouch } from '../shared/use-directional-canvas-touch';
 import { LayerDecal } from '../shared/layer-decal';
+import { FrameTicker } from '../shared/frame-ticker';
 import { IN_TO_WORLD, ProjectedDecal } from '../shared/projected-decal';
 
 const CAMERA_MIN_DISTANCE = 1.2;
@@ -510,6 +511,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   return (
     <>
       <CanvasBridge />
+      <FrameTicker />
       {/* Studio-mockup lighting with proper contrast:
           - Strong key with self-shadowing → folds, belt overlap, lapel
           - Modest fill so shadows stay visible but not pitch-black
