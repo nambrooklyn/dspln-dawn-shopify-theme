@@ -38,6 +38,14 @@ export const PantSections = memo(() => {
         onAdd={() => setPartVisible('pants', true)}
         onRemove={() => setPartVisible('pants', false)}
       />
+      {/* Not purchased → no customization options (same rule as cart + tech
+          pack). Add the part back to customize it. */}
+      {!partVisibility.pants ? (
+        <p className="text-muted-foreground px-3 py-4 text-[11px] tracking-wide uppercase">
+          Pant removed — add it back to customize.
+        </p>
+      ) : (
+        <>
       <SectionSizeSelect
         title="Pant Size"
         value={pantSize}
@@ -73,6 +81,8 @@ export const PantSections = memo(() => {
           />
         );
       })}
+        </>
+      )}
     </div>
   );
 });
