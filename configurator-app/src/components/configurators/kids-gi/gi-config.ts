@@ -373,8 +373,12 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   back: [0, 1.25, -3.75],
   left: [-3.75, 1.25, 0],
   right: [3.75, 1.25, 0],
-  'left-belt-end': [0.68, 1.2, 1.05],
-  'right-belt-end': [-0.68, 1.2, 1.05],
+  // Belt-end close-ups are aimed at the kids model's MEASURED belt-text
+  // target meshes (world y ≈ 1.45–1.49 — the kids belt sits higher than the
+  // adult's, whose values these used to copy), keeping the same camera offset
+  // the adult framing uses.
+  'left-belt-end': [0.75, 1.44, 1.09],
+  'right-belt-end': [-0.84, 1.4, 1.07],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
@@ -385,8 +389,8 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   back: [0, 1.25, -3.35],
   left: [-3.35, 1.25, 0],
   right: [3.35, 1.25, 0],
-  'left-belt-end': [0.68, 1.2, 1.05],
-  'right-belt-end': [-0.68, 1.2, 1.05],
+  'left-belt-end': [0.75, 1.44, 1.09],
+  'right-belt-end': [-0.84, 1.4, 1.07],
 };
 
 export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
@@ -396,8 +400,9 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   back: CAMERA_TARGET,
   left: CAMERA_TARGET,
   right: CAMERA_TARGET,
-  'left-belt-end': [0.15, 1.25, 0.18],
-  'right-belt-end': [-0.16, 1.25, 0.18],
+  // Measured centers of belt_left/right_text_target on the kids model.
+  'left-belt-end': [0.22, 1.49, 0.22],
+  'right-belt-end': [-0.32, 1.45, 0.2],
 };
 
 // Anchor for a logo placed on the jacket chest (front).
