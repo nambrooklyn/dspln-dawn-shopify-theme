@@ -281,7 +281,14 @@
 
   function isAllowedOrigin(origin) {
     try {
-      return ALLOWED_HOSTS.includes(new URL(origin).hostname);
+      const hostname = new URL(origin).hostname;
+      // Also accept Netlify branch/preview deploys of the configurator site
+      // (e.g. cleanup-checkout-page--dspln-dawn-shopify-theme.netlify.app) so
+      // the dev store can talk to branch builds. Production is unchanged.
+      return (
+        ALLOWED_HOSTS.includes(hostname) ||
+        hostname.endsWith('--dspln-dawn-shopify-theme.netlify.app')
+      );
     } catch {
       return false;
     }
