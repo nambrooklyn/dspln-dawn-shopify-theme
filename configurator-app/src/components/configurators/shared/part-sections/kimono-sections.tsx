@@ -49,6 +49,14 @@ export const KimonoSections = memo(() => {
         onRemove={() => setPartVisible('jacket', false)}
       />
 
+      {/* Not purchased → no customization options (same rule as cart + tech
+          pack). Add the part back to customize it. */}
+      {!partVisibility.jacket ? (
+        <p className="text-muted-foreground px-3 py-4 text-[11px] tracking-wide uppercase">
+          Kimono removed — add it back to customize.
+        </p>
+      ) : (
+        <>
       {/* SECTION 2 — Kimono Size dropdown */}
       <SectionKimonoSize />
 
@@ -88,6 +96,8 @@ export const KimonoSections = memo(() => {
           />
         );
       })}
+        </>
+      )}
     </div>
   );
 });
