@@ -325,6 +325,8 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           productName: productNameForSource(design.configData?.source),
           includeSizeMeasurements:
             design.configData?.source !== 'dspln-kids-gi-configurator',
+          kidsProportions:
+            design.configData?.source === 'dspln-kids-gi-configurator',
         });
 
         if (!cancelled) {

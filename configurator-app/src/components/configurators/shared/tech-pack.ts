@@ -28,6 +28,8 @@ interface GenerateGiTechPackInput {
   orderNumber?: string;
   productName?: string;
   includeSizeMeasurements?: boolean;
+  /** Kids model proportions differ — shifts the thigh placement crop. */
+  kidsProportions?: boolean;
 }
 
 /** Filesystem-safe slug for the download filename (keeps digits + letters). */
@@ -1407,6 +1409,7 @@ function logoPlacementPages({
   backImage,
   leftImage,
   rightImage,
+  kidsProportions = false,
 }: {
   kimonoLogos?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   pantLogos?: Partial<Record<PantLogoSlot, KimonoLogo>>;
@@ -1414,6 +1417,8 @@ function logoPlacementPages({
   backImage: TechPackImage;
   leftImage?: TechPackImage | null;
   rightImage?: TechPackImage | null;
+  /** Kids model has shorter legs — the thighs sit higher in the front view. */
+  kidsProportions?: boolean;
 }) {
   const pages: LogoPlacementPage[] = [];
 
@@ -1455,7 +1460,12 @@ function logoPlacementPages({
         ),
         maxMeasurementIn: 4,
         viewImage: frontImage,
-        viewCrop: { x: 0, y: 0.42, width: 1, height: 0.46 },
+        // Thigh band, as a fraction of the front view. Measured: the adult
+        // thigh centers ~67% down the garment, the kids thigh ~59% (shorter
+        // legs) — so the kids crop shifts up to keep the thigh centered.
+        viewCrop: kidsProportions
+          ? { x: 0, y: 0.36, width: 1, height: 0.46 }
+          : { x: 0, y: 0.42, width: 1, height: 0.46 },
       });
     },
   );
@@ -1716,6 +1726,7 @@ export async function generateGiTechPackPageOne({
   orderNumber = buildOrderNumber(orderDate),
   productName = 'gi',
   includeSizeMeasurements = true,
+  kidsProportions = false,
 }: GenerateGiTechPackInput) {
   const pdf = new jsPDF({
     orientation: 'portrait',
@@ -1851,6 +1862,7 @@ export async function generateGiTechPackPageOne({
     backImage,
     leftImage,
     rightImage,
+    kidsProportions,
   });
 
   for (const page of placementPages) {
