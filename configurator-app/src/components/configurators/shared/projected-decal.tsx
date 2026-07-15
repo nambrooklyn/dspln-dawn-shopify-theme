@@ -240,6 +240,32 @@ function keepSurfaceIsland(
  *     underlying mesh's triangles face the camera (was the silent killer
  *     for the flat-plane version — back-face culling hid everything).
  */
+// ---------------------------------------------------------------------------
+// Decal texture readiness tracking. The on-demand tech-pack page captures the
+// 3D views headlessly and must not photograph the garment while decal
+// textures are still loading/decoding (heavy uploads can take seconds). Every
+// in-flight TextureLoader load bumps this counter; the tech-pack page polls
+// windowDecalsPending() until it hits zero before capturing.
+let pendingDecalTextures = 0;
+
+function decalLoadStarted() {
+  pendingDecalTextures += 1;
+}
+
+function decalLoadSettled() {
+  pendingDecalTextures = Math.max(0, pendingDecalTextures - 1);
+}
+
+declare global {
+  interface Window {
+    __dsplnPendingDecalTextures?: () => number;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.__dsplnPendingDecalTextures = () => pendingDecalTextures;
+}
+
 export const ProjectedDecal = memo(
   ({
     mesh,
@@ -262,10 +288,19 @@ export const ProjectedDecal = memo(
 
     useEffect(() => {
       let cancelled = false;
+      let settled = false;
+      const settleOnce = () => {
+        if (!settled) {
+          settled = true;
+          decalLoadSettled();
+        }
+      };
+      decalLoadStarted();
       const loader = new TextureLoader();
       loader.load(
         imageUrl,
         (tex) => {
+          settleOnce();
           if (cancelled) {
             tex.dispose();
             return;
@@ -284,11 +319,14 @@ export const ProjectedDecal = memo(
         },
         undefined,
         () => {
+          settleOnce();
           if (!cancelled) setTexture(null);
         },
       );
       return () => {
         cancelled = true;
+        // An unmount mid-load must not leave the pending counter stuck.
+        settleOnce();
         setTexture((prev) => {
           prev?.dispose();
           return null;

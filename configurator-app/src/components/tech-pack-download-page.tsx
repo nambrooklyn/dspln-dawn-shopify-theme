@@ -147,6 +147,31 @@ function delay(ms: number) {
 }
 
 /**
+ * Wait until every decal texture (uploaded logos, belt text) has finished
+ * loading/decoding. ProjectedDecal maintains a pending-texture counter; heavy
+ * uploads can take well over the old fixed 700ms settle, which is why logos
+ * used to come out missing from the captured views. Requires the counter to
+ * read zero on two consecutive polls (decals mount slightly after hydrate),
+ * and always resolves after `timeoutMs` so a stuck load can't hang the page.
+ */
+function waitForDecalTextures(timeoutMs = 15000) {
+  return new Promise<void>((resolve) => {
+    const started = Date.now();
+    let zeroStreak = 0;
+    const poll = () => {
+      const pending = window.__dsplnPendingDecalTextures?.() ?? 0;
+      zeroStreak = pending === 0 ? zeroStreak + 1 : 0;
+      if (zeroStreak >= 2 || Date.now() - started > timeoutMs) {
+        resolve();
+        return;
+      }
+      window.setTimeout(poll, 150);
+    };
+    poll();
+  });
+}
+
+/**
  * Warm the browser cache for a remote logo image before the 3D scene mounts
  * its decals. ProjectedDecal loads textures async (TextureLoader, anonymous
  * CORS) and the capture sequence doesn't wait for them — in a live session
@@ -226,7 +251,10 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         // Load the exact configuration into the live 3D scene.
         driverRef.current.hydrate(spec, { kimono: kimonoLogos, pant: pantLogos });
         await waitForModelReady();
-        // Give colors / logo decals a couple frames to composite.
+        // Wait for every decal texture (logos, belt text) to finish
+        // loading/decoding — heavy uploads take longer than any fixed delay.
+        await waitForDecalTextures();
+        // Give colors / decals a couple frames to composite.
         await delay(700);
 
         const front = await captureView('front');
