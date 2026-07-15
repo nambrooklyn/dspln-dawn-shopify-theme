@@ -344,7 +344,7 @@ export const RashguardCanvas = memo(({ className }: { className?: string }) => {
       onPointerUp={touchHandlers.onPointerUp}
       className={
         className ??
-        'gi-mobile-scroll-canvas relative h-full w-full touch-pan-y bg-white'
+        'gi-mobile-scroll-canvas relative h-full w-full touch-none bg-white'
       }
       style={{ cursor: selectedLayer?.placementPending ? 'crosshair' : undefined }}
     >
@@ -352,7 +352,7 @@ export const RashguardCanvas = memo(({ className }: { className?: string }) => {
         onPointerMissed={() => selectArtworkLayer(null)}
         shadows
         frameloop="always"
-        style={{ touchAction: 'pan-y' }}
+        style={{ touchAction: 'none' }}
         camera={{ position: initialPosition, fov: 38 }}
         gl={{
           preserveDrawingBuffer: true,
