@@ -147,6 +147,34 @@ function delay(ms: number) {
 }
 
 /**
+ * Warm the browser cache for a remote logo image before the 3D scene mounts
+ * its decals. ProjectedDecal loads textures async (TextureLoader, anonymous
+ * CORS) and the capture sequence doesn't wait for them — in a live session
+ * logos are instant blob: URLs, but here they're remote CDN URLs, so without
+ * preloading the views capture BEFORE the decals appear and the renders come
+ * out bare. Same crossOrigin mode so the cache entry is shared. Always
+ * resolves (timeout/error) so a bad image can't hang the pipeline.
+ */
+function preloadImage(url: string, timeoutMs = 10000) {
+  return new Promise<void>((resolve) => {
+    if (!url || url.startsWith('data:')) {
+      resolve();
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const timer = window.setTimeout(() => resolve(), timeoutMs);
+    const done = () => {
+      window.clearTimeout(timer);
+      resolve();
+    };
+    img.onload = done;
+    img.onerror = done;
+    img.src = url;
+  });
+}
+
+/**
  * Drives the live 3D scene for whichever garment mounted us: hydrate the saved
  * design, capture the six production views ON DEMAND, then build the PDF.
  * Nothing is pre-rendered at add-to-cart.
@@ -186,6 +214,14 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
 
         const kimonoLogos = mapLogos(design.configData?.images?.kimono);
         const pantLogos = mapLogos(design.configData?.images?.pant);
+
+        // Warm the cache for every remote logo image FIRST so the decal
+        // textures apply instantly when the scene hydrates (see preloadImage).
+        await Promise.all(
+          [...Object.values(kimonoLogos), ...Object.values(pantLogos)]
+            .filter((logo): logo is KimonoLogo => Boolean(logo?.imageUrl))
+            .map((logo) => preloadImage(logo.imageUrl)),
+        );
 
         // Load the exact configuration into the live 3D scene.
         driverRef.current.hydrate(spec, { kimono: kimonoLogos, pant: pantLogos });
