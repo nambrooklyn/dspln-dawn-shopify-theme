@@ -158,11 +158,20 @@ function delay(ms: number) {
  */
 function waitForRenderedFrames(minFrames: number, timeoutMs = 120000) {
   return new Promise<void>((resolve) => {
-    const started = Date.now();
+    // The safety timeout only counts VISIBLE time: a user can hide the window
+    // for arbitrarily long (renderer paused, frames frozen) and the pipeline
+    // must keep waiting rather than time out and snapshot a stale frame.
+    let visibleElapsed = 0;
+    let last = Date.now();
     const base = window.__dsplnRenderedFrames ?? 0;
     const poll = () => {
+      const now = Date.now();
+      if (document.visibilityState === 'visible') {
+        visibleElapsed += now - last;
+      }
+      last = now;
       const rendered = (window.__dsplnRenderedFrames ?? 0) - base;
-      if (rendered >= minFrames || Date.now() - started > timeoutMs) {
+      if (rendered >= minFrames || visibleElapsed > timeoutMs) {
         resolve();
         return;
       }
