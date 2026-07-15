@@ -140,6 +140,14 @@ export const BeltSections = memo(() => {
         onAdd={() => setPartVisible('belt', true)}
         onRemove={() => setPartVisible('belt', false)}
       />
+      {/* Not purchased → no customization options (same rule as cart + tech
+          pack). Add the part back to customize it. */}
+      {!partVisibility.belt ? (
+        <p className="text-muted-foreground px-3 py-4 text-[11px] tracking-wide uppercase">
+          Belt removed — add it back to customize.
+        </p>
+      ) : (
+        <>
       <section className="border-border border-b px-3 py-3">
         <div className="mb-2 flex items-baseline gap-2 max-lg:hidden">
           <h3 className="text-foreground text-[12px] font-semibold tracking-wide uppercase">
@@ -201,6 +209,8 @@ export const BeltSections = memo(() => {
           setBeltEmbroidery({ rightThreadColor })
         }
       />
+        </>
+      )}
     </div>
   );
 });

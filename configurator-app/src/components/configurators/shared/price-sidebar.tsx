@@ -246,7 +246,10 @@ export const PriceSidebar = memo(
               {PART_ORDER.map((part) => {
                 const isIn = partVisibility[part];
                 const price = GI_PART_PRICES[part];
-                const isOpen = !!openParts[part];
+                // A removed part collapses to just its struck-through header —
+                // no customization details for something that isn't purchased
+                // (same rule as the tech pack and cart). Reopens on re-add.
+                const isOpen = isIn && !!openParts[part];
                 return (
                   <li
                     key={part}
@@ -273,7 +276,7 @@ export const PriceSidebar = memo(
                         <ChevronDown
                           className={`h-3.5 w-3.5 shrink-0 transition-transform ${
                             isOpen ? 'rotate-180' : '-rotate-90'
-                          }`}
+                          } ${isIn ? '' : 'invisible'}`}
                         />
                         <span className="truncate">
                           {GI_PART_DISPLAY[part]}
