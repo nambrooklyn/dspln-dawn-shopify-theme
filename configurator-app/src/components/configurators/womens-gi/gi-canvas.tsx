@@ -34,7 +34,12 @@ import {
 import { useDirectionalCanvasTouch } from '../shared/use-directional-canvas-touch';
 import { LayerDecal } from '../shared/layer-decal';
 import { FrameTicker } from '../shared/frame-ticker';
-import { IN_TO_WORLD, ProjectedDecal } from '../shared/projected-decal';
+import {
+  IN_TO_WORLD,
+  ProjectedDecal,
+  decalLoadStarted,
+  decalLoadSettled,
+} from '../shared/projected-decal';
 
 const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 5.0;
@@ -100,10 +105,22 @@ const BeltTextTargetMesh = memo(
 
     useEffect(() => {
       let cancelled = false;
+      let settled = false;
+      const settleOnce = () => {
+        if (!settled) {
+          settled = true;
+          decalLoadSettled();
+        }
+      };
+      // Track with the shared pending-decal counter: the tech-pack capture
+      // waits for it, so backgrounded generation can't photograph the white
+      // placeholder material before this texture loads.
+      decalLoadStarted();
       const loader = new TextureLoader();
       loader.load(
         imageUrl,
         (tex) => {
+          settleOnce();
           if (cancelled) {
             tex.dispose();
             return;
@@ -114,11 +131,13 @@ const BeltTextTargetMesh = memo(
         },
         undefined,
         () => {
+          settleOnce();
           if (!cancelled) setTexture(null);
         },
       );
       return () => {
         cancelled = true;
+        settleOnce();
         setTexture((prev) => {
           prev?.dispose();
           return null;
@@ -224,10 +243,22 @@ const LogoTargetMesh = memo(
 
     useEffect(() => {
       let cancelled = false;
+      let settled = false;
+      const settleOnce = () => {
+        if (!settled) {
+          settled = true;
+          decalLoadSettled();
+        }
+      };
+      // Track with the shared pending-decal counter: the tech-pack capture
+      // waits for it, so backgrounded generation can't photograph the white
+      // placeholder material before this texture loads.
+      decalLoadStarted();
       const loader = new TextureLoader();
       loader.load(
         imageUrl,
         (tex) => {
+          settleOnce();
           if (cancelled) {
             tex.dispose();
             return;
@@ -283,11 +314,13 @@ const LogoTargetMesh = memo(
         },
         undefined,
         () => {
+          settleOnce();
           if (!cancelled) setTexture(null);
         },
       );
       return () => {
         cancelled = true;
+        settleOnce();
         setTexture((prev) => {
           prev?.dispose();
           return null;

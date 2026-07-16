@@ -326,8 +326,10 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   back: [0, 1.55, -4.8],
   left: [-4.8, 1.55, 0],
   right: [4.8, 1.55, 0],
-  'left-belt-end': [0.68, 1.5, 1.1],
-  'right-belt-end': [-0.68, 1.5, 1.1],
+  // Aimed at the womens model's MEASURED belt-text targets (world y ~1.78);
+  // the previous hand-tuned y1.5/1.55 still sat below the actual belt.
+  'left-belt-end': [0.79, 1.73, 1.2],
+  'right-belt-end': [-0.87, 1.73, 1.18],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
@@ -338,8 +340,10 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   back: [0, 1.55, -4.35],
   left: [-4.35, 1.55, 0],
   right: [4.35, 1.55, 0],
-  'left-belt-end': [0.68, 1.5, 1.1],
-  'right-belt-end': [-0.68, 1.5, 1.1],
+  // Aimed at the womens model's MEASURED belt-text targets (world y ~1.78);
+  // the previous hand-tuned y1.5/1.55 still sat below the actual belt.
+  'left-belt-end': [0.79, 1.73, 1.2],
+  'right-belt-end': [-0.87, 1.73, 1.18],
 };
 
 export const CAMERA_TARGET: [number, number, number] = [0, 1.55, 0];
@@ -349,8 +353,9 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   back: CAMERA_TARGET,
   left: CAMERA_TARGET,
   right: CAMERA_TARGET,
-  'left-belt-end': [0.15, 1.55, 0.18],
-  'right-belt-end': [-0.16, 1.55, 0.18],
+  // Measured centers of belt_left/right_text_target on the womens model.
+  'left-belt-end': [0.26, 1.78, 0.33],
+  'right-belt-end': [-0.34, 1.78, 0.31],
 };
 
 // Anchor for a logo placed on the jacket chest (front).
