@@ -471,8 +471,11 @@ function captureGiProductionViews(
   gl: WebGLRenderer,
   scene: ThreeScene,
 ): GiProductionViews | null {
-  const W = 2560;
-  const H = 1440;
+  // 4K buffer: the garment occupies only part of the frame, and the crop
+  // that lands on the page needs ~300 DPI at ~7in — 2560px left renders
+  // visibly soft. ~33MB of GPU readback per view, well within budget.
+  const W = 3840;
+  const H = 2160;
   const cam = new PerspectiveCamera(42, W / H, 0.1, 50);
   const rt = new WebGLRenderTarget(W, H, { samples: 4 });
   // Without this the renderer writes LINEAR colour into the target (it only

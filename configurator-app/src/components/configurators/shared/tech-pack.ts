@@ -615,7 +615,7 @@ async function cropToVisibleSubject(dataUrl: string) {
   return {
     // Photographic render on a white ground: JPEG is ~20-50x smaller than the
     // PNG this used to emit, at print-indistinguishable quality.
-    dataUrl: cropCanvas.toDataURL('image/jpeg', 0.92),
+    dataUrl: cropCanvas.toDataURL('image/jpeg', 0.95),
     width: cropWidth,
     height: cropHeight,
   };
@@ -717,8 +717,10 @@ async function cropTechPackImage(image: TechPackImage, region: CropRegion) {
   );
 
   return {
-    // Crops of photographic renders: JPEG (see cropToVisibleSubject).
-    dataUrl: canvas.toDataURL('image/jpeg', 0.92),
+    // Crops of photographic renders: JPEG (see cropToVisibleSubject). Second
+    // JPEG pass over an already-JPEG capture — keep quality high so the
+    // generation loss stays invisible.
+    dataUrl: canvas.toDataURL('image/jpeg', 0.95),
     width: cropWidth,
     height: cropHeight,
   };
