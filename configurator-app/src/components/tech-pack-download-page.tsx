@@ -126,6 +126,7 @@ async function loadStoredTechPack(record: StoredTechPackRecord) {
 async function persistTechPack(
   id: string,
   generated: { blob: Blob; fileName: string },
+  replace = false,
 ) {
   const uploadId = crypto.randomUUID();
   const parts = Math.ceil(generated.blob.size / TECH_PACK_CHUNK_BYTES);
@@ -141,6 +142,7 @@ async function persistTechPack(
     url.searchParams.set('upload', uploadId);
     url.searchParams.set('part', String(part));
     url.searchParams.set('parts', String(parts));
+    if (replace) url.searchParams.set('replace', '1');
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
@@ -151,6 +153,7 @@ async function persistTechPack(
 
   const url = new URL(storedTechPackUrl(id));
   url.searchParams.set('mode', 'complete');
+  if (replace) url.searchParams.set('replace', '1');
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -336,8 +339,13 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
   const embedMode =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('embed') === '1';
+  const regenerateMode =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('regenerate') === '1';
   const [status, setStatus] = useState(
-    embedMode
+    regenerateMode
+      ? 'Regenerating production views — keep this page open...'
+      : embedMode
       ? 'Rendering production views — the complete Tech Pack will appear here...'
       : 'Rendering production views — keep this window visible until the PDF downloads...',
   );
@@ -437,7 +445,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         setStatus('Saving the Tech Pack with this order...');
         let saved = true;
         try {
-          await persistTechPack(design.id, generated);
+          await persistTechPack(design.id, generated, regenerateMode);
         } catch (persistError) {
           // Keep the production page usable if storage is temporarily
           // unavailable. The local PDF is a fallback for this visit only.
@@ -474,7 +482,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
     };
     // Intentionally depends only on `design` (stable once loaded). `driver` is
     // read through driverRef so its changing identity can't cancel the run.
-  }, [design, embedMode]);
+  }, [design, embedMode, regenerateMode]);
 
   return { status, error, pdfUrl };
 }
@@ -634,9 +642,16 @@ export function TechPackDownloadPage() {
   const embedMode =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('embed') === '1';
+  const regenerateMode =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('regenerate') === '1';
 
   useEffect(() => {
     if (!id) return;
+    if (regenerateMode) {
+      setStoredPdf({ checked: true, record: null });
+      return;
+    }
     let cancelled = false;
     findStoredTechPack(id)
       .then((record) => {
@@ -648,7 +663,7 @@ export function TechPackDownloadPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, regenerateMode]);
 
   useEffect(() => {
     if (!id || !storedPdf.checked || storedPdf.record) return;
