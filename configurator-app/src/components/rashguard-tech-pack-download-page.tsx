@@ -219,6 +219,9 @@ export function RashguardTechPackDownloadPage() {
           source,
           'rashguard',
         )}.pdf`;
+        // silent=1 (portal-embedded generation): archive only, no download.
+        const silent =
+          new URLSearchParams(window.location.search).get('silent') === '1';
         const sharedInput = {
           partColors: Object.fromEntries(
             Object.entries(spec.partColors).map(([part, color]) => [part, color.hex]),
@@ -228,9 +231,9 @@ export function RashguardTechPackDownloadPage() {
           viewAspect: design.configData?.renders?.aspect,
           orderInfo,
           options: {
-            output: 'save',
+            output: silent ? ('archive' as const) : ('save' as const),
             fileName,
-          } as const,
+          },
         };
 
         let generated: unknown;
@@ -272,11 +275,19 @@ export function RashguardTechPackDownloadPage() {
         }
 
         if (!cancelled) {
-          setStatus(
-            stored
-              ? `Tech pack PDF generated and archived as v${stored.version}. Check your downloads.`
-              : 'Tech pack PDF generated. Check your downloads.',
-          );
+          if (silent) {
+            setStatus(
+              stored
+                ? `Tech pack archived as v${stored.version}.`
+                : 'The tech pack could not be archived.',
+            );
+          } else {
+            setStatus(
+              stored
+                ? `Tech pack PDF generated and archived as v${stored.version}. Check your downloads.`
+                : 'Tech pack PDF generated. Check your downloads.',
+            );
+          }
         }
       } catch (err) {
         if (!cancelled) {

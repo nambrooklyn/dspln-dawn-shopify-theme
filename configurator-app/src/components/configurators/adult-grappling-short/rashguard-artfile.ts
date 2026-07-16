@@ -51,7 +51,7 @@ export interface ArtFileOptions {
   includeBackLogo?: boolean;
   fileName?: string;
   /** 'save' downloads the PDF (default); 'datauri' returns its base64 (for testing). */
-  output?: 'save' | 'datauri';
+  output?: 'save' | 'datauri' | 'archive';
 }
 
 /** Order details for the post-order header (date / ship date / order number). */
@@ -480,8 +480,8 @@ export async function generateRashguardArtFile(
   if (input.options?.output === 'datauri') {
     return (doc.output('datauristring') as string).split(',')[1];
   }
-  doc.save(opts.fileName);
-  // Hand back the exact saved bytes so callers can freeze them in the
-  // versioned tech-pack store alongside the user's download.
+  if (input.options?.output !== 'archive') doc.save(opts.fileName);
+  // Hand back the exact bytes so callers can freeze them in the versioned
+  // tech-pack store ('archive' mode skips the browser download entirely).
   return doc.output('blob') as Blob;
 }

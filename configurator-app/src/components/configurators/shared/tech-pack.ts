@@ -30,6 +30,8 @@ interface GenerateGiTechPackInput {
   includeSizeMeasurements?: boolean;
   /** Kids model proportions differ — shifts the thigh placement crop. */
   kidsProportions?: boolean;
+  /** false = silent/archive mode: build the PDF but skip the browser download. */
+  download?: boolean;
 }
 
 /** Filesystem-safe slug for the download filename (keeps digits + letters). */
@@ -1850,6 +1852,7 @@ export async function generateGiTechPackPageOne({
   productName = 'gi',
   includeSizeMeasurements = true,
   kidsProportions = false,
+  download = true,
 }: GenerateGiTechPackInput) {
   // PDF diet: right-size every logo to its placement's print ceiling before
   // any page embeds it. The back logo prints up to 10in (3000px at 300 DPI);
@@ -2032,7 +2035,7 @@ export async function generateGiTechPackPageOne({
     productName,
     'gi',
   )}.pdf`;
-  pdf.save(fileName);
+  if (download) pdf.save(fileName);
   // Hand the exact bytes back so the caller can freeze them in the versioned
   // tech-pack store — the download and the archived version must be identical.
   return { blob: pdf.output('blob') as Blob, fileName };
