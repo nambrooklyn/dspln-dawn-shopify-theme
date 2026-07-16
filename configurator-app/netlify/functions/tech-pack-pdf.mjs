@@ -118,10 +118,12 @@ export const handler = async (event) => {
       return await serveStoredPdf(event, store, id);
     }
 
-    // A manifest is written only after every chunk is safely stored. Once the
-    // manifest exists, this production document is immutable.
+    // A normal first save is immutable. An explicit regeneration uploads a
+    // complete new version under a new id and swaps the manifest only after
+    // every new chunk is safely stored, so a failed reload keeps the old PDF.
+    const replace = event.queryStringParameters?.replace === '1';
     const existing = await store.get(manifestKey(id), { type: 'json' });
-    if (existing) {
+    if (existing && !replace) {
       return jsonResponse(200, {
         id,
         parts: existing.parts,
