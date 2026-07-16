@@ -9,12 +9,41 @@ interface PreviewUploadResponse {
  * oversized logos so uploads succeed and the save never balloons. PNG output
  * preserves transparency; only the pixel dimensions are reduced.
  */
-const ARTWORK_MAX_BYTES = 5_200_000;
+// Cap the BINARY size so the base64-encoded upload body (~1.37x binary)
+// stays far under Netlify's ~6MB function limit even with request overhead.
+// The previous 5.2MB cap produced ~6.9MB bodies — uploads still failed and
+// the fallback embedded the same base64 into the design save, failing that
+// too. 2.5MB binary ≈ 3.4MB body: comfortable headroom.
+const ARTWORK_MAX_BYTES = 2_500_000;
+
+// Print ceiling: the largest placement is the 10-inch back logo, which at
+// print-grade 300 DPI needs 3000px. Pixels beyond that are physically
+// unprintable, so resizing to this bound loses nothing visible.
+const ARTWORK_MAX_DIMENSION_PX = 3000;
 
 function estimateDataUrlBytes(dataUrl: string): number {
   const comma = dataUrl.indexOf(',');
   const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
   return Math.floor((base64.length * 3) / 4);
+}
+
+/** Sampled alpha check — opaque images can use JPEG (~10-50x smaller). */
+function hasTransparency(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+): boolean {
+  try {
+    const data = context.getImageData(0, 0, width, height).data;
+    // Stride through alpha bytes; sampling every 64th pixel is plenty to
+    // detect real transparency while staying fast on large images.
+    for (let i = 3; i < data.length; i += 4 * 64) {
+      if (data[i] < 250) return true;
+    }
+    return false;
+  } catch {
+    return true; // be safe: keep PNG if we can't inspect
+  }
 }
 
 function loadImageElement(src: string): Promise<HTMLImageElement | null> {
@@ -32,17 +61,26 @@ export async function shrinkArtworkDataUrl(
 ): Promise<string> {
   if (typeof document === 'undefined') return imageDataUrl;
   if (!imageDataUrl.startsWith('data:image/')) return imageDataUrl;
-  if (estimateDataUrlBytes(imageDataUrl) <= maxBytes) return imageDataUrl;
 
   const image = await loadImageElement(imageDataUrl);
   if (!image || !image.naturalWidth || !image.naturalHeight) return imageDataUrl;
 
-  // Bytes scale roughly with pixel count (~scale^2); start from that guess and
-  // step the dimensions down until the re-encoded PNG fits, with a floor so a
-  // logo never shrinks into uselessness.
+  const overDimension =
+    Math.max(image.naturalWidth, image.naturalHeight) >
+    ARTWORK_MAX_DIMENSION_PX;
+  if (estimateDataUrlBytes(imageDataUrl) <= maxBytes && !overDimension) {
+    return imageDataUrl;
+  }
+
+  // First pass: clamp to the print ceiling. Then, if the re-encode is still
+  // over budget, step the dimensions down (bytes scale ~ with pixel count),
+  // with a floor so a logo never shrinks into uselessness. Opaque images
+  // re-encode as JPEG (massively smaller for photos/screenshots); anything
+  // with transparency stays PNG to preserve the alpha channel.
   let scale = Math.min(
     1,
-    Math.sqrt(maxBytes / Math.max(1, estimateDataUrlBytes(imageDataUrl))),
+    ARTWORK_MAX_DIMENSION_PX /
+      Math.max(image.naturalWidth, image.naturalHeight),
   );
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -55,7 +93,9 @@ export async function shrinkArtworkDataUrl(
     if (!context) return imageDataUrl;
     context.clearRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
-    const output = canvas.toDataURL('image/png');
+    const output = hasTransparency(context, width, height)
+      ? canvas.toDataURL('image/png')
+      : canvas.toDataURL('image/jpeg', 0.92);
     if (
       estimateDataUrlBytes(output) <= maxBytes ||
       Math.max(width, height) <= 512
