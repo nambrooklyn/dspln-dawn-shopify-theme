@@ -2033,4 +2033,7 @@ export async function generateGiTechPackPageOne({
     'gi',
   )}.pdf`;
   pdf.save(fileName);
+  // Hand the exact bytes back so the caller can freeze them in the versioned
+  // tech-pack store — the download and the archived version must be identical.
+  return { blob: pdf.output('blob') as Blob, fileName };
 }
