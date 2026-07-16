@@ -510,18 +510,26 @@ const RashguardConfiguratorInner = memo(() => {
           cloudOwnerContext,
           RASHGUARD_PRODUCT_CONFIG,
         );
-        if (cloudResult) {
-          lineDesignId = cloudResult.draft.id;
-          setCurrentDesignId(cloudResult.draft.id);
-          const urls = buildRashguardCloudDesignUrls(
-            cloudResult.draft.id,
-            RASHGUARD_PRODUCT_CONFIG,
-          );
-          designUrl = cloudResult.designUrl ?? urls?.designUrl;
-          productionUrl = cloudResult.productionUrl ?? urls?.productionUrl;
+        if (!cloudResult) {
+          throw new Error('Design record was not saved.');
         }
+        lineDesignId = cloudResult.draft.id;
+        setCurrentDesignId(cloudResult.draft.id);
+        const urls = buildRashguardCloudDesignUrls(
+          cloudResult.draft.id,
+          RASHGUARD_PRODUCT_CONFIG,
+        );
+        designUrl = cloudResult.designUrl ?? urls?.designUrl;
+        productionUrl = cloudResult.productionUrl ?? urls?.productionUrl;
       } catch (err) {
-        console.warn('[RashguardConfigurator] cloud design save failed', err);
+        // Do NOT sell a design we can't reproduce: without a saved record the
+        // order's Tech Pack / 3D Design links would be dead (matches gi flow).
+        console.error('[RashguardConfigurator] cloud design save failed', err);
+        toast.error('Could not save the production design', {
+          description:
+            'The item was not added to cart because the Tech Pack and 3D Design links would not work.',
+        });
+        return;
       }
 
       const line = buildRashguardCartLine({
