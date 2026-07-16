@@ -9,12 +9,27 @@ import {
 } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls, useProgress } from '@react-three/drei';
-import { Euler, Matrix4, Quaternion, Vector2, Vector3, type Mesh } from 'three';
+import {
+  Color,
+  Euler,
+  Matrix4,
+  PerspectiveCamera,
+  Quaternion,
+  SRGBColorSpace,
+  Vector2,
+  Vector3,
+  WebGLRenderTarget,
+  type Mesh,
+  type Scene as ThreeScene,
+  type WebGLRenderer,
+} from 'three';
 
 import { GiGlbModel } from './gi-glb-model';
 import { useGiState, cameraViewToPosition, cameraViewToTarget } from './gi-state';
 import {
+  CAMERA_POSITIONS,
   CAMERA_TARGET,
+  CAMERA_TARGETS,
   fontCssForBeltFont,
   JACKET_CHEST_ANCHOR,
   KIMONO_LOGO_ANCHORS,
@@ -186,6 +201,98 @@ GiModelClient.displayName = 'GiModelClient';
  * ResizeObserver sometimes misses the initial parent size on TanStack
  * Start's SSR-then-hydrate flow, leaving the WebGL buffer at 300×150.
  */
+function pixelsToDataUrl(buf: Uint8Array, w: number, h: number) {
+  const cv = document.createElement('canvas');
+  cv.width = w;
+  cv.height = h;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return '';
+  const img = ctx.createImageData(w, h);
+  // readRenderTargetPixels is bottom-up; flip rows into a top-down canvas.
+  const rowBytes = w * 4;
+  for (let y = 0; y < h; y++) {
+    const src = (h - 1 - y) * rowBytes;
+    img.data.set(buf.subarray(src, src + rowBytes), y * rowBytes);
+  }
+  ctx.putImageData(img, 0, 0);
+  // JPEG on white ground: photographic renders compress ~50× smaller than PNG.
+  return cv.toDataURL('image/jpeg', 0.95);
+}
+
+export interface GiProductionViews {
+  front: string;
+  back: string;
+  left: string;
+  right: string;
+  leftBeltEnd: string;
+  rightBeltEnd: string;
+  width: number;
+  height: number;
+}
+
+/**
+ * Deterministic production capture: renders every tech-pack view into a
+ * FIXED-SIZE off-screen buffer with explicit render calls, using the same
+ * desktop camera presets + fov as the live view. Output is byte-identical
+ * regardless of window size, visibility, or focus — unlike snapshotting the
+ * visible canvas, which inherits the user's viewport (cropped captures) and
+ * pauses when the window is hidden. 16:9 at fov 42 replicates a correct
+ * desktop framing, so the shared PDF generator (subject-crop for garment
+ * views, fraction-crop for belt-end pages) needs no changes.
+ */
+function captureGiProductionViews(
+  gl: WebGLRenderer,
+  scene: ThreeScene,
+): GiProductionViews | null {
+  const W = 2560;
+  const H = 1440;
+  const cam = new PerspectiveCamera(42, W / H, 0.1, 50);
+  const rt = new WebGLRenderTarget(W, H, { samples: 4 });
+  // Without this the renderer writes LINEAR colour into the target (it only
+  // sRGB-encodes when drawing to the visible canvas) and readback comes out
+  // dark/muddy. Hard-won: see references/color-and-print.
+  rt.texture.colorSpace = SRGBColorSpace;
+
+  const prevRT = gl.getRenderTarget();
+  const prevClear = new Color();
+  gl.getClearColor(prevClear);
+  const prevAlpha = gl.getClearAlpha();
+  gl.setRenderTarget(rt);
+  gl.setClearColor(0xffffff, 1);
+
+  const buf = new Uint8Array(W * H * 4);
+  const shoot = (view: keyof typeof CAMERA_POSITIONS) => {
+    const [px, py, pz] = CAMERA_POSITIONS[view];
+    const [tx, ty, tz] = CAMERA_TARGETS[view];
+    cam.position.set(px, py, pz);
+    cam.up.set(0, 1, 0);
+    cam.lookAt(tx, ty, tz);
+    cam.updateMatrixWorld(true);
+    cam.updateProjectionMatrix();
+    gl.clear();
+    gl.render(scene, cam);
+    gl.readRenderTargetPixels(rt, 0, 0, W, H, buf);
+    return pixelsToDataUrl(buf, W, H);
+  };
+
+  try {
+    return {
+      front: shoot('front'),
+      back: shoot('back'),
+      left: shoot('left'),
+      right: shoot('right'),
+      leftBeltEnd: shoot('left-belt-end'),
+      rightBeltEnd: shoot('right-belt-end'),
+      width: W,
+      height: H,
+    };
+  } finally {
+    gl.setRenderTarget(prevRT);
+    gl.setClearColor(prevClear, prevAlpha);
+    rt.dispose();
+  }
+}
+
 const CanvasBridge = memo(() => {
   const { camera, gl, scene } = useThree();
   const { setCanvasEl } = useGiState();
@@ -197,6 +304,9 @@ const CanvasBridge = memo(() => {
       globals.__giRenderer = gl;
       globals.__giScene = scene;
       globals.__giCamera = camera;
+      // Deterministic tech-pack capture (see captureGiProductionViews).
+      globals.__giCaptureProductionViews = () =>
+        captureGiProductionViews(gl, scene);
     }
     return () => {
       setCanvasEl(null);
@@ -205,6 +315,7 @@ const CanvasBridge = memo(() => {
         delete globals.__giRenderer;
         delete globals.__giScene;
         delete globals.__giCamera;
+        delete globals.__giCaptureProductionViews;
       }
     };
   }, [camera, gl, scene, setCanvasEl]);

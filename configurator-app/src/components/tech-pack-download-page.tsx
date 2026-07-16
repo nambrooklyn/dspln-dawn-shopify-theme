@@ -293,20 +293,73 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         // Wait for every decal texture (logos, belt text) to finish
         // loading/decoding — heavy uploads take longer than any fixed delay.
         await waitForDecalTextures();
-        // Give colors / decals real rendered frames to composite (see
-        // waitForRenderedFrames — wall-clock waits break in hidden windows).
-        await waitForRenderedFrames(30);
 
-        const front = await captureView('front');
-        const back = await captureView('back');
-        const left = await captureView('left');
-        const right = await captureView('right');
-        const leftBeltEnd = spec.belt?.embroidery?.leftEnd?.trim()
-          ? await captureView('left-belt-end')
-          : undefined;
-        const rightBeltEnd = spec.belt?.embroidery?.rightEnd?.trim()
-          ? await captureView('right-belt-end')
-          : undefined;
+        const productionCapture = (
+          window as unknown as {
+            __giCaptureProductionViews?: () => {
+              front: string;
+              back: string;
+              left: string;
+              right: string;
+              leftBeltEnd: string;
+              rightBeltEnd: string;
+            } | null;
+          }
+        ).__giCaptureProductionViews;
+
+        if (typeof productionCapture !== 'function') {
+          // Legacy live-canvas path only: give composites real painted frames
+          // (frame-based so a hidden window pauses instead of corrupting).
+          // The offscreen path doesn't need painted frames — explicit renders
+          // draw the committed scene graph directly, even in a background tab.
+          await waitForRenderedFrames(30);
+        } else {
+          // Let React commit the hydrated decal meshes (timer-based on
+          // purpose: commits don't require the tab to be visible).
+          await delay(300);
+        }
+
+        // Prefer the deterministic fixed-resolution offscreen capture when the
+        // mounted configurator provides it (mens gi). Output is identical
+        // regardless of window size/visibility — no camera animation, no
+        // per-view waits, all six views in one synchronous burst. Configurators
+        // without the bridge (womens/kids, for now) fall back to the legacy
+        // live-canvas capture below.
+        let front: string | undefined;
+        let back: string | undefined;
+        let left: string | undefined;
+        let right: string | undefined;
+        let leftBeltEnd: string | undefined;
+        let rightBeltEnd: string | undefined;
+
+        if (typeof productionCapture === 'function') {
+          const shots = productionCapture();
+          if (shots) {
+            front = shots.front;
+            back = shots.back;
+            left = shots.left;
+            right = shots.right;
+            leftBeltEnd = spec.belt?.embroidery?.leftEnd?.trim()
+              ? shots.leftBeltEnd
+              : undefined;
+            rightBeltEnd = spec.belt?.embroidery?.rightEnd?.trim()
+              ? shots.rightBeltEnd
+              : undefined;
+          }
+        }
+
+        if (!front) {
+          front = await captureView('front');
+          back = await captureView('back');
+          left = await captureView('left');
+          right = await captureView('right');
+          leftBeltEnd = spec.belt?.embroidery?.leftEnd?.trim()
+            ? await captureView('left-belt-end')
+            : undefined;
+          rightBeltEnd = spec.belt?.embroidery?.rightEnd?.trim()
+            ? await captureView('right-belt-end')
+            : undefined;
+        }
 
         if (cancelled) return;
         setStatus('Generating production PDF...');
