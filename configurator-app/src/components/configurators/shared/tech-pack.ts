@@ -613,20 +613,44 @@ async function cropToVisibleSubject(dataUrl: string) {
   );
 
   return {
-    dataUrl: cropCanvas.toDataURL('image/png'),
+    // Photographic render on a white ground: JPEG is ~20-50x smaller than the
+    // PNG this used to emit, at print-indistinguishable quality.
+    dataUrl: cropCanvas.toDataURL('image/jpeg', 0.92),
     width: cropWidth,
     height: cropHeight,
   };
 }
 
+// Static assets (e.g. the point-of-measurement diagrams) ship at absurd
+// source resolution — the kimono POM is 7500px and used to embed ~100MB of
+// raw pixels into EVERY gi tech pack. Bound to the page's true print ceiling.
+const STATIC_ASSET_MAX_PX = 2400;
+
 async function loadTechPackImage(url: string): Promise<TechPackImage> {
   const dataUrl = await loadImageDataUrl(url);
   const image = await loadImage(dataUrl);
-  return {
-    dataUrl,
-    width: image.width,
-    height: image.height,
-  };
+  const sourceMax = Math.max(image.width, image.height);
+  if (!sourceMax) {
+    return { dataUrl, width: image.width, height: image.height };
+  }
+  const scale = Math.min(1, STATIC_ASSET_MAX_PX / sourceMax);
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return { dataUrl, width: image.width, height: image.height };
+  }
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  // Diagrams render on white pages — flatten + JPEG (a transparent PNG is
+  // stored by jsPDF as raw pixels + mask, ~20MB per diagram).
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+  return { dataUrl: canvas.toDataURL('image/jpeg', 0.92), width, height };
 }
 
 async function loadSvgTechPackPage(url: string): Promise<TechPackImage> {
@@ -648,7 +672,8 @@ async function loadSvgTechPackPage(url: string): Promise<TechPackImage> {
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
   return {
-    dataUrl: canvas.toDataURL('image/png'),
+    // White-filled page render: JPEG, massively smaller than PNG.
+    dataUrl: canvas.toDataURL('image/jpeg', 0.92),
     width: canvas.width,
     height: canvas.height,
   };
@@ -692,7 +717,8 @@ async function cropTechPackImage(image: TechPackImage, region: CropRegion) {
   );
 
   return {
-    dataUrl: canvas.toDataURL('image/png'),
+    // Crops of photographic renders: JPEG (see cropToVisibleSubject).
+    dataUrl: canvas.toDataURL('image/jpeg', 0.92),
     width: cropWidth,
     height: cropHeight,
   };
@@ -783,9 +809,17 @@ async function resampleLogoForPrint(
     const sourceMax = Math.max(image.naturalWidth, image.naturalHeight);
     if (!sourceMax) return logo;
     if (sourceMax <= maxPx) {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext('2d');
+      if (!context) return { ...logo, imageUrl: dataUrl };
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
       return {
         ...logo,
-        imageUrl: dataUrl,
+        imageUrl: canvas.toDataURL('image/jpeg', 0.92),
         imageWidth: image.naturalWidth,
         imageHeight: image.naturalHeight,
       };
@@ -798,11 +832,15 @@ async function resampleLogoForPrint(
     canvas.height = height;
     const context = canvas.getContext('2d');
     if (!context) return logo;
-    context.clearRect(0, 0, width, height);
+    // Flatten onto white + JPEG: every tech-pack surface draws artwork on a
+    // white box, so this is visually identical on the page — while a PNG with
+    // an alpha channel is stored by jsPDF as raw pixels + a separate mask
+    // (a 3000px logo ballooned to ~34MB inside the PDF). The design record
+    // keeps the original transparent file; this only affects the PDF embed.
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
-    const output = contextHasTransparency(context, width, height)
-      ? canvas.toDataURL('image/png')
-      : canvas.toDataURL('image/jpeg', 0.92);
+    const output = canvas.toDataURL('image/jpeg', 0.92);
     return { ...logo, imageUrl: output, imageWidth: width, imageHeight: height };
   } catch {
     return logo;
