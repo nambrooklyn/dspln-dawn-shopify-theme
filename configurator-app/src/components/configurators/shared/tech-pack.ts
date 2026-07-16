@@ -28,7 +28,7 @@ interface GenerateGiTechPackInput {
   orderNumber?: string;
   productName?: string;
   includeSizeMeasurements?: boolean;
-  outputMode?: 'download' | 'blob-url';
+  outputMode?: 'download' | 'blob';
   /** Kids model proportions differ — shifts the thigh placement crop. */
   kidsProportions?: boolean;
 }
@@ -589,16 +589,27 @@ async function cropToVisibleSubject(dataUrl: string) {
   const cropWidth = Math.min(image.width - cropX, subjectWidth + padding * 2);
   const cropHeight = Math.min(image.height - cropY, subjectHeight + padding * 2);
 
+  // A letter-size production page does not benefit from the original 4K
+  // WebGL capture. Keeping those PNGs made a single tech pack exceed 100 MB,
+  // which is slow to display and impractical to persist with the order.
+  const maxDimension = 1800;
+  const outputScale = Math.min(
+    1,
+    maxDimension / Math.max(cropWidth, cropHeight),
+  );
+  const outputWidth = Math.max(1, Math.round(cropWidth * outputScale));
+  const outputHeight = Math.max(1, Math.round(cropHeight * outputScale));
   const cropCanvas = document.createElement('canvas');
-  cropCanvas.width = cropWidth;
-  cropCanvas.height = cropHeight;
+  cropCanvas.width = outputWidth;
+  cropCanvas.height = outputHeight;
   const cropContext = cropCanvas.getContext('2d');
 
   if (!cropContext) {
     return { dataUrl, width: image.width, height: image.height };
   }
 
-  cropContext.clearRect(0, 0, cropWidth, cropHeight);
+  cropContext.fillStyle = '#ffffff';
+  cropContext.fillRect(0, 0, outputWidth, outputHeight);
   cropContext.imageSmoothingEnabled = true;
   cropContext.imageSmoothingQuality = 'high';
   cropContext.drawImage(
@@ -609,25 +620,77 @@ async function cropToVisibleSubject(dataUrl: string) {
     cropHeight,
     0,
     0,
-    cropWidth,
-    cropHeight,
+    outputWidth,
+    outputHeight,
   );
 
   return {
-    dataUrl: cropCanvas.toDataURL('image/png'),
-    width: cropWidth,
-    height: cropHeight,
+    dataUrl: cropCanvas.toDataURL('image/jpeg', 0.88),
+    width: outputWidth,
+    height: outputHeight,
   };
 }
 
 async function loadTechPackImage(url: string): Promise<TechPackImage> {
   const dataUrl = await loadImageDataUrl(url);
   const image = await loadImage(dataUrl);
+  const maxDimension = 1200;
+  const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) return { dataUrl, width: image.width, height: image.height };
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, 0, 0, width, height);
   return {
-    dataUrl,
-    width: image.width,
-    height: image.height,
+    dataUrl: canvas.toDataURL('image/png'),
+    width,
+    height,
   };
+}
+
+async function compactLogoForPdf(logo: KimonoLogo): Promise<KimonoLogo> {
+  try {
+    const dataUrl = logo.imageUrl.startsWith('data:')
+      ? logo.imageUrl
+      : await loadImageDataUrl(logo.imageUrl);
+    const image = await loadImage(dataUrl);
+    const maxDimension = 1000;
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) return logo;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, 0, 0, width, height);
+    return {
+      ...logo,
+      imageUrl: canvas.toDataURL('image/png'),
+      imageWidth: width,
+      imageHeight: height,
+    };
+  } catch {
+    return logo;
+  }
+}
+
+async function compactLogoMap<TSlot extends string>(
+  logos?: Partial<Record<TSlot, KimonoLogo>>,
+) {
+  const entries = await Promise.all(
+    (Object.entries(logos ?? {}) as [TSlot, KimonoLogo][]).map(
+      async ([slot, logo]) => [slot, await compactLogoForPdf(logo)] as const,
+    ),
+  );
+  return Object.fromEntries(entries) as Partial<Record<TSlot, KimonoLogo>>;
 }
 
 async function loadSvgTechPackPage(url: string): Promise<TechPackImage> {
@@ -649,7 +712,7 @@ async function loadSvgTechPackPage(url: string): Promise<TechPackImage> {
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
   return {
-    dataUrl: canvas.toDataURL('image/png'),
+    dataUrl: canvas.toDataURL('image/jpeg', 0.9),
     width: canvas.width,
     height: canvas.height,
   };
@@ -668,16 +731,24 @@ async function cropTechPackImage(image: TechPackImage, region: CropRegion) {
     Math.round(source.height * region.height),
   );
 
+  const maxDimension = 1600;
+  const outputScale = Math.min(
+    1,
+    maxDimension / Math.max(cropWidth, cropHeight),
+  );
+  const outputWidth = Math.max(1, Math.round(cropWidth * outputScale));
+  const outputHeight = Math.max(1, Math.round(cropHeight * outputScale));
   const canvas = document.createElement('canvas');
-  canvas.width = cropWidth;
-  canvas.height = cropHeight;
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
   const context = canvas.getContext('2d');
 
   if (!context || cropWidth <= 0 || cropHeight <= 0) {
     return image;
   }
 
-  context.clearRect(0, 0, cropWidth, cropHeight);
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, outputWidth, outputHeight);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = 'high';
   context.drawImage(
@@ -688,14 +759,14 @@ async function cropTechPackImage(image: TechPackImage, region: CropRegion) {
     cropHeight,
     0,
     0,
-    cropWidth,
-    cropHeight,
+    outputWidth,
+    outputHeight,
   );
 
   return {
-    dataUrl: canvas.toDataURL('image/png'),
-    width: cropWidth,
-    height: cropHeight,
+    dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+    width: outputWidth,
+    height: outputHeight,
   };
 }
 
@@ -710,7 +781,8 @@ function addImageFit(
   const x = box.x + (box.width - width) / 2;
   const y = box.y + (box.height - height) / 2;
 
-  pdf.addImage(image.dataUrl, 'PNG', x, y, width, height);
+  const format = image.dataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+  pdf.addImage(image.dataUrl, format, x, y, width, height, undefined, 'FAST');
 }
 
 function renderBeltTextArtwork({
@@ -1734,6 +1806,7 @@ export async function generateGiTechPackPageOne({
     orientation: 'portrait',
     unit: 'pt',
     format: 'letter',
+    compress: true,
   });
   const [
     logoDataUrl,
@@ -1751,6 +1824,10 @@ export async function generateGiTechPackPageOne({
     rightSideDataUrl ? cropToVisibleSubject(rightSideDataUrl) : null,
     leftBeltEndDataUrl ? cropToVisibleSubject(leftBeltEndDataUrl) : null,
     rightBeltEndDataUrl ? cropToVisibleSubject(rightBeltEndDataUrl) : null,
+  ]);
+  const [pdfKimonoLogos, pdfPantLogos] = await Promise.all([
+    compactLogoMap(kimonoLogos),
+    compactLogoMap(pantLogos),
   ]);
   const shipDate = new Date(orderDate);
   shipDate.setDate(shipDate.getDate() + 7);
@@ -1834,8 +1911,8 @@ export async function generateGiTechPackPageOne({
     shipDate,
     orderNumber,
     spec,
-    kimonoLogos,
-    pantLogos,
+    kimonoLogos: pdfKimonoLogos,
+    pantLogos: pdfPantLogos,
   });
 
   if (includeSizeMeasurements) {
@@ -1858,8 +1935,8 @@ export async function generateGiTechPackPageOne({
   });
 
   const placementPages = logoPlacementPages({
-    kimonoLogos,
-    pantLogos,
+    kimonoLogos: pdfKimonoLogos,
+    pantLogos: pdfPantLogos,
     frontImage,
     backImage,
     leftImage,
@@ -1899,8 +1976,8 @@ export async function generateGiTechPackPageOne({
     productName,
     'gi',
   )}.pdf`;
-  if (outputMode === 'blob-url') {
-    return URL.createObjectURL(pdf.output('blob'));
+  if (outputMode === 'blob') {
+    return { blob: pdf.output('blob'), fileName };
   }
   pdf.save(fileName);
   return undefined;
