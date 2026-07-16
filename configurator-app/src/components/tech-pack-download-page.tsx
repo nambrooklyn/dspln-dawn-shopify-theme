@@ -93,18 +93,22 @@ function storedTechPackUrl(id: string, part?: number) {
 
 async function findStoredTechPack(id: string) {
   const url = storedTechPackUrl(id);
-  const response = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-  const contentType = response.headers.get('content-type') ?? '';
-  const parts = Number(response.headers.get('x-dspln-tech-pack-parts'));
-  if (!response.ok || !contentType.includes('application/pdf') || parts < 1) {
-    return null;
-  }
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+  if (!response.ok) return null;
+  const metadata = (await response.json()) as {
+    id?: string;
+    parts?: number;
+    filename?: string;
+  };
+  const parts = Number(metadata.parts);
+  if (metadata.id !== id || !Number.isInteger(parts) || parts < 1) return null;
   return {
     id,
     parts,
-    filename:
-      response.headers.get('x-dspln-tech-pack-filename') ||
-      `${id}_tech-pack.pdf`,
+    filename: metadata.filename || `${id}_tech-pack.pdf`,
   } satisfies StoredTechPackRecord;
 }
 
