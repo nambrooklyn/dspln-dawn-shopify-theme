@@ -248,11 +248,11 @@ function keepSurfaceIsland(
 // windowDecalsPending() until it hits zero before capturing.
 let pendingDecalTextures = 0;
 
-function decalLoadStarted() {
+export function decalLoadStarted() {
   pendingDecalTextures += 1;
 }
 
-function decalLoadSettled() {
+export function decalLoadSettled() {
   pendingDecalTextures = Math.max(0, pendingDecalTextures - 1);
 }
 

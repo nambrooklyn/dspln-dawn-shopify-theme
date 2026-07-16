@@ -745,6 +745,89 @@ function renderBeltTextArtwork({
   };
 }
 
+/** Sampled alpha check — opaque artwork can embed as JPEG (~10-50x smaller). */
+function contextHasTransparency(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+): boolean {
+  try {
+    const data = context.getImageData(0, 0, width, height).data;
+    for (let i = 3; i < data.length; i += 4 * 64) {
+      if (data[i] < 250) return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Resample a logo to its placement's print ceiling (300 DPI at the largest
+ * printed dimension for that slot). jsPDF embeds the SOURCE image bytes no
+ * matter how small it is drawn on the page, so oversized uploads used to ride
+ * into the tech pack at full weight — the main driver of 100MB+ art files.
+ * Opaque artwork re-encodes as JPEG; transparency stays PNG. Also inlines
+ * remote (CDN) logo URLs as data URLs so every page can embed them.
+ */
+async function resampleLogoForPrint(
+  logo: KimonoLogo,
+  maxPx: number,
+): Promise<KimonoLogo> {
+  try {
+    if (!logo.imageUrl) return logo;
+    const dataUrl = logo.imageUrl.startsWith('data:')
+      ? logo.imageUrl
+      : await loadImageDataUrl(logo.imageUrl);
+    const image = await loadImage(dataUrl);
+    const sourceMax = Math.max(image.naturalWidth, image.naturalHeight);
+    if (!sourceMax) return logo;
+    if (sourceMax <= maxPx) {
+      return {
+        ...logo,
+        imageUrl: dataUrl,
+        imageWidth: image.naturalWidth,
+        imageHeight: image.naturalHeight,
+      };
+    }
+    const scale = maxPx / sourceMax;
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) return logo;
+    context.clearRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    const output = contextHasTransparency(context, width, height)
+      ? canvas.toDataURL('image/png')
+      : canvas.toDataURL('image/jpeg', 0.92);
+    return { ...logo, imageUrl: output, imageWidth: width, imageHeight: height };
+  } catch {
+    return logo;
+  }
+}
+
+async function resampleLogosForPrint<TSlot extends string>(
+  logos: Partial<Record<TSlot, KimonoLogo>> | undefined,
+  maxPxForSlot: (slot: TSlot) => number,
+): Promise<Partial<Record<TSlot, KimonoLogo>> | undefined> {
+  if (!logos) return logos;
+  const entries = await Promise.all(
+    (Object.entries(logos) as [TSlot, KimonoLogo | undefined][]).map(
+      async ([slot, logo]) => {
+        if (!logo) return null;
+        return [slot, await resampleLogoForPrint(logo, maxPxForSlot(slot))] as const;
+      },
+    ),
+  );
+  return entries.reduce<Partial<Record<TSlot, KimonoLogo>>>((acc, entry) => {
+    if (entry) acc[entry[0]] = entry[1];
+    return acc;
+  }, {});
+}
+
 function logoImage(logo: KimonoLogo): TechPackImage {
   return {
     dataUrl: logo.imageUrl,
@@ -1720,14 +1803,26 @@ export async function generateGiTechPackPageOne({
   rightSideDataUrl,
   leftBeltEndDataUrl,
   rightBeltEndDataUrl,
-  kimonoLogos,
-  pantLogos,
+  kimonoLogos: kimonoLogosInput,
+  pantLogos: pantLogosInput,
   orderDate = new Date(),
   orderNumber = buildOrderNumber(orderDate),
   productName = 'gi',
   includeSizeMeasurements = true,
   kidsProportions = false,
 }: GenerateGiTechPackInput) {
+  // PDF diet: right-size every logo to its placement's print ceiling before
+  // any page embeds it. The back logo prints up to 10in (3000px at 300 DPI);
+  // chest/sleeve/thigh placements print at 4in (1200px). jsPDF de-duplicates
+  // identical images across pages, so each logo is embedded once, at print
+  // resolution, instead of at raw upload weight on every page.
+  const [kimonoLogos, pantLogos] = await Promise.all([
+    resampleLogosForPrint(kimonoLogosInput, (slot) =>
+      slot === 'back' ? 3000 : 1200,
+    ),
+    resampleLogosForPrint(pantLogosInput, () => 1200),
+  ]);
+
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'pt',
