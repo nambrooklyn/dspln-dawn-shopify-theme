@@ -86,7 +86,7 @@ function withUrls(request, index) {
 }
 
 async function handlePost(request) {
-  const store = getStore(STORE_NAME);
+  const store = getStore({ name: STORE_NAME, consistency: 'strong' });
   let payload;
   try {
     payload = await request.json();
@@ -212,7 +212,7 @@ export default async (request) => {
     if (request.method === 'POST') return handlePost(request);
 
     if (request.method === 'GET') {
-      const store = getStore(STORE_NAME);
+      const store = getStore({ name: STORE_NAME, consistency: 'strong' });
       const url = new URL(request.url);
 
       if (url.searchParams.get('list') === '1') {
