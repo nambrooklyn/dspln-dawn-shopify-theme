@@ -28,6 +28,7 @@ interface GenerateGiTechPackInput {
   orderNumber?: string;
   productName?: string;
   includeSizeMeasurements?: boolean;
+  outputMode?: 'download' | 'blob-url';
   /** Kids model proportions differ — shifts the thigh placement crop. */
   kidsProportions?: boolean;
 }
@@ -1726,6 +1727,7 @@ export async function generateGiTechPackPageOne({
   orderNumber = buildOrderNumber(orderDate),
   productName = 'gi',
   includeSizeMeasurements = true,
+  outputMode = 'download',
   kidsProportions = false,
 }: GenerateGiTechPackInput) {
   const pdf = new jsPDF({
@@ -1897,5 +1899,9 @@ export async function generateGiTechPackPageOne({
     productName,
     'gi',
   )}.pdf`;
+  if (outputMode === 'blob-url') {
+    return URL.createObjectURL(pdf.output('blob'));
+  }
   pdf.save(fileName);
+  return undefined;
 }

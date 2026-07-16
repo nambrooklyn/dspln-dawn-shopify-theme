@@ -240,10 +240,16 @@ function preloadImage(url: string, timeoutMs = 10000) {
  * Nothing is pre-rendered at add-to-cart.
  */
 function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
+  const embedMode =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('embed') === '1';
   const [status, setStatus] = useState(
-    'Rendering production views — keep this window visible until the PDF downloads...',
+    embedMode
+      ? 'Rendering production views — the complete Tech Pack will appear here...'
+      : 'Rendering production views — keep this window visible until the PDF downloads...',
   );
   const [error, setError] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const startedRef = useRef(false);
   // Hold the driver in a ref so the run effect does NOT depend on the state
   // object's identity. hydrate() triggers state updates that change `driver`'s
@@ -257,6 +263,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
     if (startedRef.current) return;
     startedRef.current = true;
     let cancelled = false;
+    let generatedPdfUrl: string | undefined;
 
     async function captureView(view: CameraView) {
       driverRef.current.setCameraView(view);
@@ -311,7 +318,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         if (cancelled) return;
         setStatus('Generating production PDF...');
 
-        await generateGiTechPackPageOne({
+        generatedPdfUrl = await generateGiTechPackPageOne({
           spec,
           frontDataUrl: front ?? design.thumbnailUrl ?? '',
           backDataUrl: back ?? front ?? '',
@@ -325,12 +332,18 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           productName: productNameForSource(design.configData?.source),
           includeSizeMeasurements:
             design.configData?.source !== 'dspln-kids-gi-configurator',
+          outputMode: embedMode ? 'blob-url' : 'download',
           kidsProportions:
             design.configData?.source === 'dspln-kids-gi-configurator',
         });
 
         if (!cancelled) {
-          setStatus('Tech pack PDF generated. Check your downloads.');
+          if (generatedPdfUrl) setPdfUrl(generatedPdfUrl);
+          setStatus(
+            embedMode
+              ? 'Tech Pack ready.'
+              : 'Tech pack PDF generated. Check your downloads.',
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -342,23 +355,37 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
     run();
     return () => {
       cancelled = true;
+      if (generatedPdfUrl) URL.revokeObjectURL(generatedPdfUrl);
     };
     // Intentionally depends only on `design` (stable once loaded). `driver` is
     // read through driverRef so its changing identity can't cancel the run.
-  }, [design]);
+  }, [design, embedMode]);
 
-  return { status, error };
+  return { status, error, pdfUrl };
 }
 
 function TechPackFrame({
   status,
   error,
+  pdfUrl,
   children,
 }: {
   status: string;
   error: string | null;
+  pdfUrl: string | null;
   children: ReactNode;
 }) {
+  if (pdfUrl) {
+    return (
+      <main className="h-screen min-h-[760px] bg-[#e8e8e4]">
+        <iframe
+          className="h-full w-full border-0"
+          src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`}
+          title="DSPLN production Tech Pack PDF"
+        />
+      </main>
+    );
+  }
   return (
     <main className="relative min-h-screen bg-white">
       {/* The live 3D scene must actually render (WebGL) to be captured, so it
@@ -380,9 +407,9 @@ function TechPackFrame({
 
 function MensTechPack({ design }: { design: SavedDesignRecord }) {
   const driver = useMensState() as unknown as TechPackDriver;
-  const { status, error } = useTechPackRun(design, driver);
+  const { status, error, pdfUrl } = useTechPackRun(design, driver);
   return (
-    <TechPackFrame status={status} error={error}>
+    <TechPackFrame status={status} error={error} pdfUrl={pdfUrl}>
       <MensCanvas />
     </TechPackFrame>
   );
@@ -390,9 +417,9 @@ function MensTechPack({ design }: { design: SavedDesignRecord }) {
 
 function WomensTechPack({ design }: { design: SavedDesignRecord }) {
   const driver = useWomensState() as unknown as TechPackDriver;
-  const { status, error } = useTechPackRun(design, driver);
+  const { status, error, pdfUrl } = useTechPackRun(design, driver);
   return (
-    <TechPackFrame status={status} error={error}>
+    <TechPackFrame status={status} error={error} pdfUrl={pdfUrl}>
       <WomensCanvas />
     </TechPackFrame>
   );
@@ -400,9 +427,9 @@ function WomensTechPack({ design }: { design: SavedDesignRecord }) {
 
 function KidsTechPack({ design }: { design: SavedDesignRecord }) {
   const driver = useKidsState() as unknown as TechPackDriver;
-  const { status, error } = useTechPackRun(design, driver);
+  const { status, error, pdfUrl } = useTechPackRun(design, driver);
   return (
-    <TechPackFrame status={status} error={error}>
+    <TechPackFrame status={status} error={error} pdfUrl={pdfUrl}>
       <KidsCanvas />
     </TechPackFrame>
   );
