@@ -39,13 +39,11 @@ type SavedDesignRecord = {
   id: string;
   name?: string;
   thumbnailUrl?: string | null;
-  createdAt?: string;
   // Stamped onto the record by the Shopify order webhook once the order is
   // placed (e.g. orderName "#1042"). Absent for pre-webhook / unpurchased
   // designs, in which case we fall back to the design id.
   orderName?: string;
   orderNumber?: number | string;
-  orderCreatedAt?: string;
   configData?: {
     source?: string;
     spec?: GiSerializedState;
@@ -74,93 +72,6 @@ function apiDesignUrl(id: string) {
   const url = new URL('/api/customer-designs', window.location.origin);
   url.searchParams.set('id', id);
   return url;
-}
-
-type StoredTechPackRecord = {
-  id: string;
-  parts: number;
-  filename: string;
-};
-
-const TECH_PACK_CHUNK_BYTES = 3_500_000;
-
-function storedTechPackUrl(id: string, part?: number) {
-  const url = new URL('/api/tech-pack-pdf', window.location.origin);
-  url.searchParams.set('id', id);
-  if (part != null) url.searchParams.set('part', String(part));
-  return url.toString();
-}
-
-async function findStoredTechPack(id: string) {
-  const url = storedTechPackUrl(id);
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-  });
-  if (!response.ok) return null;
-  const metadata = (await response.json()) as {
-    id?: string;
-    parts?: number;
-    filename?: string;
-  };
-  const parts = Number(metadata.parts);
-  if (metadata.id !== id || !Number.isInteger(parts) || parts < 1) return null;
-  return {
-    id,
-    parts,
-    filename: metadata.filename || `${id}_tech-pack.pdf`,
-  } satisfies StoredTechPackRecord;
-}
-
-async function loadStoredTechPack(record: StoredTechPackRecord) {
-  const chunks = await Promise.all(
-    Array.from({ length: record.parts }, async (_, part) => {
-      const response = await fetch(storedTechPackUrl(record.id, part));
-      if (!response.ok) throw new Error(`Saved Tech Pack part ${part + 1} failed.`);
-      return response.arrayBuffer();
-    }),
-  );
-  return new Blob(chunks, { type: 'application/pdf' });
-}
-
-async function persistTechPack(
-  id: string,
-  generated: { blob: Blob; fileName: string },
-  replace = false,
-) {
-  const uploadId = crypto.randomUUID();
-  const parts = Math.ceil(generated.blob.size / TECH_PACK_CHUNK_BYTES);
-
-  for (let part = 0; part < parts; part += 1) {
-    const chunk = generated.blob.slice(
-      part * TECH_PACK_CHUNK_BYTES,
-      Math.min((part + 1) * TECH_PACK_CHUNK_BYTES, generated.blob.size),
-      'application/octet-stream',
-    );
-    const url = new URL(storedTechPackUrl(id));
-    url.searchParams.set('mode', 'chunk');
-    url.searchParams.set('upload', uploadId);
-    url.searchParams.set('part', String(part));
-    url.searchParams.set('parts', String(parts));
-    if (replace) url.searchParams.set('replace', '1');
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: chunk,
-    });
-    if (!response.ok) throw new Error(await response.text());
-  }
-
-  const url = new URL(storedTechPackUrl(id));
-  url.searchParams.set('mode', 'complete');
-  if (replace) url.searchParams.set('replace', '1');
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ uploadId, parts, filename: generated.fileName }),
-  });
-  if (!response.ok) throw new Error(await response.text());
-  return (await response.json()) as StoredTechPackRecord;
 }
 
 function savedImageToLogo(image?: SavedLogoImage): KimonoLogo | undefined {
@@ -199,13 +110,6 @@ function orderNumberForRecord(design: SavedDesignRecord) {
     (design.orderNumber != null ? String(design.orderNumber) : '') ||
     orderNumberForDesign(design.id)
   );
-}
-
-function orderDateForRecord(design: SavedDesignRecord) {
-  const value = design.orderCreatedAt || design.createdAt;
-  if (!value) return new Date();
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
 // Product name used in the download filename, by garment family.
@@ -336,21 +240,10 @@ function preloadImage(url: string, timeoutMs = 10000) {
  * Nothing is pre-rendered at add-to-cart.
  */
 function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
-  const embedMode =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('embed') === '1';
-  const regenerateMode =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('regenerate') === '1';
   const [status, setStatus] = useState(
-    regenerateMode
-      ? 'Regenerating production views — keep this page open...'
-      : embedMode
-      ? 'Rendering production views — the complete Tech Pack will appear here...'
-      : 'Rendering production views — keep this window visible until the PDF downloads...',
+    'Rendering production views — keep this window visible until the PDF downloads...',
   );
   const [error, setError] = useState<string | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const startedRef = useRef(false);
   // Hold the driver in a ref so the run effect does NOT depend on the state
   // object's identity. hydrate() triggers state updates that change `driver`'s
@@ -364,7 +257,6 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
     if (startedRef.current) return;
     startedRef.current = true;
     let cancelled = false;
-    let generatedPdfUrl: string | undefined;
 
     async function captureView(view: CameraView) {
       driverRef.current.setCameraView(view);
@@ -419,7 +311,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         if (cancelled) return;
         setStatus('Generating production PDF...');
 
-        const generated = await generateGiTechPackPageOne({
+        await generateGiTechPackPageOne({
           spec,
           frontDataUrl: front ?? design.thumbnailUrl ?? '',
           backDataUrl: back ?? front ?? '',
@@ -429,44 +321,16 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           rightBeltEndDataUrl: rightBeltEnd,
           kimonoLogos,
           pantLogos,
-          orderDate: orderDateForRecord(design),
           orderNumber: orderNumberForRecord(design),
           productName: productNameForSource(design.configData?.source),
           includeSizeMeasurements:
             design.configData?.source !== 'dspln-kids-gi-configurator',
-          outputMode: 'blob',
           kidsProportions:
             design.configData?.source === 'dspln-kids-gi-configurator',
         });
 
-        if (!generated) throw new Error('The production PDF could not be created.');
-        if (cancelled) return;
-
-        setStatus('Saving the Tech Pack with this order...');
-        let saved = true;
-        try {
-          await persistTechPack(design.id, generated, regenerateMode);
-        } catch (persistError) {
-          // Keep the production page usable if storage is temporarily
-          // unavailable. The local PDF is a fallback for this visit only.
-          console.error('[tech-pack] could not persist PDF', persistError);
-          saved = false;
-        }
-        generatedPdfUrl = URL.createObjectURL(generated.blob);
-
         if (!cancelled) {
-          if (embedMode) {
-            setPdfUrl(generatedPdfUrl);
-            setStatus(saved ? 'Saved Tech Pack ready.' : 'Tech Pack ready.');
-          } else {
-            const link = document.createElement('a');
-            link.href = generatedPdfUrl;
-            link.download = generated.fileName;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setStatus('Saved Tech Pack downloaded.');
-          }
+          setStatus('Tech pack PDF generated. Check your downloads.');
         }
       } catch (err) {
         if (!cancelled) {
@@ -478,37 +342,23 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
     run();
     return () => {
       cancelled = true;
-      if (generatedPdfUrl) URL.revokeObjectURL(generatedPdfUrl);
     };
     // Intentionally depends only on `design` (stable once loaded). `driver` is
     // read through driverRef so its changing identity can't cancel the run.
-  }, [design, embedMode, regenerateMode]);
+  }, [design]);
 
-  return { status, error, pdfUrl };
+  return { status, error };
 }
 
 function TechPackFrame({
   status,
   error,
-  pdfUrl,
   children,
 }: {
   status: string;
   error: string | null;
-  pdfUrl: string | null;
   children: ReactNode;
 }) {
-  if (pdfUrl) {
-    return (
-      <main className="h-screen min-h-[760px] bg-[#e8e8e4]">
-        <iframe
-          className="h-full w-full border-0"
-          src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`}
-          title="DSPLN production Tech Pack PDF"
-        />
-      </main>
-    );
-  }
   return (
     <main className="relative min-h-screen bg-white">
       {/* The live 3D scene must actually render (WebGL) to be captured, so it
@@ -530,9 +380,9 @@ function TechPackFrame({
 
 function MensTechPack({ design }: { design: SavedDesignRecord }) {
   const driver = useMensState() as unknown as TechPackDriver;
-  const { status, error, pdfUrl } = useTechPackRun(design, driver);
+  const { status, error } = useTechPackRun(design, driver);
   return (
-    <TechPackFrame status={status} error={error} pdfUrl={pdfUrl}>
+    <TechPackFrame status={status} error={error}>
       <MensCanvas />
     </TechPackFrame>
   );
@@ -540,9 +390,9 @@ function MensTechPack({ design }: { design: SavedDesignRecord }) {
 
 function WomensTechPack({ design }: { design: SavedDesignRecord }) {
   const driver = useWomensState() as unknown as TechPackDriver;
-  const { status, error, pdfUrl } = useTechPackRun(design, driver);
+  const { status, error } = useTechPackRun(design, driver);
   return (
-    <TechPackFrame status={status} error={error} pdfUrl={pdfUrl}>
+    <TechPackFrame status={status} error={error}>
       <WomensCanvas />
     </TechPackFrame>
   );
@@ -550,9 +400,9 @@ function WomensTechPack({ design }: { design: SavedDesignRecord }) {
 
 function KidsTechPack({ design }: { design: SavedDesignRecord }) {
   const driver = useKidsState() as unknown as TechPackDriver;
-  const { status, error, pdfUrl } = useTechPackRun(design, driver);
+  const { status, error } = useTechPackRun(design, driver);
   return (
-    <TechPackFrame status={status} error={error} pdfUrl={pdfUrl}>
+    <TechPackFrame status={status} error={error}>
       <KidsCanvas />
     </TechPackFrame>
   );
@@ -571,63 +421,6 @@ function StatusScreen({ message }: { message: string }) {
   );
 }
 
-function StoredTechPackDocument({
-  record,
-  embedMode,
-}: {
-  record: StoredTechPackRecord;
-  embedMode: boolean;
-}) {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    loadStoredTechPack(record)
-      .then((blob) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        if (embedMode) {
-          setPdfUrl(objectUrl);
-          return;
-        }
-        const link = document.createElement('a');
-        link.href = objectUrl;
-        link.download = record.filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      })
-      .catch((loadError) => {
-        if (!cancelled) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : 'The saved Tech Pack could not be loaded.',
-          );
-        }
-      });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [embedMode, record]);
-
-  if (error) return <StatusScreen message={error} />;
-  if (!pdfUrl) return <StatusScreen message="Opening saved Tech Pack..." />;
-
-  return (
-    <main className="h-screen min-h-[760px] bg-[#e8e8e4]">
-      <iframe
-        className="h-full w-full border-0"
-        src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`}
-        title="DSPLN saved production Tech Pack PDF"
-      />
-    </main>
-  );
-}
-
 export function TechPackDownloadPage() {
   const id =
     typeof window !== 'undefined'
@@ -635,38 +428,9 @@ export function TechPackDownloadPage() {
       : null;
   const [design, setDesign] = useState<SavedDesignRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [storedPdf, setStoredPdf] = useState<{
-    checked: boolean;
-    record: StoredTechPackRecord | null;
-  }>({ checked: false, record: null });
-  const embedMode =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('embed') === '1';
-  const regenerateMode =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('regenerate') === '1';
 
   useEffect(() => {
     if (!id) return;
-    if (regenerateMode) {
-      setStoredPdf({ checked: true, record: null });
-      return;
-    }
-    let cancelled = false;
-    findStoredTechPack(id)
-      .then((record) => {
-        if (!cancelled) setStoredPdf({ checked: true, record });
-      })
-      .catch(() => {
-        if (!cancelled) setStoredPdf({ checked: true, record: null });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id, regenerateMode]);
-
-  useEffect(() => {
-    if (!id || !storedPdf.checked || storedPdf.record) return;
     let cancelled = false;
 
     (async () => {
@@ -708,20 +472,9 @@ export function TechPackDownloadPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, storedPdf.checked, storedPdf.record]);
+  }, [id]);
 
   if (!id) return <StatusScreen message="Missing design id." />;
-  if (!storedPdf.checked) {
-    return <StatusScreen message="Checking for the saved Tech Pack..." />;
-  }
-  if (storedPdf.record) {
-    return (
-      <StoredTechPackDocument
-        record={storedPdf.record}
-        embedMode={embedMode}
-      />
-    );
-  }
   if (error) return <StatusScreen message={error} />;
   if (!design) return <StatusScreen message="Loading saved design..." />;
 
