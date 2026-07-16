@@ -3,12 +3,15 @@ import {
   Check,
   Clock3,
   ImageIcon,
+  Link2,
   LogIn,
   RotateCcw,
   Save,
   Trash2,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { currentGiProductConfig } from '../shared/gi-product-config';
 
 import type { GiDraftDocument } from './gi-draft-storage';
 import {
@@ -65,12 +68,30 @@ const KIMONO_UPLOAD_LABEL: Record<KimonoLogoSlot, string> = {
   'left-sleeve': 'Left Sleeve',
   'right-sleeve': 'Right Sleeve',
   back: 'Back',
+  'back-skirt': 'Below Belt (Back)',
 };
 
 const PANT_UPLOAD_LABEL: Record<PantLogoSlot, string> = {
   'left-pant': 'Left Thigh',
   'right-pant': 'Right Thigh',
 };
+
+/**
+ * Build the customer-facing share URL for a saved design and copy it.
+ * Anyone opening the link sees the design loaded on the product page and
+ * can add it to cart and check out.
+ */
+async function copyShareLink(designId: string) {
+  const url = new URL(currentGiProductConfig().shopifyProductUrl);
+  url.searchParams.set('design', designId);
+  const link = url.toString();
+  try {
+    await navigator.clipboard.writeText(link);
+    toast.success('Share link copied — send it to your customer');
+  } catch {
+    window.prompt('Copy this share link', link);
+  }
+}
 
 export const SavedDesignsRail = memo(
   ({
@@ -87,6 +108,7 @@ export const SavedDesignsRail = memo(
     onSaveDesign,
     onLoadDesign,
     onDeleteDesign,
+    onCopyCustomerLink,
     onApplyKimonoLogo,
     onApplyPantLogo,
     currentKimonoLogos,
@@ -105,6 +127,7 @@ export const SavedDesignsRail = memo(
     onSaveDesign: (name: string) => void;
     onLoadDesign: (design: GiDraftDocument) => void;
     onDeleteDesign: (id: string) => void;
+    onCopyCustomerLink?: (design: GiDraftDocument) => void;
     onApplyKimonoLogo?: (slot: KimonoLogoSlot, logo: KimonoLogo) => void;
     onApplyPantLogo?: (slot: PantLogoSlot, logo: KimonoLogo) => void;
     currentKimonoLogos?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
@@ -461,6 +484,22 @@ export const SavedDesignsRail = memo(
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
                               Load
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                // The prop handler verifies the design
+                                // exists in the cloud before copying;
+                                // the plain share link is the fallback.
+                                onCopyCustomerLink
+                                  ? onCopyCustomerLink(design)
+                                  : copyShareLink(design.id)
+                              }
+                              title="Copy the customer link for this design"
+                              className="border-border hover:bg-muted flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium"
+                            >
+                              <Link2 className="h-3.5 w-3.5" />
+                              Copy Link
                             </button>
                             <button
                               type="button"

@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { FolderHeart, HelpCircle, ImageIcon, LogIn } from 'lucide-react';
+import { isStudioMode } from '../shared/studio-mode';
 
 import { openStorefrontPage } from '../shared/storefront-links';
 
@@ -19,25 +20,22 @@ export const RashguardActionRail = memo(
   ({ onLoginToSave }: { onLoginToSave?: () => void }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
-        <button
-          type="button"
-          className={railButtonClass}
-          onClick={onLoginToSave}
-          title="Log in to save later"
-        >
-          <LogIn className="h-6 w-6 stroke-[1.7]" />
-          <span className="text-[11px] font-medium leading-none">Login</span>
-        </button>
-
-        <button
-          type="button"
-          className={railButtonClass}
-          onClick={() => dispatchRailEvent('dspln:rashguard-rail:saved')}
-          title="Saved designs"
-        >
-          <FolderHeart className="h-6 w-6 stroke-[1.7]" />
-          <span className="text-[11px] font-medium leading-none">Saved</span>
-        </button>
+        {/* Login button hidden until the rashguard account flow ships. */}
+        {/* Save/uploads UI is owner-only (?studio=1) until the
+            account experience ships for customers. */}
+        {isStudioMode() ? (
+          <>
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={() => dispatchRailEvent('dspln:rashguard-rail:saved')}
+            title="Saved designs"
+          >
+            <FolderHeart className="h-6 w-6 stroke-[1.7]" />
+            <span className="text-[11px] font-medium leading-none">Saved</span>
+          </button>
+          </>
+        ) : null}
 
         <button
           type="button"

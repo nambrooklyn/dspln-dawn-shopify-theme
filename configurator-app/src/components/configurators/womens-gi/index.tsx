@@ -56,6 +56,7 @@ import {
   readActiveDesignLink,
   writeActiveDesignLink,
 } from '../shared/active-design-link';
+import { isStudioMode } from '../shared/studio-mode';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS.womens;
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
@@ -686,17 +687,12 @@ const GiConfiguratorInner = memo(() => {
                 Sign Out
               </a>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleLoginToSave}
-              className="text-foreground hover:text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase"
-            >
-              Log In To Save
-            </button>
-          )
+          ) : null
+          // Login entry points are hidden until the account flow ships:
+          // the theme doesn't pass customer identity yet, so the login
+          // round-trip appears broken to customers.
         }
-        railContent={
+        railContent={!isStudioMode() ? undefined :
           <SavedDesignsRail
             status={draftStatus}
             savedDesigns={savedDesigns}

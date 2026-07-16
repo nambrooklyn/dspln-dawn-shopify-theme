@@ -2,6 +2,7 @@ import type { KimonoLogo } from './gi-state';
 import type { GiDraftDocument, GiDraftLogoImage } from './gi-draft-storage';
 import type { KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
+import { shrinkArtworkDataUrl, uploadArtworkImage } from '../shared/preview-upload';
 import { storefrontOrigin } from '../shared/storefront-links';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS.kids;
@@ -9,7 +10,7 @@ const GUEST_TOKEN_STORAGE_KEY = PRODUCT_CONFIG.guestTokenStorageKey;
 const PRODUCT_HANDLE = PRODUCT_CONFIG.shopifyProductHandle;
 
 type CloudLogoImage = Omit<GiDraftLogoImage, 'blob'> & {
-  dataUrl: string;
+  dataUrl?: string;
   shopifyUrl?: string;
 };
 
@@ -156,15 +157,28 @@ async function imagesToCloudImages<TSlot extends string>(
 	    Object.entries(images).map(async ([slot, image]) => {
 	      if (!image) return null;
 	      const draftImage = image as GiDraftLogoImage;
-	      return [
-	        slot,
-	        {
-	          dataUrl: await imageToDataUrl(draftImage),
-	          filename: draftImage.filename,
-	          imageWidth: draftImage.imageWidth,
-	          imageHeight: draftImage.imageHeight,
-	        },
-	      ] as const;
+      const dataUrl = await shrinkArtworkDataUrl(
+        await imageToDataUrl(draftImage),
+      );
+      // Upload the logo separately and store only its URL so the heavy
+      // base64 stays out of the design-record JSON. Logo-heavy saves used to
+      // exceed the request-size limit and block add-to-cart; fall back to the
+      // shrunk base64 only if the upload fails.
+      const uploadedUrl = await uploadArtworkImage(dataUrl);
+      const stored: CloudLogoImage = uploadedUrl
+        ? {
+            shopifyUrl: uploadedUrl,
+            filename: draftImage.filename,
+            imageWidth: draftImage.imageWidth,
+            imageHeight: draftImage.imageHeight,
+          }
+        : {
+            dataUrl,
+            filename: draftImage.filename,
+            imageWidth: draftImage.imageWidth,
+            imageHeight: draftImage.imageHeight,
+          };
+      return [slot, stored] as const;
 	    }),
   );
 
@@ -183,7 +197,9 @@ async function cloudImageToDraftImage(
   image: CloudLogoImage,
 ): Promise<GiDraftLogoImage> {
   return {
-    blob: await dataUrlToBlob(image.dataUrl),
+    blob: image.shopifyUrl || image.dataUrl
+      ? await dataUrlToBlob((image.shopifyUrl ?? image.dataUrl) as string)
+      : new Blob(),
     filename: image.filename,
     imageWidth: image.imageWidth,
     imageHeight: image.imageHeight,

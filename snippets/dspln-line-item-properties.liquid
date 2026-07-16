@@ -47,6 +47,12 @@
           {%- liquid
             assign property_name = property.first | strip
             assign property_value = property.last | strip
+            # Some property values arrive HTML-escaped (e.g. belt text typed
+            # with quotes becomes &quot; / &amp;quot;). Decode those once here
+            # so the single | escape at each output point renders real quotes
+            # instead of a literal &QUOT;. Mirrors the artwork-layer handling.
+            assign property_value = property_value | replace: '&amp;quot;', '"' | replace: '&quot;', '"' | replace: '&amp;#39;', "'" | replace: '&#39;', "'" | replace: '&amp;amp;', '&'
+            assign property_key = property_name | downcase
             assign property_first_char = property_name | slice: 0
             comment
               Customization details ship `_`-prefixed so Shopify checkout hides

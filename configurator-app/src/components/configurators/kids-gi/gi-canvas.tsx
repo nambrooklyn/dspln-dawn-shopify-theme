@@ -724,16 +724,25 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                 heightWorld={decalSize.h * IN_TO_WORLD}
                 depthWorld={
                   slot === 'back'
-                    ? 0.36
+                    ? // Deep enough to keep projecting where the jacket
+                      // tapers inward at the waist — 0.36 clipped the
+                      // bottom of a full-size back logo.
+                      0.7
                     : isSleeve
                         ? 0.32
                         : undefined
                 }
                 surfaceOffsetWorld={slot === 'back' ? 0.008 : 0.003}
                 depthTest
-                polygonOffsetFactor={slot === 'back' ? -16 : undefined}
-                polygonOffsetUnits={slot === 'back' ? -16 : undefined}
-                normalCullMinDot={slot === 'back' ? undefined : 0.18}
+                polygonOffsetFactor={slot === 'back' ? -2 : undefined}
+                polygonOffsetUnits={slot === 'back' ? -2 : undefined}
+                normalCullMinDot={
+                  // The deeper back box can catch sleeve fabric hanging
+                  // beside the torso; sleeves face sideways, so culling
+                  // triangles that don't face backwards drops them while
+                  // keeping the back panel (and its waist taper).
+                  slot === 'back' ? 0.35 : 0.18
+                }
                 surfaceIsland={slot === 'back' ? 'largest' : 'frontmost'}
               />
             ));

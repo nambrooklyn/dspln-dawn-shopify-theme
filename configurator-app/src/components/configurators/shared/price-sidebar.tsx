@@ -93,6 +93,7 @@ export const PriceSidebar = memo(
       pantSize,
       pantSubColors,
       pantLogos,
+      textLayers,
     } = useGiState();
     const [openParts, setOpenParts] = useState<
       Partial<Record<GiPart, boolean>>
@@ -116,7 +117,16 @@ export const PriceSidebar = memo(
         ? (beltEmbroidery.leftEnd.trim() ? 1 : 0) +
           (beltEmbroidery.rightEnd.trim() ? 1 : 0)
         : 0;
-      return kimonoLogoTotal + pantLogoTotal + beltTextTotal * ADD_ON_PRICE;
+      // Free-placement text layers render on the jacket.
+      const textLayerTotal = partVisibility.jacket
+        ? textLayers.length * ADD_ON_PRICE
+        : 0;
+      return (
+        kimonoLogoTotal +
+        pantLogoTotal +
+        beltTextTotal * ADD_ON_PRICE +
+        textLayerTotal
+      );
     }, [
       beltEmbroidery.leftEnd,
       beltEmbroidery.rightEnd,
@@ -125,6 +135,7 @@ export const PriceSidebar = memo(
       partVisibility.belt,
       partVisibility.jacket,
       partVisibility.pants,
+      textLayers,
     ]);
     const total = useMemo(
       () =>
@@ -148,6 +159,10 @@ export const PriceSidebar = memo(
           ...KIMONO_LOGO_SLOTS.map((slot) => ({
             label: KIMONO_LOGO_SLOT_LABEL[slot].replace(/^Logo on /, ''),
             value: kimonoLogoPrice(slot, kimonoLogos[slot]?.filename),
+          })),
+          ...textLayers.map((layer, index) => ({
+            label: `Text ${index + 1}: ${layer.text}`,
+            value: `$${ADD_ON_PRICE}.00`,
           })),
         ],
         belt: [
@@ -214,6 +229,7 @@ export const PriceSidebar = memo(
         pantSize,
         pantSubColors,
         partColors.belt,
+        textLayers,
       ],
     );
 

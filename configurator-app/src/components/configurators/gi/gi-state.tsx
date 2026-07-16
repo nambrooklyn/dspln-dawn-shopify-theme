@@ -63,6 +63,32 @@ export interface GiLayer {
   visible: boolean;
 }
 
+/** Custom world-space placement for a logo slot, set by dragging the
+ *  artwork in studio mode. Serialized with the design so a customer
+ *  opening a shared link sees the artwork exactly where it was left. */
+export interface KimonoLogoAnchorOverride {
+  position: [number, number, number];
+  rotation: [number, number, number];
+}
+
+/** A free-placement text decal (studio feature). Pure data — the PNG is
+ *  regenerated from these parameters at render time, so the layer
+ *  serializes losslessly into the design spec and costs no storage. */
+export interface GiTextLayer {
+  id: string;
+  text: string;
+  /** CSS font-family stack from TEXT_FONTS. */
+  font: string;
+  colorHex: string;
+  position: [number, number, number];
+  /** Surface orientation from the drag raycast (no roll). */
+  rotation: [number, number, number];
+  /** In-plane rotation applied on top of the surface orientation. */
+  rotateDeg: number;
+  /** 100 = base text height of 1.6 in. */
+  scalePct: number;
+}
+
 export interface GiSerializedState {
   kind: 'gi';
   partColors: Record<GiPart, string>;
@@ -89,6 +115,8 @@ export interface GiSerializedState {
         }
       >
     >;
+    // Optional so designs saved before drag-to-move still hydrate.
+    logoAnchors?: Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>;
   };
   belt: {
     size: string;
@@ -122,6 +150,8 @@ export interface GiSerializedState {
     >;
   };
   layers: Array<Omit<GiLayer, 'imageUrl'> & { imageDataUrl?: string }>;
+  // Optional so designs saved before free text layers still hydrate.
+  textLayers?: GiTextLayer[];
   cameraView: CameraView;
 }
 
@@ -184,6 +214,18 @@ interface GiStateValue {
   kimonoLogos: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   setKimonoLogo: (slot: KimonoLogoSlot, logo: KimonoLogo) => void;
   removeKimonoLogo: (slot: KimonoLogoSlot) => void;
+  // Drag-to-move placements (studio). Missing entry = default anchor.
+  kimonoLogoAnchors: Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>;
+  setKimonoLogoAnchor: (
+    slot: KimonoLogoSlot,
+    anchor: KimonoLogoAnchorOverride | null,
+  ) => void;
+
+  // Free-placement text decals (studio-created, +$10 each).
+  textLayers: GiTextLayer[];
+  addTextLayer: (layer: GiTextLayer) => void;
+  updateTextLayer: (id: string, patch: Partial<Omit<GiTextLayer, 'id'>>) => void;
+  removeTextLayer: (id: string) => void;
   pantLogos: Partial<Record<PantLogoSlot, KimonoLogo>>;
   setPantLogo: (slot: PantLogoSlot, logo: KimonoLogo) => void;
   removePantLogo: (slot: PantLogoSlot) => void;
@@ -308,8 +350,45 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     },
     [],
   );
+  const [textLayers, setTextLayersState] = useState<GiTextLayer[]>([]);
+  const addTextLayer = useCallback((layer: GiTextLayer) => {
+    setTextLayersState((prev) => [...prev, layer]);
+  }, []);
+  const updateTextLayer = useCallback(
+    (id: string, patch: Partial<Omit<GiTextLayer, 'id'>>) => {
+      setTextLayersState((prev) =>
+        prev.map((layer) => (layer.id === id ? { ...layer, ...patch } : layer)),
+      );
+    },
+    [],
+  );
+  const removeTextLayer = useCallback((id: string) => {
+    setTextLayersState((prev) => prev.filter((layer) => layer.id !== id));
+  }, []);
+
+  const [kimonoLogoAnchors, setKimonoLogoAnchorsState] = useState<
+    Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>
+  >({});
+  const setKimonoLogoAnchor = useCallback(
+    (slot: KimonoLogoSlot, anchor: KimonoLogoAnchorOverride | null) => {
+      setKimonoLogoAnchorsState((prev) => {
+        const next = { ...prev };
+        if (anchor) next[slot] = anchor;
+        else delete next[slot];
+        return next;
+      });
+    },
+    [],
+  );
   const removeKimonoLogo = useCallback((slot: KimonoLogoSlot) => {
     setKimonoLogosState((prev) => {
+      const next = { ...prev };
+      delete next[slot];
+      return next;
+    });
+    // A removed logo's custom placement must not leak onto the next
+    // upload in that slot.
+    setKimonoLogoAnchorsState((prev) => {
       const next = { ...prev };
       delete next[slot];
       return next;
@@ -489,6 +568,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
           },
         },
         logos,
+        logoAnchors: kimonoLogoAnchors,
       },
       belt: {
         size: beltSize,
@@ -525,6 +605,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
         },
       },
       layers: layers.map(({ imageUrl: _imageUrl, ...rest }) => rest),
+      textLayers,
       cameraView,
     };
   }, [
@@ -533,12 +614,14 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     kimonoSize,
     kimonoSubColors,
     kimonoLogos,
+    kimonoLogoAnchors,
     pantLogos,
     beltEmbroidery,
     beltSize,
     pantSize,
     pantSubColors,
     layers,
+    textLayers,
     cameraView,
   ]);
 
@@ -571,7 +654,9 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
 	        rightThreadColor: state.belt.embroidery.rightThreadColor,
 	      });
       setKimonoLogosState({ ...(logoImages?.kimono ?? {}) });
+      setKimonoLogoAnchorsState({ ...(state.kimono.logoAnchors ?? {}) });
       setPantLogosState({ ...(logoImages?.pant ?? {}) });
+      setTextLayersState([...(state.textLayers ?? [])]);
       setLayers([]);
       setSelectedLayerId(null);
       setCameraView(state.cameraView);
@@ -606,6 +691,12 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       kimonoLogos,
       setKimonoLogo,
       removeKimonoLogo,
+      kimonoLogoAnchors,
+      setKimonoLogoAnchor,
+      textLayers,
+      addTextLayer,
+      updateTextLayer,
+      removeTextLayer,
       pantLogos,
       setPantLogo,
       removePantLogo,
@@ -654,6 +745,12 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       kimonoLogos,
       setKimonoLogo,
       removeKimonoLogo,
+      kimonoLogoAnchors,
+      setKimonoLogoAnchor,
+      textLayers,
+      addTextLayer,
+      updateTextLayer,
+      removeTextLayer,
       pantLogos,
       setPantLogo,
       removePantLogo,
