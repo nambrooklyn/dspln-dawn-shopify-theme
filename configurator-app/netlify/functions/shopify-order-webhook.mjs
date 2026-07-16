@@ -102,7 +102,6 @@ async function stampOrderOntoDesigns(order) {
       record.orderName = order.name ?? null;
       record.orderNumber = order.order_number ?? null;
       record.shopifyOrderId = order.id ?? null;
-      record.orderCreatedAt = order.created_at ?? null;
       record.updatedAt = new Date().toISOString();
       await store.setJSON(lookup.key, record);
       results.push({ id, updated: true, orderName: order.name });
