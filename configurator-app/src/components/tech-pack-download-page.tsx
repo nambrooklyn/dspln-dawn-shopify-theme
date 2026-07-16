@@ -39,11 +39,13 @@ type SavedDesignRecord = {
   id: string;
   name?: string;
   thumbnailUrl?: string | null;
+  createdAt?: string;
   // Stamped onto the record by the Shopify order webhook once the order is
   // placed (e.g. orderName "#1042"). Absent for pre-webhook / unpurchased
   // designs, in which case we fall back to the design id.
   orderName?: string;
   orderNumber?: number | string;
+  orderCreatedAt?: string;
   configData?: {
     source?: string;
     spec?: GiSerializedState;
@@ -72,6 +74,86 @@ function apiDesignUrl(id: string) {
   const url = new URL('/api/customer-designs', window.location.origin);
   url.searchParams.set('id', id);
   return url;
+}
+
+type StoredTechPackRecord = {
+  id: string;
+  parts: number;
+  filename: string;
+};
+
+const TECH_PACK_CHUNK_BYTES = 3_500_000;
+
+function storedTechPackUrl(id: string, part?: number) {
+  const url = new URL('/api/tech-pack-pdf', window.location.origin);
+  url.searchParams.set('id', id);
+  if (part != null) url.searchParams.set('part', String(part));
+  return url.toString();
+}
+
+async function findStoredTechPack(id: string) {
+  const url = storedTechPackUrl(id);
+  const response = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+  const contentType = response.headers.get('content-type') ?? '';
+  const parts = Number(response.headers.get('x-dspln-tech-pack-parts'));
+  if (!response.ok || !contentType.includes('application/pdf') || parts < 1) {
+    return null;
+  }
+  return {
+    id,
+    parts,
+    filename:
+      response.headers.get('x-dspln-tech-pack-filename') ||
+      `${id}_tech-pack.pdf`,
+  } satisfies StoredTechPackRecord;
+}
+
+async function loadStoredTechPack(record: StoredTechPackRecord) {
+  const chunks = await Promise.all(
+    Array.from({ length: record.parts }, async (_, part) => {
+      const response = await fetch(storedTechPackUrl(record.id, part));
+      if (!response.ok) throw new Error(`Saved Tech Pack part ${part + 1} failed.`);
+      return response.arrayBuffer();
+    }),
+  );
+  return new Blob(chunks, { type: 'application/pdf' });
+}
+
+async function persistTechPack(
+  id: string,
+  generated: { blob: Blob; fileName: string },
+) {
+  const uploadId = crypto.randomUUID();
+  const parts = Math.ceil(generated.blob.size / TECH_PACK_CHUNK_BYTES);
+
+  for (let part = 0; part < parts; part += 1) {
+    const chunk = generated.blob.slice(
+      part * TECH_PACK_CHUNK_BYTES,
+      Math.min((part + 1) * TECH_PACK_CHUNK_BYTES, generated.blob.size),
+      'application/octet-stream',
+    );
+    const url = new URL(storedTechPackUrl(id));
+    url.searchParams.set('mode', 'chunk');
+    url.searchParams.set('upload', uploadId);
+    url.searchParams.set('part', String(part));
+    url.searchParams.set('parts', String(parts));
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: chunk,
+    });
+    if (!response.ok) throw new Error(await response.text());
+  }
+
+  const url = new URL(storedTechPackUrl(id));
+  url.searchParams.set('mode', 'complete');
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uploadId, parts, filename: generated.fileName }),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()) as StoredTechPackRecord;
 }
 
 function savedImageToLogo(image?: SavedLogoImage): KimonoLogo | undefined {
@@ -110,6 +192,13 @@ function orderNumberForRecord(design: SavedDesignRecord) {
     (design.orderNumber != null ? String(design.orderNumber) : '') ||
     orderNumberForDesign(design.id)
   );
+}
+
+function orderDateForRecord(design: SavedDesignRecord) {
+  const value = design.orderCreatedAt || design.createdAt;
+  if (!value) return new Date();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
 // Product name used in the download filename, by garment family.
@@ -318,7 +407,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         if (cancelled) return;
         setStatus('Generating production PDF...');
 
-        generatedPdfUrl = await generateGiTechPackPageOne({
+        const generated = await generateGiTechPackPageOne({
           spec,
           frontDataUrl: front ?? design.thumbnailUrl ?? '',
           backDataUrl: back ?? front ?? '',
@@ -328,22 +417,44 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           rightBeltEndDataUrl: rightBeltEnd,
           kimonoLogos,
           pantLogos,
+          orderDate: orderDateForRecord(design),
           orderNumber: orderNumberForRecord(design),
           productName: productNameForSource(design.configData?.source),
           includeSizeMeasurements:
             design.configData?.source !== 'dspln-kids-gi-configurator',
-          outputMode: embedMode ? 'blob-url' : 'download',
+          outputMode: 'blob',
           kidsProportions:
             design.configData?.source === 'dspln-kids-gi-configurator',
         });
 
+        if (!generated) throw new Error('The production PDF could not be created.');
+        if (cancelled) return;
+
+        setStatus('Saving the Tech Pack with this order...');
+        let saved = true;
+        try {
+          await persistTechPack(design.id, generated);
+        } catch (persistError) {
+          // Keep the production page usable if storage is temporarily
+          // unavailable. The local PDF is a fallback for this visit only.
+          console.error('[tech-pack] could not persist PDF', persistError);
+          saved = false;
+        }
+        generatedPdfUrl = URL.createObjectURL(generated.blob);
+
         if (!cancelled) {
-          if (generatedPdfUrl) setPdfUrl(generatedPdfUrl);
-          setStatus(
-            embedMode
-              ? 'Tech Pack ready.'
-              : 'Tech pack PDF generated. Check your downloads.',
-          );
+          if (embedMode) {
+            setPdfUrl(generatedPdfUrl);
+            setStatus(saved ? 'Saved Tech Pack ready.' : 'Tech Pack ready.');
+          } else {
+            const link = document.createElement('a');
+            link.href = generatedPdfUrl;
+            link.download = generated.fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setStatus('Saved Tech Pack downloaded.');
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -448,6 +559,63 @@ function StatusScreen({ message }: { message: string }) {
   );
 }
 
+function StoredTechPackDocument({
+  record,
+  embedMode,
+}: {
+  record: StoredTechPackRecord;
+  embedMode: boolean;
+}) {
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    loadStoredTechPack(record)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        if (embedMode) {
+          setPdfUrl(objectUrl);
+          return;
+        }
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = record.filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      })
+      .catch((loadError) => {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : 'The saved Tech Pack could not be loaded.',
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [embedMode, record]);
+
+  if (error) return <StatusScreen message={error} />;
+  if (!pdfUrl) return <StatusScreen message="Opening saved Tech Pack..." />;
+
+  return (
+    <main className="h-screen min-h-[760px] bg-[#e8e8e4]">
+      <iframe
+        className="h-full w-full border-0"
+        src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`}
+        title="DSPLN saved production Tech Pack PDF"
+      />
+    </main>
+  );
+}
+
 export function TechPackDownloadPage() {
   const id =
     typeof window !== 'undefined'
@@ -455,9 +623,31 @@ export function TechPackDownloadPage() {
       : null;
   const [design, setDesign] = useState<SavedDesignRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [storedPdf, setStoredPdf] = useState<{
+    checked: boolean;
+    record: StoredTechPackRecord | null;
+  }>({ checked: false, record: null });
+  const embedMode =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('embed') === '1';
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
+    findStoredTechPack(id)
+      .then((record) => {
+        if (!cancelled) setStoredPdf({ checked: true, record });
+      })
+      .catch(() => {
+        if (!cancelled) setStoredPdf({ checked: true, record: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id || !storedPdf.checked || storedPdf.record) return;
     let cancelled = false;
 
     (async () => {
@@ -499,9 +689,20 @@ export function TechPackDownloadPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, storedPdf.checked, storedPdf.record]);
 
   if (!id) return <StatusScreen message="Missing design id." />;
+  if (!storedPdf.checked) {
+    return <StatusScreen message="Checking for the saved Tech Pack..." />;
+  }
+  if (storedPdf.record) {
+    return (
+      <StoredTechPackDocument
+        record={storedPdf.record}
+        embedMode={embedMode}
+      />
+    );
+  }
   if (error) return <StatusScreen message={error} />;
   if (!design) return <StatusScreen message="Loading saved design..." />;
 
