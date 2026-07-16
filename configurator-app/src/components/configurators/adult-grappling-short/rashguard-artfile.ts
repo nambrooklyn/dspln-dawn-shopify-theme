@@ -378,7 +378,7 @@ function drawCalibrationBand(doc: jsPDF, pageW: number, pageH: number, marginMm:
 /** Generate and download the multi-page actual-size art-file PDF. */
 export async function generateRashguardArtFile(
   input: ArtFileInput,
-): Promise<string | void> {
+): Promise<string | Blob | void> {
   const opts: Required<Omit<ArtFileOptions, 'fileName'>> & { fileName: string } = {
     // 300 DPI is the practical default for these large pieces (≈40 MP each) —
     // sublimation-grade and far lighter than 600 DPI (≈160 MP). Override per call.
@@ -481,4 +481,7 @@ export async function generateRashguardArtFile(
     return (doc.output('datauristring') as string).split(',')[1];
   }
   doc.save(opts.fileName);
+  // Hand back the exact saved bytes so callers can freeze them in the
+  // versioned tech-pack store alongside the user's download.
+  return doc.output('blob') as Blob;
 }
