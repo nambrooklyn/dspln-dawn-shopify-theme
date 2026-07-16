@@ -15,7 +15,7 @@ import {
   snapshotCanvasCenteredThumbnail,
   snapshotCanvasThumbnail,
 } from './rashguard-export';
-import { uploadPreviewImage } from '../shared/preview-upload';
+import { shrinkArtworkDataUrl, uploadPreviewImage } from '../shared/preview-upload';
 import {
   buildRashguardCloudDesignUrls,
   getRashguardCloudOwnerContext,
@@ -97,7 +97,12 @@ function fileToDataUrl(file: File) {
     reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
     reader.onerror = () => resolve(null);
     reader.readAsDataURL(file);
-  });
+  }).then((dataUrl) =>
+    // Oversized uploads used to flow raw into the design-save JSON and blow
+    // Netlify's ~6MB function limit ("was not added to cart"). Shrink to the
+    // print ceiling first — same shared pipeline the gi family uses.
+    dataUrl ? shrinkArtworkDataUrl(dataUrl) : dataUrl,
+  );
 }
 
 async function imageUrlToDataUrl(url: string) {
