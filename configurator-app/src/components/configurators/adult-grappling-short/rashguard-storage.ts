@@ -1,4 +1,5 @@
 import { RASHGUARD_PRODUCT_CONFIG } from './rashguard-config';
+import { shrinkArtworkDataUrl } from '../shared/preview-upload';
 import type {
   RashguardArtworkLayer,
   RashguardSerializedState,
@@ -88,11 +89,15 @@ async function artworkLayerToDraftImage(
   return {
     id: layer.id,
     kind: layer.kind,
+    // Shrink to the print ceiling before storing: raw uploads can be 20MB+,
+    // which overflows localStorage quotas and the cloud-save body limit.
     dataUrl:
       layer.kind === 'image' && layer.imageUrl
-        ? layer.file
-          ? await fileToDataUrl(layer.file)
-          : await imageUrlToDataUrl(layer.imageUrl)
+        ? await shrinkArtworkDataUrl(
+            layer.file
+              ? await fileToDataUrl(layer.file)
+              : await imageUrlToDataUrl(layer.imageUrl),
+          )
         : undefined,
     filename: layer.filename,
     imageWidth: layer.imageWidth,

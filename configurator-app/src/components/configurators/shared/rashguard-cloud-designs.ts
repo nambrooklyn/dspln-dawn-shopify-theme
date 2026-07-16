@@ -1,4 +1,5 @@
 import { storefrontOrigin } from './storefront-links';
+import { shrinkArtworkDataUrl, uploadArtworkImage } from './preview-upload';
 
 type RashguardProductConfig = {
   shopifyProductHandle: string;
@@ -149,6 +150,30 @@ async function requestJson<T>(url: URL, init?: RequestInit) {
   return (await response.json()) as T;
 }
 
+/**
+ * Keep raw artwork bytes OUT of the design-save JSON. Drafts embed each image
+ * layer as a full-resolution data URL (the original upload can be 20MB+),
+ * which blows past Netlify's ~6MB function body limit and makes the save fail
+ * — leaving orders without working Tech Pack / 3D Design links. Mirror the gi
+ * flow: upload each layer to hosted storage and store the URL; if the upload
+ * fails, fall back to a print-ceiling shrunk data URL that stays within budget.
+ */
+async function offloadDraftImages(images: unknown[]): Promise<unknown[]> {
+  return Promise.all(
+    images.map(async (image) => {
+      if (!image || typeof image !== 'object') return image;
+      const record = image as { dataUrl?: unknown };
+      const dataUrl = record.dataUrl;
+      if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+        return image;
+      }
+      const slim = await shrinkArtworkDataUrl(dataUrl);
+      const hosted = await uploadArtworkImage(slim);
+      return { ...record, dataUrl: hosted ?? slim };
+    }),
+  );
+}
+
 export async function saveRashguardCloudDesignRecord(
   draft: RashguardCloudDraftDocument,
   context: RashguardCloudOwnerContext | null,
@@ -156,6 +181,7 @@ export async function saveRashguardCloudDesignRecord(
 ): Promise<RashguardCloudDesignRecordResult | null> {
   if (!context || !apiBaseUrl()) return null;
 
+  const images = await offloadDraftImages(draft.images);
   const url = makeApiUrl('/customer-designs');
   const response = await requestJson<DesignResponse>(url, {
     method: 'POST',
@@ -173,7 +199,7 @@ export async function saveRashguardCloudDesignRecord(
         source: sourceForProduct(config),
         version: 1,
         spec: draft.spec,
-        images: draft.images,
+        images,
         renders: draft.renders,
       },
       thumbnailUrl: draft.thumbnailUrl ?? null,
