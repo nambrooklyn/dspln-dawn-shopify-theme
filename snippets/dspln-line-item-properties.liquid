@@ -168,8 +168,19 @@
                   assign display_value = display_value | replace: ' on ', ' - ' | replace: ' ON ', ' - '
                 endif
               -%}
+              {%- liquid
+                # A removed part (belt/kimono/pant taken off the gi) ships a
+                # single "<Part> Size: NO" property. "SIZE: NO" reads oddly —
+                # render a bare NO under the part heading instead.
+                assign is_removed_part_row = false
+                if display_value == 'NO' and label == 'Size'
+                  assign is_removed_part_row = true
+                endif
+              -%}
               <div class="dspln-line-item-properties__row">
-                <dt>{{ label | escape }}:</dt>
+                {%- unless is_removed_part_row -%}
+                  <dt>{{ label | escape }}:</dt>
+                {%- endunless -%}
                 <dd>
                   {%- if artwork_layer_link_url != blank -%}
                     <a
