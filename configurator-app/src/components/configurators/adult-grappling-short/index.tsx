@@ -340,10 +340,54 @@ const RashguardConfiguratorInner = memo(() => {
 
     if (linkedDraft) {
       loadDraftDocument(linkedDraft, false);
+    } else if (linkedDesignId) {
+      // A ?design= link (from an order, the portal, or another browser)
+      // points at a CLOUD record this browser has never seen. Fetch and
+      // hydrate it — falling back to the local autosave here used to show
+      // whatever design the viewer last worked on instead of the order's.
+      setCurrentDesignId(linkedDesignId);
+      void (async () => {
+        try {
+          const url = new URL('/api/customer-designs', window.location.origin);
+          url.searchParams.set('id', linkedDesignId);
+          const response = await fetch(url, {
+            headers: { Accept: 'application/json' },
+          });
+          if (!response.ok) return;
+          const payload = (await response.json()) as {
+            data?: {
+              design?: {
+                id: string;
+                name?: string;
+                createdAt?: string;
+                updatedAt?: string;
+                configData?: {
+                  spec?: RashguardSerializedState;
+                  images?: RashguardDraftDocument['images'];
+                };
+              };
+            };
+          };
+          const design = payload.data?.design;
+          const spec = design?.configData?.spec;
+          if (!design || !spec) return;
+          loadDraftDocument(
+            {
+              id: design.id,
+              name: design.name || 'Ordered design',
+              spec,
+              images: design.configData?.images ?? [],
+              createdAt: design.createdAt ?? new Date().toISOString(),
+              updatedAt: design.updatedAt ?? new Date().toISOString(),
+            },
+            false,
+          );
+        } catch {
+          // Leave the default state; the link id stays attached.
+        }
+      })();
     } else if (autoDraft) {
       loadDraftDocument(autoDraft, false);
-    } else if (linkedDesignId) {
-      setCurrentDesignId(linkedDesignId);
     }
 
     draftReadyRef.current = true;
