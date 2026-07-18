@@ -11,8 +11,9 @@ name: Mirror theme to dev-store-theme
 # so make theme edits in the repo, not in the dev store's theme editor.
 
 on:
+  workflow_dispatch:
   push:
-    branches: [cleanup-checkout-page]
+    branches: [dev]
     paths:
       - 'assets/**'
       - 'config/**'
@@ -33,7 +34,7 @@ jobs:
       - name: Build and push theme mirror
         run: |
           set -euo pipefail
-          DEV_ORIGIN="https://cleanup-checkout-page--dspln-dawn-shopify-theme.netlify.app"
+          DEV_ORIGIN="https://dev--dspln-dawn-shopify-theme.netlify.app"
 
           STAGE="$(mktemp -d)"
           cp -r assets config layout locales sections snippets templates "$STAGE"/
