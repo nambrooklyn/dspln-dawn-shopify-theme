@@ -54,12 +54,23 @@
             assign property_value = property_value | replace: '&amp;quot;', '"' | replace: '&quot;', '"' | replace: '&amp;#39;', "'" | replace: '&#39;', "'" | replace: '&amp;amp;', '&'
             assign property_key = property_name | downcase
             assign property_first_char = property_name | slice: 0
+            comment
+              Customization details ship `_`-prefixed so Shopify checkout hides
+              them. The cart still displays them: strip the leading underscore
+              for matching/labels. Non-prefixed properties from older carts and
+              orders render exactly as before.
+            endcomment
+            assign property_display_name = property_name
+            if property_first_char == '_'
+              assign property_display_name = property_name | remove_first: '_'
+            endif
+            assign property_key = property_display_name | downcase
             assign is_internal = false
             assign is_flat_group_property = false
             assign logo_link_url = ''
             assign artwork_layer_link_url = ''
 
-            if property_first_char == '_' or property_key contains 'production' or property_key contains 'tech pack' or property_key contains 'json'
+            if property_key contains 'production' or property_key contains 'tech pack' or property_key contains 'json' or property_key contains 'dspln_' or property_key contains 'configurator_id' or property_key contains 'preview_image' or property_key contains 'mczr' or property_key == 'custom design saved'
               assign is_internal = true
             endif
 
@@ -122,9 +133,9 @@
               {%- endfor -%}
             {%- else -%}
               {%- liquid
-                assign label = property_name
+                assign label = property_display_name
                 if property_key contains group_prefix
-                  assign label = property_name | remove_first: group_name | strip
+                  assign label = property_display_name | remove_first: group_name | strip
                 endif
                 assign display_value = property_value
 
@@ -191,7 +202,7 @@
                       {{ display_value | escape }}
                     </a>
                   {%- elsif property_key contains 'logo' and property_value == 'YES' -%}
-                    <span data-dspln-logo-placeholder data-dspln-logo-label="{{ property_name | escape }}">
+                    <span data-dspln-logo-placeholder data-dspln-logo-label="{{ property_display_name | escape }}">
                       {{ display_value | escape }}
                     </span>
                   {%- elsif property_value contains '/uploads/' -%}

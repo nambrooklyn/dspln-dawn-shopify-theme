@@ -128,7 +128,13 @@
     padding: 5.6rem 0;
   }
 
+  /* Match the kids section when stacked: image first, then copy */
+  .dspln-womens-gi-feature__media {
+    order: 1;
+  }
+
   .dspln-womens-gi-feature__copy {
+    order: 2;
     max-width: 62rem;
     margin: 0 auto;
     text-align: center;
@@ -149,12 +155,17 @@
     padding: 4.8rem 0;
   }
 
+  /* On mobile the icon bullets carry the message; drop the intro paragraph */
+  .dspln-womens-gi-feature__text {
+    display: none;
+  }
+
   .dspln-womens-gi-feature__heading {
     font-size: clamp(2.8rem, 9vw, 3.6rem);
     white-space: normal;
   }
 
   .dspln-womens-gi-feature__button {
-    width: min(100%, 24rem);
+    width: 100%;
   }
 }
