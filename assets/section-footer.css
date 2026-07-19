@@ -189,6 +189,15 @@
     gap: 3.8rem;
   }
 
+  /* Compact link lists on mobile: the desktop airiness reads as sprawl here */
+  .dspln-footer__links {
+    gap: 0.8rem;
+  }
+
+  .dspln-footer__heading {
+    margin-bottom: 1.6rem;
+  }
+
   .dspln-footer__newsletter {
     grid-column: auto;
   }
