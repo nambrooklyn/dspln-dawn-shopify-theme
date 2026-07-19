@@ -149,6 +149,11 @@
     padding: 4.8rem 0;
   }
 
+  /* On mobile the icon bullets carry the message; drop the intro paragraph */
+  .dspln-womens-gi-feature__text {
+    display: none;
+  }
+
   .dspln-womens-gi-feature__heading {
     font-size: clamp(2.8rem, 9vw, 3.6rem);
     white-space: normal;
