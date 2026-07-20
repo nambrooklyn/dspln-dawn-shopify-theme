@@ -348,12 +348,25 @@ export type CameraView =
   | 'left'
   | 'right'
   | 'left-belt-end'
-  | 'right-belt-end';
+  | 'right-belt-end'
+  | 'belt-close'
+  | 'pants-close'
+  | 'lapel-close'
+  | 'chest-close'
+  | 'left-sleeve-close'
+  | 'right-sleeve-close'
+  | 'back-close'
+  | 'back-skirt-close'
+  | 'left-thigh-close'
+  | 'right-thigh-close';
 
 // Camera positions for Front/Back tabs. Tuned to frame the full gi
 // (head to feet) given the model auto-scales to ~2.5 units tall.
 // Target y = 1.25 = exact vertical center of the model so the gi sits
 // dead-center in the canvas (not biased high or low).
+// Focus views (…-close) frame the area a customization option affects.
+// Wearer's left = camera's RIGHT (+x) in the front view — slot names are
+// wearer-relative, positions are camera-relative.
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   front: [0, 1.25, 3.75],
   back: [0, 1.25, -3.75],
@@ -361,6 +374,16 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   right: [3.75, 1.25, 0],
   'left-belt-end': [0.68, 1.2, 1.05],
   'right-belt-end': [-0.68, 1.2, 1.05],
+  'belt-close': [0, 1.18, 1.7],
+  'pants-close': [0, 0.7, 2.3],
+  'lapel-close': [0, 1.72, 1.6],
+  'chest-close': [0.3, 1.62, 1.5],
+  'left-sleeve-close': [1.9, 1.5, 0.6],
+  'right-sleeve-close': [-1.9, 1.5, 0.6],
+  'back-close': [0, 1.55, -2],
+  'back-skirt-close': [0, 1, -2.1],
+  'left-thigh-close': [1.3, 0.85, 1.7],
+  'right-thigh-close': [-1.3, 0.85, 1.7],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
@@ -373,6 +396,16 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   right: [3.35, 1.25, 0],
   'left-belt-end': [0.68, 1.2, 1.05],
   'right-belt-end': [-0.68, 1.2, 1.05],
+  'belt-close': [0, 1.18, 1.7],
+  'pants-close': [0, 0.7, 2.3],
+  'lapel-close': [0, 1.72, 1.6],
+  'chest-close': [0.3, 1.62, 1.5],
+  'left-sleeve-close': [1.9, 1.5, 0.6],
+  'right-sleeve-close': [-1.9, 1.5, 0.6],
+  'back-close': [0, 1.55, -2],
+  'back-skirt-close': [0, 1, -2.1],
+  'left-thigh-close': [1.3, 0.85, 1.7],
+  'right-thigh-close': [-1.3, 0.85, 1.7],
 };
 
 export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
@@ -384,6 +417,55 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   right: CAMERA_TARGET,
   'left-belt-end': [0.15, 1.25, 0.18],
   'right-belt-end': [-0.16, 1.25, 0.18],
+  'belt-close': [0, 1.15, 0],
+  'pants-close': [0, 0.62, 0],
+  'lapel-close': [0, 1.66, 0],
+  'chest-close': [0.15, 1.58, 0],
+  'left-sleeve-close': [0.4, 1.45, 0],
+  'right-sleeve-close': [-0.4, 1.45, 0],
+  'back-close': [0, 1.5, 0],
+  'back-skirt-close': [0, 0.98, 0],
+  'left-thigh-close': [0.22, 0.8, 0],
+  'right-thigh-close': [-0.22, 0.8, 0],
+};
+
+/**
+ * Camera focus per customization option: selecting an option moves the
+ * camera to frame the area it affects, so the change is visible without
+ * manual orbiting. One map per option family; all feed setCameraView,
+ * which tweens (~600ms) and then hands control back to OrbitControls.
+ */
+export const PART_CAMERA_VIEW: Record<GiPart, CameraView> = {
+  jacket: 'front',
+  belt: 'belt-close',
+  pants: 'pants-close',
+};
+
+export const KIMONO_SUBPART_CAMERA_VIEW: Record<KimonoSubPart, CameraView> = {
+  body: 'front',
+  lapel: 'lapel-close',
+  reinforcement: 'front',
+  stitching: 'front',
+};
+
+export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = {
+  'left-chest': 'chest-close',
+  'left-sleeve': 'left-sleeve-close',
+  'right-sleeve': 'right-sleeve-close',
+  back: 'back-close',
+  'back-skirt': 'back-skirt-close',
+};
+
+export const PANT_SUBPART_CAMERA_VIEW: Record<PantSubPart, CameraView> = {
+  body: 'pants-close',
+  reinforcement: 'pants-close',
+  stitching: 'pants-close',
+  drawcord: 'belt-close',
+};
+
+export const PANT_LOGO_SLOT_CAMERA_VIEW: Record<PantLogoSlot, CameraView> = {
+  'left-pant': 'left-thigh-close',
+  'right-pant': 'right-thigh-close',
 };
 
 // Anchor for a logo placed on the jacket chest (front).

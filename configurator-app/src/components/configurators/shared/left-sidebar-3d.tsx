@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef } from 'react';
 
 import { useGiState } from '../gi/gi-state';
-import { type GiPart } from '../gi/gi-config';
+import { PART_CAMERA_VIEW, type GiPart } from '../gi/gi-config';
 import { KimonoSections } from './part-sections/kimono-sections';
 import { BeltSections } from './part-sections/belt-sections';
 import { PantSections } from './part-sections/pant-sections';
@@ -20,15 +20,25 @@ const TAB_LABEL: Record<GiPart, string> = {
  * sections from the D2C reference at dspln.com/products/customgi.
  */
 export const LeftSidebar3D = memo(() => {
-  const { selectedPart, setSelectedPart } = useGiState();
+  const { selectedPart, setSelectedPart, setCameraView } = useGiState();
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Selecting a part frames it: belt/pants get close-ups, kimono the
+  // full front view.
+  const selectPartWithCamera = (part: GiPart) => {
+    setSelectedPart(part);
+    setCameraView(PART_CAMERA_VIEW[part]);
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handleRailNavigation = (event: Event) => {
       const detail = (event as CustomEvent<{ part?: GiPart; target?: string }>).detail;
-      if (detail?.part) setSelectedPart(detail.part);
+      if (detail?.part) {
+        setSelectedPart(detail.part);
+        setCameraView(PART_CAMERA_VIEW[detail.part]);
+      }
 
       window.setTimeout(() => {
         const scrollEl = scrollRef.current;
@@ -50,7 +60,7 @@ export const LeftSidebar3D = memo(() => {
         'dspln:configurator-rail:navigate',
         handleRailNavigation,
       );
-  }, [setSelectedPart]);
+  }, [setSelectedPart, setCameraView]);
 
   return (
     <div className="bg-background hidden h-full w-[clamp(14rem,22vw,20rem)] shrink-0 flex-col border-r lg:flex">
@@ -62,7 +72,7 @@ export const LeftSidebar3D = memo(() => {
               <button
                 key={part}
                 type="button"
-                onClick={() => setSelectedPart(part)}
+                onClick={() => selectPartWithCamera(part)}
                 className={`flex-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
                   isActive
                     ? 'border-border bg-background text-foreground border shadow-sm'
