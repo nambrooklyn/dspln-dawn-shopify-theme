@@ -29,6 +29,7 @@ import {
 } from './gi-cloud-designs';
 import { SavedDesignsRail, type DraftStatus } from './saved-designs-rail';
 import { StudioTextTool } from './studio-text-tool';
+import { CameraTuner } from './camera-tuner';
 import { ConfiguratorShell } from '../shared/configurator-shell';
 import {
   exportGiPdf,
@@ -795,6 +796,7 @@ const GiConfiguratorInner = memo(() => {
         railContent={
           isStudio ? (
             <>
+            <CameraTuner />
             <StudioTextTool />
             <SavedDesignsRail
               status={draftStatus}

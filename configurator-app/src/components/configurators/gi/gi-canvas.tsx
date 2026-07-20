@@ -407,6 +407,17 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controlsRef = useRef<any>(null);
 
+  // Expose the controls instance for the studio camera tuner (reads
+  // controls.target live, same pattern as __giCamera in CanvasBridge).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const globals = window as unknown as Record<string, unknown>;
+    globals.__giControls = controlsRef.current;
+    return () => {
+      delete globals.__giControls;
+    };
+  }, []);
+
   // On view toggle: smoothly tween the camera to the new preset over
   // ~600ms using requestAnimationFrame. After the tween, OrbitControls
   // owns user input — no constant lerp wrestling against the user.
