@@ -1,6 +1,6 @@
 .dspln-stats-quotes {
-  background: #efece4;
-  color: #14141c;
+  background: var(--dsq-bg, #efece4);
+  color: var(--dsq-text, #14141c);
 }
 
 .dspln-stats-quotes__inner {
@@ -52,6 +52,7 @@
   margin: 0;
   border: 0; /* Dawn's base blockquote adds a left bar; the design has none */
   padding: 0;
+  color: var(--dsq-text, #14141c); /* Dawn's blockquote sets its own color; ours must win on dark schemes */
   font-family: var(--dsq-display-font, Didot, "Didot LT STD", "Bodoni 72", "Bodoni MT", Prata, "Playfair Display", Georgia, serif);
   font-size: clamp(2rem, 2vw, 2.8rem);
   font-style: italic;
@@ -68,7 +69,8 @@
 }
 
 .dspln-stats-quotes__attribution a {
-  color: #2b3a8f;
+  color: inherit;
+  opacity: 0.75;
   text-decoration: none;
 }
 
