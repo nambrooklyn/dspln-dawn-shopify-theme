@@ -91,12 +91,13 @@
         "stat_LY37H4": {
           "type": "stat",
           "settings": {
-            "value": "3–4wk",
+            "value": "2 week",
             "label": "LEAD TIME"
           }
         },
         "quote_NLtQhm": {
           "type": "quote",
+          "disabled": true,
           "settings": {
             "text": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket.",
             "author": "MARCUS R. — BROWN BELT",
@@ -106,6 +107,7 @@
         },
         "quote_rTBFGb": {
           "type": "quote",
+          "disabled": true,
           "settings": {
             "text": "Designed my academy's team gi in the 3D tool and ordered 14. The embroidery came out cleaner than anything off the rack.",
             "author": "ANA P. — ACADEMY OWNER",
@@ -132,7 +134,7 @@
   "order": [
     "main",
     "dspln_howto_process_mExE6h",
-    "dspln_stats_quotes_z8MTji",
-    "dspln_process_m4giBH"
+    "dspln_process_m4giBH",
+    "dspln_stats_quotes_z8MTji"
   ]
 }

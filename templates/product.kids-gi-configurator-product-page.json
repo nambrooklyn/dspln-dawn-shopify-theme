@@ -93,7 +93,7 @@
         "stat_Rh6fWx": {
           "type": "stat",
           "settings": {
-            "value": "2 week",
+            "value": "2 week wk",
             "label": "LEAD TIME"
           }
         },
