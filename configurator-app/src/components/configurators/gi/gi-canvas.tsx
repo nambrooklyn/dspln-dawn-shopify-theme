@@ -30,6 +30,7 @@ import {
   CAMERA_POSITIONS,
   CAMERA_TARGET,
   CAMERA_TARGETS,
+  GI_CAMERA_TWEEN_MS,
   fontCssForBeltFont,
   JACKET_CHEST_ANCHOR,
   KIMONO_LOGO_ANCHORS,
@@ -426,19 +427,31 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     if (!controls) return;
 
     const startPos = camera.position.clone();
+    const startTgt = controls.target.clone();
     const targetPos = new Vector3(
       ...cameraViewToPosition(cameraView, useMobileCamera),
     );
     const targetTgt = new Vector3(...cameraViewToTarget(cameraView));
-    const startTime = performance.now();
-    const duration = 600;
+    const duration = GI_CAMERA_TWEEN_MS;
     let raf = 0;
 
+    // Accumulate CLAMPED per-frame deltas instead of wall-clock elapsed:
+    // color/logo changes can recomposite big textures and block the main
+    // thread mid-tween — with wall-clock timing the camera then teleports
+    // to the end ("it jumped"). Clamping means a stall pauses the glide
+    // and it resumes smoothly.
+    let progress = 0;
+    let last = performance.now();
+
     const tick = () => {
-      const t = Math.min(1, (performance.now() - startTime) / duration);
-      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const now = performance.now();
+      progress += Math.min(now - last, 50);
+      last = now;
+      const t = Math.min(1, progress / duration);
+      // easeInOutCubic — gentler arrival than the old quad.
+      const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       camera.position.lerpVectors(startPos, targetPos, eased);
-      controls.target.copy(targetTgt);
+      controls.target.lerpVectors(startTgt, targetTgt, eased);
       controls.update();
       if (t < 1) raf = requestAnimationFrame(tick);
     };

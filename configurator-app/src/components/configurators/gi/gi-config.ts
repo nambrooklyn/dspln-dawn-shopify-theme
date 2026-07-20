@@ -426,6 +426,10 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   'drawcord-close': [0.05, 1.41, 1.15],
 };
 
+/** Camera view-to-view tween duration. Shared by the canvas tween and
+ *  the capture flow's settle wait so they can't drift apart. */
+export const GI_CAMERA_TWEEN_MS = 800;
+
 export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
 
 export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
