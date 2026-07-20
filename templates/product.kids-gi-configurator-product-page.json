@@ -25,7 +25,11 @@
     "size_recommender": {
       "type": "dspln-size-recommender",
       "settings": {
-        "guide_link": "shopify://pages/sizing"
+        "heading": "Size Recommender",
+        "text": "We offer a straightforward sizing system tailored to all body types. Simply provide your height and weight, and we'll find your perfect fit. For unique body types outside standard sizes, we customise gear based on your precise measurements.",
+        "guide_label": "Complete Fit Guide",
+        "guide_link": "shopify://pages/sizing",
+        "calculator_title": "Calculate My Size"
       }
     },
     "process": {
@@ -61,11 +65,78 @@
       "settings": {
         "heading": "THE PROCESS"
       }
+    },
+    "dspln_stats_quotes_preEhU": {
+      "type": "dspln-stats-quotes",
+      "blocks": {
+        "stat_JzEFr9": {
+          "type": "stat",
+          "settings": {
+            "value": "12,000+",
+            "label": "GIS DELIVERED"
+          }
+        },
+        "stat_bE8xmq": {
+          "type": "stat",
+          "settings": {
+            "value": "40",
+            "label": "COUNTRIES"
+          }
+        },
+        "stat_ArTHTm": {
+          "type": "stat",
+          "settings": {
+            "value": "4.9★",
+            "label": "AVG RATING"
+          }
+        },
+        "stat_Rh6fWx": {
+          "type": "stat",
+          "settings": {
+            "value": "2 week",
+            "label": "LEAD TIME"
+          }
+        },
+        "quote_EjwpYL": {
+          "type": "quote",
+          "disabled": true,
+          "settings": {
+            "text": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket.",
+            "author": "MARCUS R. — BROWN BELT",
+            "link_label": "SAMPLE",
+            "link_url": ""
+          }
+        },
+        "quote_jeHFnd": {
+          "type": "quote",
+          "disabled": true,
+          "settings": {
+            "text": "Designed my academy's team gi in the 3D tool and ordered 14. The embroidery came out cleaner than anything off the rack.",
+            "author": "ANA P. — ACADEMY OWNER",
+            "link_label": "SAMPLE",
+            "link_url": ""
+          }
+        }
+      },
+      "block_order": [
+        "stat_JzEFr9",
+        "stat_bE8xmq",
+        "stat_ArTHTm",
+        "stat_Rh6fWx",
+        "quote_EjwpYL",
+        "quote_jeHFnd"
+      ],
+      "name": "DSPLN stats + quotes",
+      "settings": {
+        "display_font": "theme-body",
+        "aria_label": "Stats and testimonials"
+      }
     }
   },
   "order": [
     "main",
     "size_recommender",
-    "process"
+    "process",
+    "dspln_stats_quotes_preEhU"
   ]
 }
