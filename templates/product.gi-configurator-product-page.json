@@ -72,7 +72,7 @@
         "stat_Ahpp9V": {
           "type": "stat",
           "settings": {
-            "value": "12,000+",
+            "value": "8,000+",
             "label": "GIS DELIVERED"
           }
         },
@@ -93,7 +93,7 @@
         "stat_wgbyhz": {
           "type": "stat",
           "settings": {
-            "value": "3–4wk",
+            "value": "2 week",
             "label": "LEAD TIME"
           }
         }
@@ -106,7 +106,9 @@
       ],
       "name": "DSPLN stats + quotes",
       "settings": {
-        "display_font": "theme-body",
+        "display_font": "didot",
+        "background_color": "#efece4",
+        "text_color": "#14141c",
         "aria_label": "Stats and testimonials"
       }
     }
