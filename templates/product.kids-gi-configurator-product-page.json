@@ -72,14 +72,14 @@
         "stat_JzEFr9": {
           "type": "stat",
           "settings": {
-            "value": "12,000+",
+            "value": "8,000+",
             "label": "GIS DELIVERED"
           }
         },
         "stat_bE8xmq": {
           "type": "stat",
           "settings": {
-            "value": "40",
+            "value": "22",
             "label": "COUNTRIES"
           }
         },
@@ -93,7 +93,7 @@
         "stat_Rh6fWx": {
           "type": "stat",
           "settings": {
-            "value": "2 week wk",
+            "value": "2 week",
             "label": "LEAD TIME"
           }
         },
@@ -128,7 +128,9 @@
       ],
       "name": "DSPLN stats + quotes",
       "settings": {
-        "display_font": "theme-body",
+        "display_font": "didot",
+        "background_color": "#efece4",
+        "text_color": "#14141c",
         "aria_label": "Stats and testimonials"
       }
     }
