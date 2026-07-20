@@ -18,6 +18,8 @@ interface SectionLogoUploadProps {
   filename?: string;
   onUpload: (file: File, dimensions: { width: number; height: number }) => void;
   onRemove: () => void;
+  /** Called when the merchant starts interacting with this slot. */
+  onActivate?: () => void;
 }
 
 async function trimTransparentPadding(file: File): Promise<{
@@ -125,6 +127,7 @@ export const SectionLogoUpload = memo(
     filename,
     onUpload,
     onRemove,
+    onActivate,
   }: SectionLogoUploadProps) => {
     const [isHovering, setIsHovering] = useState(false);
     const [isDragActive, setIsDragActive] = useState(false);
@@ -236,6 +239,7 @@ export const SectionLogoUpload = memo(
               type="file"
               accept="image/png,image/jpeg"
               className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              onClick={() => onActivate?.()}
               onChange={handleInputChange}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
@@ -292,6 +296,7 @@ export const SectionLogoUpload = memo(
               type="file"
               accept="image/png,image/jpeg"
               className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              onClick={() => onActivate?.()}
               onChange={handleInputChange}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}

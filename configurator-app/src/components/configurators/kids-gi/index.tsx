@@ -46,6 +46,8 @@ import {
   type ShopifyCartLine,
 } from './shopify-cart-simulator';
 import type { CameraView } from './gi-config';
+import { GI_CAMERA_TWEEN_MS } from './gi-config';
+import { CameraTuner } from './camera-tuner';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
 import {
@@ -506,8 +508,8 @@ const GiConfiguratorInner = memo(() => {
   const captureView = useCallback(
     async (view: CameraView): Promise<string | null> => {
       setCameraView(view);
-      // Let the camera-rig lerp settle + a render frame elapse.
-      await new Promise((r) => setTimeout(r, 600));
+      // Let the camera tween settle + a render frame elapse.
+      await new Promise((r) => setTimeout(r, GI_CAMERA_TWEEN_MS + 200));
       return snapshotCanvasHighResolution() ?? snapshotCanvas(getCanvasEl());
     },
     [getCanvasEl, setCameraView],
@@ -679,6 +681,8 @@ const GiConfiguratorInner = memo(() => {
           // round-trip appears broken to customers.
         }
         railContent={!isStudioMode() ? undefined :
+          <>
+          <CameraTuner />
           <SavedDesignsRail
             status={draftStatus}
             savedDesigns={savedDesigns}
@@ -702,6 +706,7 @@ const GiConfiguratorInner = memo(() => {
             currentKimonoLogos={kimonoLogos}
             currentPantLogos={pantLogos}
           />
+          </>
         }
       >
         <GiCanvas />

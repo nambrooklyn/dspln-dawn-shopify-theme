@@ -26,6 +26,7 @@ export const BeltEndTextSection = memo(
     onTextChange,
     onFontChange,
     onColorChange,
+    onActivate,
   }: {
     title: string;
     value: string;
@@ -35,6 +36,8 @@ export const BeltEndTextSection = memo(
     onTextChange: (value: string) => void;
     onFontChange: (value: string) => void;
     onColorChange: (value: string) => void;
+    /** Called when the merchant starts editing this belt end. */
+    onActivate?: () => void;
   }) => {
     const currentColorName = nameForHex(color) ?? 'Custom';
 
@@ -55,6 +58,7 @@ export const BeltEndTextSection = memo(
             <input
               value={value}
               maxLength={18}
+              onFocus={() => onActivate?.()}
               onChange={(e) => onTextChange(e.target.value.toUpperCase())}
               placeholder={placeholder}
               className="border-border bg-background text-foreground focus:border-foreground h-8 w-full rounded border px-2 pr-10 text-xs transition-colors placeholder:text-[#d6d9e1]"
@@ -65,6 +69,7 @@ export const BeltEndTextSection = memo(
           </div>
           <select
             value={font}
+            onFocus={() => onActivate?.()}
             onChange={(e) => onFontChange(e.target.value)}
             className="border-border bg-background text-foreground focus:border-foreground h-8 w-full rounded border px-2 text-xs transition-colors"
           >
@@ -93,7 +98,10 @@ export const BeltEndTextSection = memo(
                 <button
                   key={swatch.hex}
                   type="button"
-                  onClick={() => onColorChange(swatch.hex)}
+                  onClick={() => {
+                    onActivate?.();
+                    onColorChange(swatch.hex);
+                  }}
                   title={swatch.name}
                   aria-label={swatch.name}
                   aria-pressed={isActive}
@@ -130,6 +138,7 @@ export const BeltSections = memo(() => {
     setBeltSize,
     beltEmbroidery,
     setBeltEmbroidery,
+    setCameraView,
   } = useGiState();
   return (
     <div className="flex flex-col">
@@ -182,7 +191,10 @@ export const BeltSections = memo(() => {
       <SectionColorSwatches
         title="Belt Color"
         value={partColors.belt}
-        onChange={(hex) => setPartColor('belt', hex)}
+        onChange={(hex) => {
+          setPartColor('belt', hex);
+          setCameraView('belt-close');
+        }}
         swatches={BELT_COLOR_SWATCHES}
       />
       <BeltEndTextSection
@@ -196,6 +208,7 @@ export const BeltSections = memo(() => {
         onColorChange={(leftThreadColor) =>
           setBeltEmbroidery({ leftThreadColor })
         }
+        onActivate={() => setCameraView('left-belt-end')}
       />
       <BeltEndTextSection
         title="Right Belt End Text"
@@ -208,6 +221,7 @@ export const BeltSections = memo(() => {
         onColorChange={(rightThreadColor) =>
           setBeltEmbroidery({ rightThreadColor })
         }
+        onActivate={() => setCameraView('right-belt-end')}
       />
         </>
       )}

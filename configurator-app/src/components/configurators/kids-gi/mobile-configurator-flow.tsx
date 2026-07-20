@@ -127,6 +127,9 @@ function MobileStepFrame({
   children: ReactNode;
   description?: ReactNode;
 }) {
+  // No wrap-around: the flow ends at the last step.
+  const atStart = current <= 1;
+  const atEnd = current >= total;
   return (
     <section className="bg-background">
       <div className="mx-auto max-w-[44rem] px-5 pt-0 pb-4">
@@ -135,7 +138,8 @@ function MobileStepFrame({
             <button
               type="button"
               onClick={onPrevious}
-              className="text-muted-foreground hover:text-foreground flex h-10 w-10 items-center justify-center rounded-full transition-colors"
+              disabled={atStart}
+              className="text-muted-foreground hover:text-foreground flex h-10 w-10 items-center justify-center rounded-full transition-colors disabled:pointer-events-none disabled:opacity-25"
               aria-label="Previous customization"
             >
               <ChevronLeft className="h-8 w-8" strokeWidth={2.2} />
@@ -151,7 +155,8 @@ function MobileStepFrame({
             <button
               type="button"
               onClick={onNext}
-              className="text-muted-foreground hover:text-foreground flex h-10 w-10 items-center justify-center rounded-full transition-colors"
+              disabled={atEnd}
+              className="text-muted-foreground hover:text-foreground flex h-10 w-10 items-center justify-center rounded-full transition-colors disabled:pointer-events-none disabled:opacity-25"
               aria-label="Next customization"
             >
               <ChevronRight className="h-8 w-8" strokeWidth={2.2} />
@@ -525,13 +530,11 @@ export const MobileConfiguratorFlow = memo(
           current={stepIndex + 1}
           total={steps.length}
           onPrevious={() =>
-            setStepIndex((current) =>
-              current === 0 ? steps.length - 1 : current - 1,
-            )
+            setStepIndex((current) => Math.max(0, current - 1))
           }
           onNext={() =>
             setStepIndex((current) =>
-              current === steps.length - 1 ? 0 : current + 1,
+              Math.min(steps.length - 1, current + 1),
             )
           }
           description={step.description}

@@ -2,8 +2,10 @@ import { memo } from 'react';
 
 import { useGiState } from '../gi-state';
 import {
+  PANT_LOGO_SLOT_CAMERA_VIEW,
   PANT_LOGO_SLOT_LABEL,
   PANT_LOGO_SLOTS,
+  PANT_SUBPART_CAMERA_VIEW,
   PANT_SUBPART_LABEL,
   PANT_SUBPARTS,
 } from '../gi-config';
@@ -27,6 +29,7 @@ export const PantSections = memo(() => {
     pantLogos,
     setPantLogo,
     removePantLogo,
+    setCameraView,
   } = useGiState();
   return (
     <div className="flex flex-col">
@@ -56,7 +59,10 @@ export const PantSections = memo(() => {
           key={sub}
           title={PANT_SUBPART_LABEL[sub]}
           value={pantSubColors[sub]}
-          onChange={(hex) => setPantSubColor(sub, hex)}
+          onChange={(hex) => {
+            setPantSubColor(sub, hex);
+            setCameraView(PANT_SUBPART_CAMERA_VIEW[sub]);
+          }}
         />
       ))}
       {PANT_LOGO_SLOTS.map((slot) => {
@@ -68,16 +74,18 @@ export const PantSections = memo(() => {
             priceLabel="+$10"
             imageUrl={logo?.imageUrl}
             filename={logo?.filename}
-            onUpload={(file, dim) =>
+            onUpload={(file, dim) => {
               setPantLogo(slot, {
                 imageUrl: URL.createObjectURL(file),
                 imageWidth: dim.width,
                 imageHeight: dim.height,
                 filename: file.name,
                 file,
-              })
-            }
+              });
+              setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot]);
+            }}
             onRemove={() => removePantLogo(slot)}
+            onActivate={() => setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot])}
           />
         );
       })}

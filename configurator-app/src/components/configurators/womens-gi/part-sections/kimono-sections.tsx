@@ -2,8 +2,10 @@ import { memo } from 'react';
 
 import { useGiState } from '../gi-state';
 import {
+  KIMONO_LOGO_SLOT_CAMERA_VIEW,
   KIMONO_LOGO_SLOT_LABEL,
   KIMONO_LOGO_SLOTS,
+  KIMONO_SUBPART_CAMERA_VIEW,
   KIMONO_SUBPART_LABEL,
   KIMONO_SUBPARTS,
 } from '../gi-config';
@@ -36,6 +38,7 @@ export const KimonoSections = memo(() => {
     kimonoLogos,
     setKimonoLogo,
     removeKimonoLogo,
+    setCameraView,
   } = useGiState();
   return (
     <div className="flex flex-col">
@@ -68,7 +71,10 @@ export const KimonoSections = memo(() => {
           key={sub}
           title={KIMONO_SUBPART_LABEL[sub]}
           value={kimonoSubColors[sub]}
-          onChange={(hex) => setKimonoSubColor(sub, hex)}
+          onChange={(hex) => {
+            setKimonoSubColor(sub, hex);
+            setCameraView(KIMONO_SUBPART_CAMERA_VIEW[sub]);
+          }}
         />
       ))}
 
@@ -83,16 +89,18 @@ export const KimonoSections = memo(() => {
             priceLabel={KIMONO_LOGO_PRICE_LABEL[slot]}
             imageUrl={logo?.imageUrl}
             filename={logo?.filename}
-            onUpload={(file, dim) =>
+            onUpload={(file, dim) => {
               setKimonoLogo(slot, {
                 imageUrl: URL.createObjectURL(file),
                 imageWidth: dim.width,
                 imageHeight: dim.height,
                 filename: file.name,
                 file,
-              })
-            }
+              });
+              setCameraView(KIMONO_LOGO_SLOT_CAMERA_VIEW[slot]);
+            }}
             onRemove={() => removeKimonoLogo(slot)}
+            onActivate={() => setCameraView(KIMONO_LOGO_SLOT_CAMERA_VIEW[slot])}
           />
         );
       })}

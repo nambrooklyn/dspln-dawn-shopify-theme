@@ -362,7 +362,22 @@ export type CameraView =
   | 'left'
   | 'right'
   | 'left-belt-end'
-  | 'right-belt-end';
+  | 'right-belt-end'
+  | 'belt-close'
+  | 'pants-close'
+  | 'lapel-close'
+  | 'chest-close'
+  | 'left-sleeve-close'
+  | 'right-sleeve-close'
+  | 'back-close'
+  | 'left-thigh-close'
+  | 'right-thigh-close'
+  | 'body-close'
+  | 'reinforcement-close'
+  | 'stitching-close'
+  | 'knees-close'
+  | 'pant-stitching-close'
+  | 'drawcord-close';
 
 // Camera positions for Front/Back tabs. Tuned to frame the full gi
 // (head to feet) given the model auto-scales to ~2.5 units tall.
@@ -379,6 +394,21 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   // the adult framing uses.
   'left-belt-end': [0.75, 1.44, 1.09],
   'right-belt-end': [-0.84, 1.4, 1.07],
+  'belt-close': [0, 1.18, 1.7],
+  'pants-close': [-0.75, 1.01, 1.78],
+  'lapel-close': [-0.92, 2.22, 1.74],
+  'chest-close': [1.04, 1.99, 1.15],
+  'left-sleeve-close': [2.35, 2.01, 0.02],
+  'right-sleeve-close': [-2.89, 2.2, 0.82],
+  'back-close': [-0.07, 2.05, -1.92],
+  'left-thigh-close': [1.3, 0.85, 1.7],
+  'right-thigh-close': [-1.3, 0.85, 1.7],
+  'body-close': [0.59, 1.78, 2.5],
+  'reinforcement-close': [1.28, 0.68, 1.81],
+  'stitching-close': [-0.75, 1.83, 0.78],
+  'knees-close': [0.79, 0.03, -1.65],
+  'pant-stitching-close': [-0.6, 0.89, 0.94],
+  'drawcord-close': [0.05, 1.41, 1.15],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
@@ -391,7 +421,26 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   right: [3.35, 1.25, 0],
   'left-belt-end': [0.75, 1.44, 1.09],
   'right-belt-end': [-0.84, 1.4, 1.07],
+  'belt-close': [0, 1.18, 1.7],
+  'pants-close': [-0.75, 1.01, 1.78],
+  'lapel-close': [-0.92, 2.22, 1.74],
+  'chest-close': [1.04, 1.99, 1.15],
+  'left-sleeve-close': [2.35, 2.01, 0.02],
+  'right-sleeve-close': [-2.89, 2.2, 0.82],
+  'back-close': [-0.07, 2.05, -1.92],
+  'left-thigh-close': [1.3, 0.85, 1.7],
+  'right-thigh-close': [-1.3, 0.85, 1.7],
+  'body-close': [0.59, 1.78, 2.5],
+  'reinforcement-close': [1.28, 0.68, 1.81],
+  'stitching-close': [-0.75, 1.83, 0.78],
+  'knees-close': [0.79, 0.03, -1.65],
+  'pant-stitching-close': [-0.6, 0.89, 0.94],
+  'drawcord-close': [0.05, 1.41, 1.15],
 };
+
+/** Camera view-to-view tween duration. Shared by the canvas tween and
+ *  the capture flow's settle wait so they can't drift apart. */
+export const GI_CAMERA_TWEEN_MS = 800;
 
 export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
 
@@ -403,7 +452,60 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   // Measured centers of belt_left/right_text_target on the kids model.
   'left-belt-end': [0.22, 1.49, 0.22],
   'right-belt-end': [-0.32, 1.45, 0.2],
+  'belt-close': [0, 1.15, 0],
+  'pants-close': [0, 0.62, 0],
+  'lapel-close': [0, 1.66, 0],
+  'chest-close': [0.15, 1.58, 0],
+  'left-sleeve-close': [0.4, 1.45, 0],
+  'right-sleeve-close': [-0.4, 1.45, 0],
+  'back-close': [0, 1.5, 0],
+  'left-thigh-close': [0.22, 0.8, 0],
+  'right-thigh-close': [-0.22, 0.8, 0],
+  'body-close': [0, 1.4, 0],
+  'reinforcement-close': [0.1, 1.3, 0],
+  'stitching-close': [0.1, 1.5, 0],
+  'knees-close': [0, 0.55, 0],
+  'pant-stitching-close': [0.12, 0.72, 0],
+  'drawcord-close': [0, 1.08, 0],
 };
+
+/**
+ * Camera focus per customization option: selecting an option moves the
+ * camera to frame the area it affects. All feed setCameraView, which
+ * tweens and then hands control back to OrbitControls.
+ */
+export const PART_CAMERA_VIEW: Record<GiPart, CameraView> = {
+  jacket: 'front',
+  belt: 'belt-close',
+  pants: 'pants-close',
+};
+
+export const KIMONO_SUBPART_CAMERA_VIEW: Record<KimonoSubPart, CameraView> = {
+  body: 'body-close',
+  lapel: 'lapel-close',
+  reinforcement: 'reinforcement-close',
+  stitching: 'stitching-close',
+};
+
+export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = {
+  'left-chest': 'chest-close',
+  'left-sleeve': 'left-sleeve-close',
+  'right-sleeve': 'right-sleeve-close',
+  back: 'back-close',
+};
+
+export const PANT_SUBPART_CAMERA_VIEW: Record<PantSubPart, CameraView> = {
+  body: 'pants-close',
+  reinforcement: 'knees-close',
+  stitching: 'pant-stitching-close',
+  drawcord: 'drawcord-close',
+};
+
+export const PANT_LOGO_SLOT_CAMERA_VIEW: Record<PantLogoSlot, CameraView> = {
+  'left-pant': 'left-thigh-close',
+  'right-pant': 'right-thigh-close',
+};
+
 
 // Anchor for a logo placed on the jacket chest (front).
 // In world space relative to the placeholder gi origin (0,0,0).
