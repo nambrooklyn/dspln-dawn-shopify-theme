@@ -85,6 +85,7 @@ export const PantSections = memo(() => {
               setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot]);
             }}
             onRemove={() => removePantLogo(slot)}
+            onActivate={() => setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot])}
           />
         );
       })}

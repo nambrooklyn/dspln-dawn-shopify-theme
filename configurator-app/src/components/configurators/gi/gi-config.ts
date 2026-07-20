@@ -358,7 +358,13 @@ export type CameraView =
   | 'back-close'
   | 'back-skirt-close'
   | 'left-thigh-close'
-  | 'right-thigh-close';
+  | 'right-thigh-close'
+  | 'body-close'
+  | 'reinforcement-close'
+  | 'stitching-close'
+  | 'knees-close'
+  | 'pant-stitching-close'
+  | 'drawcord-close';
 
 // Camera positions for Front/Back tabs. Tuned to frame the full gi
 // (head to feet) given the model auto-scales to ~2.5 units tall.
@@ -384,6 +390,12 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   'back-skirt-close': [0, 1, -2.1],
   'left-thigh-close': [1.3, 0.85, 1.7],
   'right-thigh-close': [-1.3, 0.85, 1.7],
+  'body-close': [0, 1.45, 2.6],
+  'reinforcement-close': [0.9, 1.35, 2.1],
+  'stitching-close': [0.35, 1.55, 1.35],
+  'knees-close': [0, 0.6, 1.9],
+  'pant-stitching-close': [0.55, 0.8, 1.6],
+  'drawcord-close': [0, 1.1, 1.5],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
@@ -406,6 +418,12 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   'back-skirt-close': [0, 1, -2.1],
   'left-thigh-close': [1.3, 0.85, 1.7],
   'right-thigh-close': [-1.3, 0.85, 1.7],
+  'body-close': [0, 1.45, 2.6],
+  'reinforcement-close': [0.9, 1.35, 2.1],
+  'stitching-close': [0.35, 1.55, 1.35],
+  'knees-close': [0, 0.6, 1.9],
+  'pant-stitching-close': [0.55, 0.8, 1.6],
+  'drawcord-close': [0, 1.1, 1.5],
 };
 
 export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
@@ -427,6 +445,12 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   'back-skirt-close': [0, 0.98, 0],
   'left-thigh-close': [0.22, 0.8, 0],
   'right-thigh-close': [-0.22, 0.8, 0],
+  'body-close': [0, 1.4, 0],
+  'reinforcement-close': [0.1, 1.3, 0],
+  'stitching-close': [0.1, 1.5, 0],
+  'knees-close': [0, 0.55, 0],
+  'pant-stitching-close': [0.12, 0.72, 0],
+  'drawcord-close': [0, 1.08, 0],
 };
 
 /**
@@ -442,10 +466,10 @@ export const PART_CAMERA_VIEW: Record<GiPart, CameraView> = {
 };
 
 export const KIMONO_SUBPART_CAMERA_VIEW: Record<KimonoSubPart, CameraView> = {
-  body: 'front',
+  body: 'body-close',
   lapel: 'lapel-close',
-  reinforcement: 'front',
-  stitching: 'front',
+  reinforcement: 'reinforcement-close',
+  stitching: 'stitching-close',
 };
 
 export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = {
@@ -458,9 +482,9 @@ export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = 
 
 export const PANT_SUBPART_CAMERA_VIEW: Record<PantSubPart, CameraView> = {
   body: 'pants-close',
-  reinforcement: 'pants-close',
-  stitching: 'pants-close',
-  drawcord: 'belt-close',
+  reinforcement: 'knees-close',
+  stitching: 'pant-stitching-close',
+  drawcord: 'drawcord-close',
 };
 
 export const PANT_LOGO_SLOT_CAMERA_VIEW: Record<PantLogoSlot, CameraView> = {
