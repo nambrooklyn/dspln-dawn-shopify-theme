@@ -1,6 +1,37 @@
 {{ 'dspln-stats-quotes.css' | asset_url | stylesheet_tag }}
 
-<section class="dspln-stats-quotes" aria-label="{{ section.settings.aria_label | default: 'Stats and testimonials' }}">
+{%- liquid
+  case section.settings.display_font
+    when 'theme-heading'
+      assign dsq_font = settings.type_header_font.family | append: ', ' | append: settings.type_header_font.fallback_families
+    when 'theme-body'
+      assign dsq_font = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+    when 'bodoni'
+      assign dsq_font = "'Bodoni 72', 'Bodoni MT', 'Bodoni Moda', Didot, serif"
+    when 'baskerville'
+      assign dsq_font = "Baskerville, 'Libre Baskerville', Georgia, serif"
+    when 'garamond'
+      assign dsq_font = "Garamond, 'EB Garamond', 'Adobe Garamond Pro', Georgia, serif"
+    when 'georgia'
+      assign dsq_font = "Georgia, 'Times New Roman', serif"
+    when 'palatino'
+      assign dsq_font = "Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif"
+    when 'times'
+      assign dsq_font = "'Times New Roman', Times, serif"
+    when 'optima'
+      assign dsq_font = "Optima, Candara, 'Segoe UI', sans-serif"
+    when 'futura'
+      assign dsq_font = "Futura, 'Century Gothic', 'Trebuchet MS', sans-serif"
+    when 'avenir'
+      assign dsq_font = "'Avenir Next', Avenir, 'Segoe UI', sans-serif"
+    when 'helvetica'
+      assign dsq_font = "'Helvetica Neue', Helvetica, Arial, sans-serif"
+    else
+      assign dsq_font = "Didot, 'Didot LT STD', 'Bodoni 72', 'Bodoni MT', Prata, 'Playfair Display', Georgia, serif"
+  endcase
+-%}
+
+<section class="dspln-stats-quotes" style="--dsq-display-font: {{ dsq_font }};" aria-label="{{ section.settings.aria_label | default: 'Stats and testimonials' }}">
   <div class="dspln-stats-quotes__inner">
     {%- liquid
       assign stat_blocks = section.blocks | where: 'type', 'stat'
@@ -42,6 +73,27 @@
   "tag": "section",
   "class": "section-dspln-stats-quotes",
   "settings": [
+    {
+      "type": "select",
+      "id": "display_font",
+      "label": "Display font (numerals + quotes)",
+      "default": "didot",
+      "options": [
+        { "value": "didot", "label": "Didot (default)" },
+        { "value": "theme-heading", "label": "Theme heading font" },
+        { "value": "theme-body", "label": "Theme body font" },
+        { "value": "bodoni", "label": "Bodoni" },
+        { "value": "baskerville", "label": "Baskerville" },
+        { "value": "garamond", "label": "Garamond" },
+        { "value": "georgia", "label": "Georgia" },
+        { "value": "palatino", "label": "Palatino" },
+        { "value": "times", "label": "Times New Roman" },
+        { "value": "optima", "label": "Optima" },
+        { "value": "futura", "label": "Futura" },
+        { "value": "avenir", "label": "Avenir Next" },
+        { "value": "helvetica", "label": "Helvetica Neue" }
+      ]
+    },
     {
       "type": "text",
       "id": "aria_label",

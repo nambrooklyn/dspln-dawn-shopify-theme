@@ -20,9 +20,9 @@
   flex-direction: column;
 }
 
-/* Didone display numerals, matching the art direction of the mock */
+/* Display font is chosen in the theme editor; falls back to the Didone stack */
 .dspln-stats-quotes__value {
-  font-family: Didot, "Didot LT STD", "Bodoni 72", "Bodoni MT", Prata, "Playfair Display", Georgia, serif;
+  font-family: var(--dsq-display-font, Didot, "Didot LT STD", "Bodoni 72", "Bodoni MT", Prata, "Playfair Display", Georgia, serif);
   font-size: clamp(5.6rem, 6.5vw, 9.6rem);
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -52,7 +52,7 @@
   margin: 0;
   border: 0; /* Dawn's base blockquote adds a left bar; the design has none */
   padding: 0;
-  font-family: Didot, "Didot LT STD", "Bodoni 72", "Bodoni MT", Prata, "Playfair Display", Georgia, serif;
+  font-family: var(--dsq-display-font, Didot, "Didot LT STD", "Bodoni 72", "Bodoni MT", Prata, "Playfair Display", Georgia, serif);
   font-size: clamp(2rem, 2vw, 2.8rem);
   font-style: italic;
   font-weight: 400;

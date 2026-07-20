@@ -9,6 +9,25 @@
  */
 {
   "sections": {
+    "dspln_stats_quotes_themefont": {
+      "type": "dspln-stats-quotes",
+      "settings": { "display_font": "theme-heading" },
+      "blocks": {
+        "stat_1": { "type": "stat", "settings": { "value": "12,000+", "label": "GIS DELIVERED (THEME HEADING FONT)" } },
+        "stat_2": { "type": "stat", "settings": { "value": "40", "label": "COUNTRIES" } },
+        "stat_3": { "type": "stat", "settings": { "value": "4.9★", "label": "AVG RATING" } },
+        "stat_4": { "type": "stat", "settings": { "value": "3–4wk", "label": "LEAD TIME" } },
+        "quote_1": {
+          "type": "quote",
+          "settings": {
+            "text": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket.",
+            "author": "MARCUS R. — BROWN BELT",
+            "link_label": "SAMPLE"
+          }
+        }
+      },
+      "block_order": ["stat_1", "stat_2", "stat_3", "stat_4", "quote_1"]
+    },
     "dspln_stats_quotes": {
       "type": "dspln-stats-quotes",
       "blocks": {
@@ -147,6 +166,7 @@
   },
   "order": [
     "dspln_stats_quotes",
+    "dspln_stats_quotes_themefont",
     "dspln_home_hero",
     "dspln_size_recommender",
     "dspln_home_3d_gi",
