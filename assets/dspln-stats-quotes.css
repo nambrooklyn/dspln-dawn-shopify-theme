@@ -50,6 +50,8 @@
 
 .dspln-stats-quotes__text {
   margin: 0;
+  border: 0; /* Dawn's base blockquote adds a left bar; the design has none */
+  padding: 0;
   font-family: Didot, "Didot LT STD", "Bodoni 72", "Bodoni MT", Prata, "Playfair Display", Georgia, serif;
   font-size: clamp(2rem, 2vw, 2.8rem);
   font-style: italic;
