@@ -659,7 +659,10 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setTextLayersState([...(state.textLayers ?? [])]);
       setLayers([]);
       setSelectedLayerId(null);
-      setCameraView(state.cameraView);
+      // Always present a restored design from the front — resuming at
+      // whatever focus view was active at save time (a sleeve, the belt
+      // end) is disorienting on page load.
+      setCameraView('front');
       const firstVisiblePart = GI_PARTS.find((part) => state.partVisibility[part]);
       setSelectedPart(firstVisiblePart ?? GI_PARTS[0]);
     },
