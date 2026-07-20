@@ -130,6 +130,70 @@
         "button_label": "SUBSCRIBE",
         "success_message": "Thanks for subscribing."
       }
+    },
+    "dspln_stats_quotes_8L8A8E": {
+      "type": "dspln-stats-quotes",
+      "blocks": {
+        "stat_6zi46i": {
+          "type": "stat",
+          "settings": {
+            "value": "12,000+",
+            "label": "GIS DELIVERED"
+          }
+        },
+        "stat_V7H4nC": {
+          "type": "stat",
+          "settings": {
+            "value": "40",
+            "label": "COUNTRIES"
+          }
+        },
+        "stat_GiM9XW": {
+          "type": "stat",
+          "settings": {
+            "value": "4.9★",
+            "label": "AVG RATING"
+          }
+        },
+        "stat_jBemRp": {
+          "type": "stat",
+          "settings": {
+            "value": "3–4wk",
+            "label": "LEAD TIME"
+          }
+        },
+        "quote_C77CJR": {
+          "type": "quote",
+          "settings": {
+            "text": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket.",
+            "author": "MARCUS R. — BROWN BELT",
+            "link_label": "SAMPLE",
+            "link_url": ""
+          }
+        },
+        "quote_8UHf76": {
+          "type": "quote",
+          "settings": {
+            "text": "Designed my academy's team gi in the 3D tool and ordered 14. The embroidery came out cleaner than anything off the rack.",
+            "author": "ANA P. — ACADEMY OWNER",
+            "link_label": "SAMPLE",
+            "link_url": ""
+          }
+        }
+      },
+      "block_order": [
+        "stat_6zi46i",
+        "stat_V7H4nC",
+        "stat_GiM9XW",
+        "stat_jBemRp",
+        "quote_C77CJR",
+        "quote_8UHf76"
+      ],
+      "name": "DSPLN stats + quotes",
+      "settings": {
+        "display_font": "theme-heading",
+        "aria_label": "Stats and testimonials"
+      }
     }
   },
   "order": [
@@ -143,6 +207,7 @@
     "dspln_philosophy_banner",
     "dspln_kids_gi_feature",
     "dspln_academy_banner",
-    "dspln_newsletter_banner"
+    "dspln_newsletter_banner",
+    "dspln_stats_quotes_8L8A8E"
   ]
 }
