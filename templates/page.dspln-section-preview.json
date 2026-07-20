@@ -9,6 +9,32 @@
  */
 {
   "sections": {
+    "dspln_stats_quotes": {
+      "type": "dspln-stats-quotes",
+      "blocks": {
+        "stat_1": { "type": "stat", "settings": { "value": "12,000+", "label": "GIS DELIVERED" } },
+        "stat_2": { "type": "stat", "settings": { "value": "40", "label": "COUNTRIES" } },
+        "stat_3": { "type": "stat", "settings": { "value": "4.9★", "label": "AVG RATING" } },
+        "stat_4": { "type": "stat", "settings": { "value": "3–4wk", "label": "LEAD TIME" } },
+        "quote_1": {
+          "type": "quote",
+          "settings": {
+            "text": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket.",
+            "author": "MARCUS R. — BROWN BELT",
+            "link_label": "SAMPLE"
+          }
+        },
+        "quote_2": {
+          "type": "quote",
+          "settings": {
+            "text": "Designed my academy's team gi in the 3D tool and ordered 14. The embroidery came out cleaner than anything off the rack.",
+            "author": "ANA P. — ACADEMY OWNER",
+            "link_label": "SAMPLE"
+          }
+        }
+      },
+      "block_order": ["stat_1", "stat_2", "stat_3", "stat_4", "quote_1", "quote_2"]
+    },
     "dspln_home_hero": {
       "type": "dspln-home-hero",
       "settings": {

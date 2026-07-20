@@ -1,0 +1,122 @@
+{{ 'dspln-stats-quotes.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-stats-quotes" aria-label="{{ section.settings.aria_label | default: 'Stats and testimonials' }}">
+  <div class="dspln-stats-quotes__inner">
+    {%- liquid
+      assign stat_blocks = section.blocks | where: 'type', 'stat'
+      assign quote_blocks = section.blocks | where: 'type', 'quote'
+    -%}
+
+    {%- if stat_blocks.size > 0 -%}
+      <div class="dspln-stats-quotes__stats" style="--stat-count: {{ stat_blocks.size }};">
+        {%- for block in stat_blocks -%}
+          <div class="dspln-stats-quotes__stat" {{ block.shopify_attributes }}>
+            <span class="dspln-stats-quotes__value">{{ block.settings.value }}</span>
+            <span class="dspln-stats-quotes__label">{{ block.settings.label }}</span>
+          </div>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    {%- if quote_blocks.size > 0 -%}
+      <div class="dspln-stats-quotes__quotes">
+        {%- for block in quote_blocks -%}
+          <figure class="dspln-stats-quotes__quote" {{ block.shopify_attributes }}>
+            <blockquote class="dspln-stats-quotes__text">&ldquo;{{ block.settings.text }}&rdquo;</blockquote>
+            <figcaption class="dspln-stats-quotes__attribution">
+              {{ block.settings.author }}
+              {%- if block.settings.link_label != blank -%}
+                &nbsp;[ {% if block.settings.link_url != blank %}<a href="{{ block.settings.link_url }}">{{ block.settings.link_label }}</a>{% else %}{{ block.settings.link_label }}{% endif %} ]
+              {%- endif -%}
+            </figcaption>
+          </figure>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN stats + quotes",
+  "tag": "section",
+  "class": "section-dspln-stats-quotes",
+  "settings": [
+    {
+      "type": "text",
+      "id": "aria_label",
+      "label": "Accessibility label",
+      "default": "Stats and testimonials"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "stat",
+      "name": "Stat",
+      "settings": [
+        {
+          "type": "text",
+          "id": "value",
+          "label": "Value",
+          "default": "12,000+"
+        },
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Label",
+          "default": "GIS DELIVERED"
+        }
+      ]
+    },
+    {
+      "type": "quote",
+      "name": "Quote",
+      "settings": [
+        {
+          "type": "textarea",
+          "id": "text",
+          "label": "Quote (no surrounding quotation marks)",
+          "default": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket."
+        },
+        {
+          "type": "text",
+          "id": "author",
+          "label": "Attribution",
+          "default": "MARCUS R. — BROWN BELT"
+        },
+        {
+          "type": "text",
+          "id": "link_label",
+          "label": "Tag label (e.g. SAMPLE — clear it once the quote is real)",
+          "default": "SAMPLE"
+        },
+        {
+          "type": "url",
+          "id": "link_url",
+          "label": "Tag link (optional)"
+        }
+      ]
+    }
+  ],
+  "max_blocks": 12,
+  "presets": [
+    {
+      "name": "DSPLN stats + quotes",
+      "blocks": [
+        { "type": "stat", "settings": { "value": "12,000+", "label": "GIS DELIVERED" } },
+        { "type": "stat", "settings": { "value": "40", "label": "COUNTRIES" } },
+        { "type": "stat", "settings": { "value": "4.9★", "label": "AVG RATING" } },
+        { "type": "stat", "settings": { "value": "3–4wk", "label": "LEAD TIME" } },
+        { "type": "quote" },
+        {
+          "type": "quote",
+          "settings": {
+            "text": "Designed my academy's team gi in the 3D tool and ordered 14. The embroidery came out cleaner than anything off the rack.",
+            "author": "ANA P. — ACADEMY OWNER"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}
