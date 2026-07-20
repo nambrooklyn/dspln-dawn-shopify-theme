@@ -39,14 +39,14 @@
         "stat_6zi46i": {
           "type": "stat",
           "settings": {
-            "value": "12,000+",
+            "value": "8,000+",
             "label": "GIS DELIVERED"
           }
         },
         "stat_V7H4nC": {
           "type": "stat",
           "settings": {
-            "value": "40",
+            "value": "22",
             "label": "COUNTRIES"
           }
         },
@@ -60,14 +60,14 @@
         "stat_jBemRp": {
           "type": "stat",
           "settings": {
-            "value": "3–4wk",
+            "value": "2 week",
             "label": "LEAD TIME"
           }
         },
         "quote_C77CJR": {
           "type": "quote",
           "settings": {
-            "text": "Fit is perfect and the pearl weave is strong. Recolored the whole thing indigo — got it super quick.",
+            "text": "Fit is perfect and the pearl weave is strong.  Came super quick.",
             "author": "MARCUS R. — Purple BELT",
             "link_label": "",
             "link_url": ""
@@ -94,6 +94,8 @@
       "name": "DSPLN stats + quotes",
       "settings": {
         "display_font": "didot",
+        "background_color": "#efece4",
+        "text_color": "#14141c",
         "aria_label": "Stats and testimonials"
       }
     },
