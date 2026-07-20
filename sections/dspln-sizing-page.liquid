@@ -427,12 +427,49 @@
       }
     }
 
+    // The standalone export serialized the calculator's markup but dropped every
+    // inline handler (onclick/oninput/onchange), while its <script> — which
+    // defines window.dsplnSetUnit/dsplnCalc/dsplnShift — still runs. Rebind the
+    // controls to those functions from out here (same-origin iframe).
+    function bindNativeCalc() {
+      try {
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        var win = iframe.contentWindow;
+        if (!doc || !win || typeof win.dsplnSetUnit !== 'function') return false;
+
+        var imp = doc.getElementById('dspln-btn-imp');
+        var met = doc.getElementById('dspln-btn-met');
+        if (!imp || !met) return false;
+        if (imp.dataset.dsplnBound === 'true') return true;
+        imp.dataset.dsplnBound = 'true';
+
+        imp.addEventListener('click', function () { win.dsplnSetUnit('imperial'); });
+        met.addEventListener('click', function () { win.dsplnSetUnit('metric'); });
+
+        var h = doc.getElementById('dspln-h');
+        var w = doc.getElementById('dspln-w');
+        var f = doc.getElementById('dspln-fit');
+        if (h && typeof win.dsplnCalc === 'function') h.addEventListener('change', function () { win.dsplnCalc(); });
+        if (w && typeof win.dsplnCalc === 'function') w.addEventListener('input', function () { win.dsplnCalc(); });
+        if (f && typeof win.dsplnCalc === 'function') f.addEventListener('change', function () { win.dsplnCalc(); });
+
+        var prev = doc.getElementById('dspln-prev');
+        var next = doc.getElementById('dspln-next');
+        if (prev && typeof win.dsplnShift === 'function') prev.addEventListener('click', function () { win.dsplnShift(-1); });
+        if (next && typeof win.dsplnShift === 'function') next.addEventListener('click', function () { win.dsplnShift(1); });
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
     iframe.addEventListener('load', function () {
       resizeFrame();
       var attempts = 0;
       var interval = window.setInterval(function () {
         attempts += 1;
         injectSizeFinder();
+        bindNativeCalc();
         resizeFrame();
         if (attempts >= 40) window.clearInterval(interval);
       }, 250);
