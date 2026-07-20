@@ -11,7 +11,7 @@
   "sections": {
     "dspln_stats_quotes_themefont": {
       "type": "dspln-stats-quotes",
-      "settings": { "display_font": "theme-heading" },
+      "settings": { "display_font": "theme-heading", "background_color": "#14141c", "text_color": "#efece4" },
       "blocks": {
         "stat_1": { "type": "stat", "settings": { "value": "12,000+", "label": "GIS DELIVERED (THEME HEADING FONT)" } },
         "stat_2": { "type": "stat", "settings": { "value": "40", "label": "COUNTRIES" } },

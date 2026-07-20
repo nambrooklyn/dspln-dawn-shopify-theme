@@ -31,7 +31,7 @@
   endcase
 -%}
 
-<section class="dspln-stats-quotes" style="--dsq-display-font: {{ dsq_font }};" aria-label="{{ section.settings.aria_label | default: 'Stats and testimonials' }}">
+<section class="dspln-stats-quotes" style="--dsq-display-font: {{ dsq_font }}; --dsq-bg: {{ section.settings.background_color | default: '#efece4' }}; --dsq-text: {{ section.settings.text_color | default: '#14141c' }};" aria-label="{{ section.settings.aria_label | default: 'Stats and testimonials' }}">
   <div class="dspln-stats-quotes__inner">
     {%- liquid
       assign stat_blocks = section.blocks | where: 'type', 'stat'
@@ -93,6 +93,18 @@
         { "value": "avenir", "label": "Avenir Next" },
         { "value": "helvetica", "label": "Helvetica Neue" }
       ]
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#efece4"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text color",
+      "default": "#14141c"
     },
     {
       "type": "text",

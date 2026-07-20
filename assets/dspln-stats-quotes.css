@@ -1,6 +1,6 @@
 .dspln-stats-quotes {
-  background: #efece4;
-  color: #14141c;
+  background: var(--dsq-bg, #efece4);
+  color: var(--dsq-text, #14141c);
 }
 
 .dspln-stats-quotes__inner {
@@ -68,7 +68,8 @@
 }
 
 .dspln-stats-quotes__attribution a {
-  color: #2b3a8f;
+  color: inherit;
+  opacity: 0.75;
   text-decoration: none;
 }
 
