@@ -67,9 +67,9 @@
         "quote_C77CJR": {
           "type": "quote",
           "settings": {
-            "text": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket.",
-            "author": "MARCUS R. — BROWN BELT",
-            "link_label": "SAMPLE",
+            "text": "Fit is perfect and the pearl weave is strong. Recolored the whole thing indigo — got it super quick.",
+            "author": "MARCUS R. — Purple BELT",
+            "link_label": "",
             "link_url": ""
           }
         },
@@ -78,7 +78,7 @@
           "settings": {
             "text": "Designed my academy's team gi in the 3D tool and ordered 14. The embroidery came out cleaner than anything off the rack.",
             "author": "ANA P. — ACADEMY OWNER",
-            "link_label": "SAMPLE",
+            "link_label": "",
             "link_url": ""
           }
         }
@@ -93,7 +93,7 @@
       ],
       "name": "DSPLN stats + quotes",
       "settings": {
-        "display_font": "theme-heading",
+        "display_font": "didot",
         "aria_label": "Stats and testimonials"
       }
     },
