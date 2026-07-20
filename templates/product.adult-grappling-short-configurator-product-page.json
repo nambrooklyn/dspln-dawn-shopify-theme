@@ -21,9 +21,118 @@
         "desktop_min_height": 860,
         "mobile_min_height": 820
       }
+    },
+    "dspln_howto_process_mExE6h": {
+      "type": "dspln-howto-process",
+      "name": "DSPLN how-to process",
+      "settings": {
+        "image_alt": "Customizer process steps"
+      }
+    },
+    "dspln_process_m4giBH": {
+      "type": "dspln-process",
+      "blocks": {
+        "step_BbK7fB": {
+          "type": "step",
+          "settings": {
+            "heading": "Pick your parts",
+            "text": "Decide what components you want. Pick your kimono, belt and/or pants, or any combination of the three. All parts can be different sizes as well."
+          }
+        },
+        "step_MVzT3d": {
+          "type": "step",
+          "settings": {
+            "heading": "Customize your gi",
+            "text": "Pick your size, colors and your graphics to add to your kimono, belt and/or pant. Our design tool lets you customize your gi exactly how you want it in 3D. Make it unique and one of a kind."
+          }
+        },
+        "step_TxJkUb": {
+          "type": "step",
+          "settings": {
+            "heading": "Review and check out",
+            "text": "Once you place your order we will send you a 3D model of your personal gi. You can ask any questions and once we have your approval we will begin making your gi and send tracking details when it ships."
+          }
+        }
+      },
+      "block_order": [
+        "step_BbK7fB",
+        "step_MVzT3d",
+        "step_TxJkUb"
+      ],
+      "name": "DSPLN process",
+      "settings": {
+        "heading": "THE PROCESS"
+      }
+    },
+    "dspln_stats_quotes_z8MTji": {
+      "type": "dspln-stats-quotes",
+      "blocks": {
+        "stat_yteYB8": {
+          "type": "stat",
+          "settings": {
+            "value": "12,000+",
+            "label": "GIS DELIVERED"
+          }
+        },
+        "stat_rVRJKk": {
+          "type": "stat",
+          "settings": {
+            "value": "40",
+            "label": "COUNTRIES"
+          }
+        },
+        "stat_yhwzVm": {
+          "type": "stat",
+          "settings": {
+            "value": "4.9★",
+            "label": "AVG RATING"
+          }
+        },
+        "stat_LY37H4": {
+          "type": "stat",
+          "settings": {
+            "value": "3–4wk",
+            "label": "LEAD TIME"
+          }
+        },
+        "quote_NLtQhm": {
+          "type": "quote",
+          "settings": {
+            "text": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket.",
+            "author": "MARCUS R. — BROWN BELT",
+            "link_label": "SAMPLE",
+            "link_url": ""
+          }
+        },
+        "quote_rTBFGb": {
+          "type": "quote",
+          "settings": {
+            "text": "Designed my academy's team gi in the 3D tool and ordered 14. The embroidery came out cleaner than anything off the rack.",
+            "author": "ANA P. — ACADEMY OWNER",
+            "link_label": "SAMPLE",
+            "link_url": ""
+          }
+        }
+      },
+      "block_order": [
+        "stat_yteYB8",
+        "stat_rVRJKk",
+        "stat_yhwzVm",
+        "stat_LY37H4",
+        "quote_NLtQhm",
+        "quote_rTBFGb"
+      ],
+      "name": "DSPLN stats + quotes",
+      "settings": {
+        "display_font": "theme-heading",
+        "aria_label": "Stats and testimonials"
+      }
     }
   },
   "order": [
-    "main"
+    "main",
+    "dspln_howto_process_mExE6h",
+    "dspln_stats_quotes_z8MTji",
+    "dspln_process_m4giBH"
   ]
 }
