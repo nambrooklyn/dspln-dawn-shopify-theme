@@ -146,6 +146,7 @@
     }
   },
   "order": [
+    "dspln_stats_quotes",
     "dspln_home_hero",
     "dspln_size_recommender",
     "dspln_home_3d_gi",
