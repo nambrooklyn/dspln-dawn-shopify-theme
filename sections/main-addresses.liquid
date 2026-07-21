@@ -22,12 +22,17 @@
     class="customer addresses dspln-account dspln-account--addresses section-{{ section.id }}-padding"
     data-customer-addresses
   >
-    <h1>{{ 'customer.addresses.title' | t }}</h1>
-    <a class="dspln-account__text-link" href="{{ routes.account_url }}">
-      {{ 'customer.account.return' | t }}
-    </a>
+    <div class="dspln-account__header">
+      <h1>{{ 'customer.addresses.title' | t }}</h1>
+    </div>
 
-    <div data-address>
+    <div class="dspln-account__layout">
+      {% render 'dspln-account-profile' %}
+
+      <div class="dspln-account__content">
+        {% render 'dspln-account-nav', active: 'addresses' %}
+
+        <div data-address>
       <button
         type="button"
         aria-expanded="false"
@@ -383,6 +388,8 @@
         </nav>
       {%- endif -%}
     {%- endif -%}
+      </div>
+    </div>
   </div>
 {%- endpaginate -%}
 
