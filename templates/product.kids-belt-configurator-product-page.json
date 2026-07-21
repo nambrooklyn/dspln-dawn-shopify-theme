@@ -25,17 +25,28 @@
     "size_recommender": {
       "type": "dspln-size-recommender",
       "settings": {
-        "guide_link": "shopify://pages/sizing"
+        "heading": "Size Recommender",
+        "text": "We offer a straightforward sizing system tailored to all body types. Simply provide your height and weight, and we'll find your perfect fit. For unique body types outside standard sizes, we customise gear based on your precise measurements.",
+        "guide_label": "Complete Fit Guide",
+        "guide_link": "shopify://pages/sizing",
+        "calculator_title": "Calculate My Size"
       }
     },
     "process": {
       "type": "dspln-process",
       "blocks": {
+        "step_rYkAKf": {
+          "type": "step",
+          "settings": {
+            "heading": "Pick your parts",
+            "text": "Decide what components you want. Pick your kimono, belt and/or pants, or any combination of the three. All parts can be different sizes as well."
+          }
+        },
         "step_1": {
           "type": "step",
           "settings": {
             "heading": "Customize your belt",
-            "text": "Pick your size and rank color, and add embroidered text to either belt end in the font and thread color you want \u2014 all live in 3D."
+            "text": "Pick your size and rank color, and add embroidered text to either belt end in the font and thread color you want — all live in 3D."
           }
         },
         "step_2": {
@@ -47,6 +58,7 @@
         }
       },
       "block_order": [
+        "step_rYkAKf",
         "step_1",
         "step_2"
       ],
