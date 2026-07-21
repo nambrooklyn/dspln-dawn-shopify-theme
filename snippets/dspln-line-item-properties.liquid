@@ -222,7 +222,13 @@
       {%- assign group_body_clean = group_body | strip -%}
       {%- if group_body_clean != blank -%}
         <section class="dspln-line-item-properties__group">
-          <h3 class="dspln-line-item-properties__heading">{{ group_name }}</h3>
+          {%- comment -%}
+            Single-item products (Kimono / Belt / Pant) already show their
+            name as the line title — repeating it as a group heading is noise.
+          {%- endcomment -%}
+          {%- unless group_key == item_title_key -%}
+            <h3 class="dspln-line-item-properties__heading">{{ group_name }}</h3>
+          {%- endunless -%}
           <dl>{{ group_body }}</dl>
         </section>
       {%- endif -%}
