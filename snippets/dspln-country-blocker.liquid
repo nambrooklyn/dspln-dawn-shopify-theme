@@ -1,0 +1,156 @@
+{%- comment -%}
+  Country blocking (Theme settings > Country blocking).
+
+  Detects the visitor's country client-side via IP geolocation and, when the
+  country is in the merchant's blocked list, replaces the page with a generic
+  unbranded "site can't be reached" screen. The lookup result is cached in
+  sessionStorage so it runs once per browser session, and the check fails
+  open: if geolocation is unavailable, the site loads normally.
+
+  Never renders in the theme editor (request.design_mode), so the merchant
+  cannot lock themselves out while customizing.
+
+  Usage:
+  {% render 'dspln-country-blocker' %}
+{%- endcomment -%}
+
+{%- if settings.country_blocker_enabled and settings.country_blocker_countries != blank -%}
+  {%- unless request.design_mode -%}
+    <div id="DsplnCountryBlocker" hidden>
+      <div class="dspln-country-blocker__inner">
+        <h1>This site can&rsquo;t be reached</h1>
+        <p>The server IP address could not be found.</p>
+        <p>Try checking the connection or try again later.</p>
+      </div>
+    </div>
+
+    {% style %}
+      #DsplnCountryBlocker {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        background-color: #ffffff;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      }
+
+      #DsplnCountryBlocker[hidden] {
+        display: none;
+      }
+
+      #DsplnCountryBlocker .dspln-country-blocker__inner {
+        max-width: 44rem;
+        text-align: left;
+      }
+
+      #DsplnCountryBlocker h1 {
+        margin: 0 0 1.2rem;
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: #202124;
+      }
+
+      #DsplnCountryBlocker p {
+        margin: 0 0 0.4rem;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: #5f6368;
+      }
+
+      html.dspln-country-blocked,
+      html.dspln-country-blocked body {
+        overflow: hidden;
+        height: 100%;
+      }
+    {% endstyle %}
+
+    <script>
+      (function () {
+        var blockedCountries = {{ settings.country_blocker_countries | json }}
+          .toUpperCase()
+          .split(/[\s,;]+/)
+          .filter(Boolean);
+        if (!blockedCountries.length) return;
+
+        var STORAGE_KEY = 'dspln:visitor-country';
+
+        function applyBlock() {
+          var overlay = document.getElementById('DsplnCountryBlocker');
+          if (!overlay) return;
+          document.documentElement.classList.add('dspln-country-blocked');
+          overlay.removeAttribute('hidden');
+          document.title = 'Site can’t be reached';
+
+          var clearContent = function () {
+            Array.prototype.slice
+              .call(document.body.children)
+              .forEach(function (el) {
+                if (el.id !== 'DsplnCountryBlocker' && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') {
+                  el.remove();
+                }
+              });
+          };
+
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', clearContent);
+          } else {
+            clearContent();
+          }
+        }
+
+        function handleCountry(code) {
+          if (code && blockedCountries.indexOf(code) !== -1) applyBlock();
+        }
+
+        function cacheCountry(code) {
+          try {
+            sessionStorage.setItem(STORAGE_KEY, code);
+          } catch (e) {
+            /* storage unavailable — the lookup simply repeats on the next page */
+          }
+        }
+
+        try {
+          var cached = sessionStorage.getItem(STORAGE_KEY);
+          if (cached) {
+            handleCountry(cached);
+            return;
+          }
+        } catch (e) {
+          /* storage unavailable */
+        }
+
+        fetch('https://get.geojs.io/v1/ip/country.json')
+          .then(function (response) {
+            if (!response.ok) throw new Error('geojs failed');
+            return response.json();
+          })
+          .then(function (data) {
+            var code = (data.country || '').toUpperCase();
+            if (!code) throw new Error('geojs empty');
+            cacheCountry(code);
+            handleCountry(code);
+          })
+          .catch(function () {
+            return fetch('https://ipapi.co/country/')
+              .then(function (response) {
+                if (!response.ok) throw new Error('ipapi failed');
+                return response.text();
+              })
+              .then(function (text) {
+                var code = (text || '').trim().toUpperCase();
+                if (!code || code.length !== 2) return;
+                cacheCountry(code);
+                handleCountry(code);
+              })
+              .catch(function () {
+                /* both lookups failed — fail open so customers are never blocked by an outage */
+              });
+          });
+      })();
+    </script>
+  {%- endunless -%}
+{%- endif -%}
