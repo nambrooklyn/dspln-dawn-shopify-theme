@@ -16,8 +16,4 @@
     <p class="dspln-account-profile__kicker">{{ 'customer.addresses.default' | t }}</p>
     {{ customer.default_address | format_address }}
   {%- endif -%}
-
-  <a class="dspln-account__text-link dspln-account-profile__logout" href="{{ routes.account_logout_url }}">
-    {{ 'customer.log_out' | t }}
-  </a>
 </aside>
