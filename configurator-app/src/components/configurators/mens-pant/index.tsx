@@ -820,31 +820,9 @@ const GiConfiguratorInner = memo(() => {
             />
             </>
           ) : (
-            // Dev-branch WIP: the saved-designs rail stays visible outside
-            // studio mode while the account/save flow is being built.
-            <SavedDesignsRail
-              status={draftStatus}
-              savedDesigns={savedDesigns}
-              defaultDesignName={currentDesignName || formatDesignName()}
-              storageLabel={
-                cloudOwnerContext?.isCustomer
-                  ? 'Saved to your account'
-                  : 'Saved for this browser only'
-              }
-              isSaving={isSavingDesign}
-              hasUnsavedChanges={hasUnsavedChanges}
-              isCustomer={cloudOwnerContext?.isCustomer}
-              onLoginToSave={handleLoginToSave}
-              onSaveDesign={handleSaveDesign}
-              activeDesignId={currentDesignId}
-              activeDesignName={currentDesignName}
-              onLoadDesign={handleLoadDesign}
-              onDeleteDesign={handleDeleteDesign}
-              onApplyKimonoLogo={setKimonoLogo}
-              onApplyPantLogo={setPantLogo}
-              currentKimonoLogos={kimonoLogos}
-              currentPantLogos={pantLogos}
-            />
+            // Customers don't see the save/designs rail until the account
+            // flow ships (matches the womens/kids configurators).
+            null
           )
         }
         sceneTopContent={
@@ -865,13 +843,10 @@ const GiConfiguratorInner = memo(() => {
               </a>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={handleLoginToSave}
-              className="text-foreground hover:text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase"
-            >
-              Log In To Save
-            </button>
+            // Login entry points are hidden until the account flow ships:
+            // the theme doesn't pass customer identity yet, so the login
+            // round-trip appears broken to customers.
+            null
           )
         }
       >
