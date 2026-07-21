@@ -27,7 +27,7 @@ export const GI_DEFAULT_COLORS: Record<GiPart, string> = {
 export const GI_PART_PRICES: Record<GiPart, number> = {
   jacket: 55,
   pants: 45,
-  belt: 15,
+  belt: 28,
 };
 
 export const GI_PART_DISPLAY: Record<GiPart, string> = {
