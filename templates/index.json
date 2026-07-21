@@ -64,15 +64,6 @@
             "label": "LEAD TIME"
           }
         },
-        "quote_C77CJR": {
-          "type": "quote",
-          "settings": {
-            "text": "Fit is perfect and the pearl weave is strong.  Came super quick.",
-            "author": "MARCUS R. — Purple BELT",
-            "link_label": "",
-            "link_url": ""
-          }
-        },
         "quote_8UHf76": {
           "type": "quote",
           "settings": {
@@ -88,7 +79,6 @@
         "stat_V7H4nC",
         "stat_GiM9XW",
         "stat_jBemRp",
-        "quote_C77CJR",
         "quote_8UHf76"
       ],
       "name": "DSPLN stats + quotes",
