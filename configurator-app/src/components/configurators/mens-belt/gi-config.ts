@@ -346,9 +346,9 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   right: [2.0, 1.75, 0],
   // Aimed at the womens model's MEASURED belt-text targets (world y ~1.78);
   // the previous hand-tuned y1.5/1.55 still sat below the actual belt.
-  'left-belt-end': [0.79, 1.73, 1.2],
-  'right-belt-end': [-0.87, 1.73, 1.18],
-  'belt-close': [0.09, 1.91, 2.67],
+  'left-belt-end': [0.59, 1.88, 1.49],
+  'right-belt-end': [-0.66, 1.46, 1.45],
+  'belt-close': [-0.06, 1.64, 1.89],
   'pants-close': [-1.77, 1.51, 2.57],
   'lapel-close': [1.09, 2.67, 3.36],
   'chest-close': [2.19, 2.5, 2.51],
@@ -375,9 +375,9 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   right: [2.4, 1.75, 0],
   // Aimed at the womens model's MEASURED belt-text targets (world y ~1.78);
   // the previous hand-tuned y1.5/1.55 still sat below the actual belt.
-  'left-belt-end': [0.79, 1.73, 1.2],
-  'right-belt-end': [-0.87, 1.73, 1.18],
-  'belt-close': [0.09, 1.91, 2.67],
+  'left-belt-end': [0.59, 1.88, 1.49],
+  'right-belt-end': [-0.66, 1.46, 1.45],
+  'belt-close': [-0.06, 1.64, 1.89],
   'pants-close': [-1.77, 1.51, 2.57],
   'lapel-close': [1.09, 2.67, 3.36],
   'chest-close': [2.19, 2.5, 2.51],
@@ -406,9 +406,9 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   left: CAMERA_TARGET,
   right: CAMERA_TARGET,
   // Measured centers of belt_left/right_text_target on the womens model.
-  'left-belt-end': [0.26, 1.78, 0.33],
-  'right-belt-end': [-0.34, 1.78, 0.31],
-  'belt-close': [0, 1.15, 0],
+  'left-belt-end': [0, 1.75, 0],
+  'right-belt-end': [0, 1.75, 0],
+  'belt-close': [0, 1.75, 0],
   'pants-close': [0, 0.62, 0],
   'lapel-close': [0, 1.66, 0],
   'chest-close': [0.15, 1.58, 0],
