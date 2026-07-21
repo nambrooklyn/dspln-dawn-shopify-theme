@@ -187,6 +187,17 @@ Pipeline (Dev Store First, per AGENTS.md): feature branch → merge to
 `main` → live mirror. Promotion to live requires the words "promote to
 live" after a dev-store review — never inferred from anything less.
 
+**Known dev-store blind spot — customer account pages.** The DEV store
+runs Shopify's new (hosted) customer accounts and has NO legacy option
+(Shopify deprecated legacy accounts Feb 2026; stores without it enabled
+cannot turn it on). Its `/account` redirects to shopify.com, so the
+theme's `templates/customers/*` never render there. The LIVE store still
+runs legacy accounts, so those templates only render on live. To review
+customer-account theme work, use `shopify theme dev --store
+f39242.myshopify.com` (safe, unpublished preview) instead of the dev
+store. Note Shopify will eventually sunset legacy accounts — theme
+account pages are interim until a hosted-accounts migration.
+
 ## How To Preview Safely
 
 Use Shopify CLI theme dev. This creates a temporary preview and does not publish the theme.
