@@ -260,9 +260,7 @@ function preloadImage(url: string, timeoutMs = 10000) {
  * Nothing is pre-rendered at add-to-cart.
  */
 function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
-  const [status, setStatus] = useState(
-    'Rendering production views — keep this window visible until the PDF downloads...',
-  );
+  const [status, setStatus] = useState('Rendering production views...');
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
   // Hold the driver in a ref so the run effect does NOT depend on the state
@@ -332,6 +330,11 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           // (frame-based so a hidden window pauses instead of corrupting).
           // The offscreen path doesn't need painted frames — explicit renders
           // draw the committed scene graph directly, even in a background tab.
+          if (!cancelled) {
+            setStatus(
+              'Rendering production views — keep this window visible until the PDF downloads...',
+            );
+          }
           await waitForRenderedFrames(30);
         } else {
           // Let React commit the hydrated decal meshes (timer-based on
@@ -590,7 +593,12 @@ export function TechPackDownloadPage() {
   // Mount the 3D stack for the garment this design belongs to, so the tech
   // pack renders the correct model — men's, women's, or kids'.
   const source = design.configData?.source;
-  if (source === 'dspln-womens-gi-configurator') {
+  // The standalone belt product renders the womens model (its belt mesh has
+  // the real text targets), so belt designs capture on the womens stack too.
+  if (
+    source === 'dspln-womens-gi-configurator' ||
+    source === 'dspln-mens-belt-configurator'
+  ) {
     return (
       <WomensProvider>
         <WomensTechPack design={design} />
