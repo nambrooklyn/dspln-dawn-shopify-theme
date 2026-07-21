@@ -1565,6 +1565,7 @@ function logoPlacementPages({
   leftImage,
   rightImage,
   kidsProportions = false,
+  pantsOnly = false,
 }: {
   kimonoLogos?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   pantLogos?: Partial<Record<PantLogoSlot, KimonoLogo>>;
@@ -1574,6 +1575,11 @@ function logoPlacementPages({
   rightImage?: TechPackImage | null;
   /** Kids model has shorter legs — the thighs sit higher in the front view. */
   kidsProportions?: boolean;
+  /**
+   * Pant-only product: the front render contains just the pants, so the
+   * thigh sits near the TOP of the image rather than ~67% down the full gi.
+   */
+  pantsOnly?: boolean;
 }) {
   const pages: LogoPlacementPage[] = [];
 
@@ -1616,11 +1622,14 @@ function logoPlacementPages({
         maxMeasurementIn: 4,
         viewImage: frontImage,
         // Thigh band, as a fraction of the front view. Measured: the adult
-        // thigh centers ~67% down the garment, the kids thigh ~59% (shorter
-        // legs) — so the kids crop shifts up to keep the thigh centered.
-        viewCrop: kidsProportions
-          ? { x: 0, y: 0.36, width: 1, height: 0.46 }
-          : { x: 0, y: 0.42, width: 1, height: 0.46 },
+        // thigh centers ~67% down the full gi, the kids thigh ~59% (shorter
+        // legs). On a pants-only render the garment IS the pants, so the
+        // thigh centers ~36% down (waist→hem spans the whole image).
+        viewCrop: pantsOnly
+          ? { x: 0, y: 0.13, width: 1, height: 0.46 }
+          : kidsProportions
+            ? { x: 0, y: 0.36, width: 1, height: 0.46 }
+            : { x: 0, y: 0.42, width: 1, height: 0.46 },
       });
     },
   );
@@ -2035,6 +2044,7 @@ export async function generateGiTechPackPageOne({
     leftImage,
     rightImage,
     kidsProportions,
+    pantsOnly: Boolean(includeParts.pants) && !includeParts.jacket,
   });
 
   for (const page of placementPages) {
