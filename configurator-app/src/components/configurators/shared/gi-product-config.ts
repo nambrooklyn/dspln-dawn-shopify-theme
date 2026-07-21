@@ -1,9 +1,21 @@
-export type GiProductKey = 'mens' | 'kids' | 'womens';
+export type GiProductKey =
+  | 'mens'
+  | 'kids'
+  | 'womens'
+  | 'mens-kimono'
+  | 'mens-belt'
+  | 'mens-pant';
 
 export interface GiProductConfig {
   key: GiProductKey;
   slug: string;
-  stateKind: 'gi' | 'kids-gi' | 'womens-gi';
+  stateKind:
+    | 'gi'
+    | 'kids-gi'
+    | 'womens-gi'
+    | 'mens-kimono'
+    | 'mens-belt'
+    | 'mens-pant';
   productName: string;
   productTitle: string;
   shopifyProductPath: string;
@@ -85,6 +97,69 @@ export const GI_PRODUCT_CONFIGS = {
     netlifyPath: '/configurator/womens-gi',
     testCartStorageKey: 'dspln:womens-gi-shopify-test-cart',
     configStoragePrefix: 'dspln:womens-gi-config:',
+  },
+  'mens-kimono': {
+    key: 'mens-kimono',
+    slug: 'mens-kimono',
+    stateKind: 'mens-kimono',
+    productName: 'BJJ Kimono',
+    productTitle: 'Custom BJJ Kimono',
+    shopifyProductPath: '/products/mens-custom-kimono',
+    shopifyProductHandle: 'mens-custom-kimono',
+    shopifyProductUrl: 'https://dspln.com/products/mens-custom-kimono',
+    modelUrl: '/models/fixed-sleeev-model-suit-2024.glb',
+    designNamePrefix: 'Kimono Design',
+    savedDesignIdPrefix: 'mens_kimono_saved',
+    orderDesignIdPrefix: 'mens_kimono_order',
+    localDraftDbName: 'dspln-mens-kimono-configurator',
+    fallbackStorageKey: 'dspln:mens-kimono-designs:fallback:v1',
+    guestTokenStorageKey: 'dspln:mens-kimono-cloud-guest-token',
+    cloudConfigSource: 'dspln-mens-kimono-configurator',
+    netlifyPath: '/configurator/mens-kimono',
+    testCartStorageKey: 'dspln:mens-kimono-shopify-test-cart',
+    configStoragePrefix: 'dspln:mens-kimono-config:',
+  },
+  'mens-belt': {
+    key: 'mens-belt',
+    slug: 'mens-belt',
+    stateKind: 'mens-belt',
+    productName: 'BJJ Belt',
+    productTitle: 'Custom BJJ Belt',
+    shopifyProductPath: '/products/mens-custom-belt',
+    shopifyProductHandle: 'mens-custom-belt',
+    shopifyProductUrl: 'https://dspln.com/products/mens-custom-belt',
+    modelUrl: '/models/fixed-sleeev-model-suit-2024.glb',
+    designNamePrefix: 'Belt Design',
+    savedDesignIdPrefix: 'mens_belt_saved',
+    orderDesignIdPrefix: 'mens_belt_order',
+    localDraftDbName: 'dspln-mens-belt-configurator',
+    fallbackStorageKey: 'dspln:mens-belt-designs:fallback:v1',
+    guestTokenStorageKey: 'dspln:mens-belt-cloud-guest-token',
+    cloudConfigSource: 'dspln-mens-belt-configurator',
+    netlifyPath: '/configurator/mens-belt',
+    testCartStorageKey: 'dspln:mens-belt-shopify-test-cart',
+    configStoragePrefix: 'dspln:mens-belt-config:',
+  },
+  'mens-pant': {
+    key: 'mens-pant',
+    slug: 'mens-pant',
+    stateKind: 'mens-pant',
+    productName: 'BJJ Pants',
+    productTitle: 'Custom BJJ Pants',
+    shopifyProductPath: '/products/mens-custom-pants',
+    shopifyProductHandle: 'mens-custom-pants',
+    shopifyProductUrl: 'https://dspln.com/products/mens-custom-pants',
+    modelUrl: '/models/fixed-sleeev-model-suit-2024.glb',
+    designNamePrefix: 'Pants Design',
+    savedDesignIdPrefix: 'mens_pant_saved',
+    orderDesignIdPrefix: 'mens_pant_order',
+    localDraftDbName: 'dspln-mens-pant-configurator',
+    fallbackStorageKey: 'dspln:mens-pant-designs:fallback:v1',
+    guestTokenStorageKey: 'dspln:mens-pant-cloud-guest-token',
+    cloudConfigSource: 'dspln-mens-pant-configurator',
+    netlifyPath: '/configurator/mens-pant',
+    testCartStorageKey: 'dspln:mens-pant-shopify-test-cart',
+    configStoragePrefix: 'dspln:mens-pant-config:',
   },
 } satisfies Record<GiProductKey, GiProductConfig>;
 

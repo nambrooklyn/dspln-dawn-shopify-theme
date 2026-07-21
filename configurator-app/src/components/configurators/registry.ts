@@ -1,6 +1,9 @@
 import type { ComponentType } from 'react';
 
 import { GiConfigurator } from './gi';
+import { MensKimonoConfigurator } from './mens-kimono';
+import { MensBeltConfigurator } from './mens-belt';
+import { MensPantConfigurator } from './mens-pant';
 import { AdultGrapplingShortConfigurator } from './adult-grappling-short';
 import { KidsGiConfigurator } from './kids-gi';
 import { LongSleeveRashguardConfigurator } from './long-sleeve-rashguard';
@@ -14,6 +17,9 @@ import { WomensGiConfigurator } from './womens-gi';
  */
 export const CONFIGURATOR_REGISTRY: Record<string, ComponentType> = {
   gi: GiConfigurator,
+  'mens-kimono': MensKimonoConfigurator,
+  'mens-belt': MensBeltConfigurator,
+  'mens-pant': MensPantConfigurator,
   'womens-gi': WomensGiConfigurator,
   'kids-gi': KidsGiConfigurator,
   'adult-grappling-short': AdultGrapplingShortConfigurator,
