@@ -1,4 +1,5 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
+{{ 'dspln-account.css' | asset_url | stylesheet_tag }}
 
 {%- style -%}
   .section-{{ section.id }}-padding {
@@ -14,17 +15,17 @@
   }
 {%- endstyle -%}
 
-<div class="customer order section-{{ section.id }}-padding">
-  <div>
+<div class="customer order dspln-account dspln-account--order section-{{ section.id }}-padding">
+  <div class="dspln-account__header">
     <h1 class="customer__title">{{ 'customer.account.title' | t }}</h1>
-    <a href="{{ routes.account_url }}">{{ 'customer.account.return' | t }}</a>
+    <a class="dspln-account__text-link" href="{{ routes.account_url }}">{{ 'customer.account.return' | t }}</a>
   </div>
 
   <div>
     <div>
       <h2>{{ 'customer.order.title' | t: name: order.name }}</h2>
       {%- assign order_date = order.created_at | time_tag: format: 'date_at_time' -%}
-      <p>{{ 'customer.order.date_html' | t: date: order_date }}</p>
+      <p class="dspln-account__order-meta">{{ 'customer.order.date_html' | t: date: order_date }}</p>
       {%- if order.cancelled -%}
         {%- assign cancelled_at = order.cancelled_at | time_tag: format: 'date_at_time' -%}
         <p>{{ 'customer.order.cancelled_html' | t: date: cancelled_at }}</p>
@@ -304,8 +305,8 @@
         </tfoot>
       </table>
     </div>
-    <div>
-      <div>
+    <div class="dspln-account__order-addresses">
+      <div class="dspln-account__panel">
         <h2>{{ 'customer.order.billing_address' | t }}</h2>
         <p>
           <strong>{{ 'customer.order.payment_status' | t }}:</strong>
@@ -313,7 +314,7 @@
         </p>
         {{ order.billing_address | format_address }}
       </div>
-      <div>
+      <div class="dspln-account__panel">
         <h2>{{ 'customer.order.shipping_address' | t }}</h2>
         <p>
           <strong>{{ 'customer.order.fulfillment_status' | t }}:</strong>

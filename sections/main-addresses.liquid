@@ -1,4 +1,5 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
+{{ 'dspln-account.css' | asset_url | stylesheet_tag }}
 
 <script src="{{ 'customer.js' | asset_url }}" defer></script>
 
@@ -17,9 +18,12 @@
 {%- endstyle -%}
 
 {%- paginate customer.addresses by 5 -%}
-  <div class="customer addresses section-{{ section.id }}-padding" data-customer-addresses>
+  <div
+    class="customer addresses dspln-account dspln-account--addresses section-{{ section.id }}-padding"
+    data-customer-addresses
+  >
     <h1>{{ 'customer.addresses.title' | t }}</h1>
-    <a href="{{ routes.account_url }}">
+    <a class="dspln-account__text-link" href="{{ routes.account_url }}">
       {{ 'customer.account.return' | t }}
     </a>
 
@@ -165,7 +169,7 @@
       </div>
     </div>
 
-    <ul role="list">
+    <ul role="list" class="dspln-account__address-list">
       {%- for address in customer.addresses -%}
         <li data-address>
           {%- if address == customer.default_address -%}
