@@ -381,14 +381,14 @@ export type CameraView =
 
 // Camera positions for Front/Back tabs. Tuned to frame the full gi
 // (head to feet) given the model auto-scales to ~2.5 units tall.
-// Target y = 1.25 = exact vertical center of the model so the gi sits
-// dead-center in the canvas (not biased high or low).
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
-// Standalone kimono product: cardinals frame the jacket.
-  front: [0, 1.5, 2.6],
-  back: [0, 1.5, -2.6],
-  left: [-2.6, 1.5, 0],
-  right: [2.6, 1.5, 0],
+// Standalone kimono product: cardinals frame the jacket. y = 1.78 is the
+// measured vertical center of the visible jacket meshes (y 1.08–2.50) so it
+// sits centered in the canvas instead of riding high with space below.
+  front: [0, 1.78, 2.6],
+  back: [0, 1.78, -2.6],
+  left: [-2.6, 1.78, 0],
+  right: [2.6, 1.78, 0],
   // Belt-end close-ups are aimed at the kids model's MEASURED belt-text
   // target meshes (world y ≈ 1.45–1.49 — the kids belt sits higher than the
   // adult's, whose values these used to copy), keeping the same camera offset
@@ -416,10 +416,10 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   CameraView,
   [number, number, number]
 > = {
-  front: [0, 1.5, 2.9],
-  back: [0, 1.5, -2.9],
-  left: [-2.9, 1.5, 0],
-  right: [2.9, 1.5, 0],
+  front: [0, 1.78, 2.9],
+  back: [0, 1.78, -2.9],
+  left: [-2.9, 1.78, 0],
+  right: [2.9, 1.78, 0],
   'left-belt-end': [0.75, 1.44, 1.09],
   'right-belt-end': [-0.84, 1.4, 1.07],
   'belt-close': [0, 1.18, 1.7],
@@ -443,7 +443,7 @@ export const MOBILE_CAMERA_POSITIONS: Record<
  *  the capture flow's settle wait so they can't drift apart. */
 export const GI_CAMERA_TWEEN_MS = 800;
 
-export const CAMERA_TARGET: [number, number, number] = [0, 1.5, 0];
+export const CAMERA_TARGET: [number, number, number] = [0, 1.78, 0];
 
 export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   front: CAMERA_TARGET,
