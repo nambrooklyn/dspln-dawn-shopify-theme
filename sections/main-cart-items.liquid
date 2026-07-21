@@ -200,9 +200,18 @@
                     if item_handle_key contains 'custom' or item_handle_key contains 'configurator'
                       assign has_dspln_line_item_properties = true
                     endif
+                    comment
+                      Single-item lines (Kimono / Belt / Pant, mens or kids) get a
+                      marker class: their white-trimmed previews fill the whole
+                      tile, so CSS scales them down to match full-suit thumbnails.
+                    endcomment
+                    assign is_dspln_single_item_line = false
+                    if is_dspln_mens_kimono_line_item or is_dspln_mens_belt_line_item or is_dspln_mens_pant_line_item or is_dspln_kids_kimono_line_item or is_dspln_kids_belt_line_item or is_dspln_kids_pant_line_item
+                      assign is_dspln_single_item_line = true
+                    endif
                   -%}
                   <tr
-                    class="cart-item{% if has_dspln_line_item_properties %} cart-item--dspln-custom{% endif %}{% if item.parent_relationship.parent != null %} cart-item__nested-line{% endif %}"
+                    class="cart-item{% if has_dspln_line_item_properties %} cart-item--dspln-custom{% endif %}{% if is_dspln_single_item_line %} cart-item--dspln-single{% endif %}{% if item.parent_relationship.parent != null %} cart-item__nested-line{% endif %}"
                     id="CartItem-{{ item.index | plus: 1 }}"
                     {% if dspln_cart_design_id != blank %}
                       data-dspln-design-id="{{ dspln_cart_design_id | escape }}"
