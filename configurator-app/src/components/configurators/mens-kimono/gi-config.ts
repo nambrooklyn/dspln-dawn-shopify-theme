@@ -374,10 +374,10 @@ export type CameraView =
 // Wearer's left = camera's RIGHT (+x) in the front view — slot names are
 // wearer-relative, positions are camera-relative.
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
-  front: [0, 1.65, 3.1],
-  back: [0, 1.65, -3.1],
-  left: [-3.1, 1.65, 0],
-  right: [3.1, 1.65, 0],
+  front: [0, 1.9, 3.1],
+  back: [0, 1.9, -3.1],
+  left: [-3.1, 1.9, 0],
+  right: [3.1, 1.9, 0],
   'left-belt-end': [0.77, 1.19, 1.2],
   'right-belt-end': [-0.77, 1.19, 1.21],
   'belt-close': [0, 1.18, 1.7],
@@ -402,10 +402,10 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   CameraView,
   [number, number, number]
 > = {
-  front: [0, 1.65, 2.9],
-  back: [0, 1.65, -2.9],
-  left: [-2.9, 1.65, 0],
-  right: [2.9, 1.65, 0],
+  front: [0, 1.9, 2.9],
+  back: [0, 1.9, -2.9],
+  left: [-2.9, 1.9, 0],
+  right: [2.9, 1.9, 0],
   'left-belt-end': [0.77, 1.19, 1.2],
   'right-belt-end': [-0.77, 1.19, 1.21],
   'belt-close': [0, 1.18, 1.7],
@@ -430,7 +430,7 @@ export const MOBILE_CAMERA_POSITIONS: Record<
  *  the capture flow's settle wait so they can't drift apart. */
 export const GI_CAMERA_TWEEN_MS = 800;
 
-export const CAMERA_TARGET: [number, number, number] = [0, 1.65, 0];
+export const CAMERA_TARGET: [number, number, number] = [0, 1.9, 0];
 
 export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   front: CAMERA_TARGET,
