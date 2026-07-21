@@ -1,0 +1,850 @@
+/* DSPLN customer account suite.
+   Loaded after customer.css in each main-* customer section; customer.css
+   keeps the functional layer (mobile table collapse via data-label, the
+   addresses aria-expanded show/hide, :target recover-password toggle) and
+   this file restyles everything on top of it. */
+
+.dspln-account {
+  color: var(--dspln-black);
+}
+
+.dspln-account h1,
+.dspln-account h2 {
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.dspln-account h1 {
+  font-size: clamp(2rem, 2vw, 2.6rem);
+}
+
+.dspln-account h2 {
+  font-size: 1.5rem;
+  margin: 0 0 1.6rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid var(--dspln-border);
+}
+
+.dspln-account p {
+  font-size: 1.4rem;
+  line-height: 1.6;
+}
+
+.dspln-account a {
+  color: var(--dspln-black);
+}
+
+.dspln-account a:hover {
+  color: var(--dspln-muted);
+}
+
+/* Quiet uppercase text links (log out, back to account, forgot password) */
+.dspln-account__text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dspln-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.4em;
+}
+
+.dspln-account__text-link:hover {
+  color: var(--dspln-black);
+}
+
+.dspln-account__text-link .svg-wrapper {
+  width: 1.5rem;
+  display: inline-flex;
+}
+
+/* Link styled as a DSPLN button (matches dspln-global button conventions).
+   Doubled selectors outweigh the `.dspln-account a` color rules above. */
+.dspln-account__button,
+.dspln-account a.dspln-account__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.2rem;
+  padding: 1.2rem 2.6rem;
+  border: 1px solid var(--dspln-black);
+  background: var(--dspln-black);
+  color: var(--dspln-white);
+  font-size: 1.2rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dspln-account__button:hover,
+.dspln-account a.dspln-account__button:hover {
+  background: var(--dspln-white);
+  color: var(--dspln-black);
+}
+
+.dspln-account__button--secondary,
+.dspln-account a.dspln-account__button--secondary {
+  background: var(--dspln-white);
+  color: var(--dspln-black);
+  border-color: var(--dspln-border);
+}
+
+.dspln-account__button--secondary:hover,
+.dspln-account a.dspln-account__button--secondary:hover {
+  border-color: var(--dspln-black);
+  background: var(--dspln-white);
+  color: var(--dspln-black);
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-account__button {
+    width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Dashboard + order pages (wide layout)                            */
+/* ---------------------------------------------------------------- */
+
+.dspln-account--dashboard,
+.dspln-account--order {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding-left: 2.4rem;
+  padding-right: 2.4rem;
+}
+
+@media screen and (min-width: 750px) {
+  .dspln-account--dashboard,
+  .dspln-account--order {
+    padding-left: 5rem;
+    padding-right: 5rem;
+  }
+}
+
+@media screen and (min-width: 1140px) {
+  .dspln-account--dashboard,
+  .dspln-account--order {
+    padding-left: 8rem;
+    padding-right: 8rem;
+  }
+}
+
+.dspln-account__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.8rem 2.4rem;
+  border-bottom: 1px solid var(--dspln-black);
+  padding-bottom: 2rem;
+  margin-bottom: 3.2rem;
+}
+
+.dspln-account__header h1 {
+  margin: 0;
+}
+
+.dspln-account__welcome {
+  margin: 0;
+  color: var(--dspln-muted);
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+}
+
+.dspln-account__header .dspln-account__text-link {
+  margin-left: auto;
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-account__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dspln-account__header .dspln-account__text-link {
+    margin-left: 0;
+  }
+}
+
+/* Overview stat strip. The .account > div... selector matches customer.css's
+   structural div:nth-of-type(2) rules so this file (loaded later) wins. */
+.dspln-account__stats,
+.account > div.dspln-account__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--dspln-border);
+  margin-bottom: 4rem;
+}
+
+@media screen and (min-width: 990px) {
+  .account > div.dspln-account__stats > div:first-of-type {
+    padding: 2.2rem 2.4rem;
+  }
+}
+
+.dspln-account__stat {
+  padding: 2.2rem 2.4rem;
+  text-align: center;
+}
+
+.dspln-account__stat + .dspln-account__stat {
+  border-left: 1px solid var(--dspln-border);
+}
+
+.dspln-account__stat-value {
+  display: block;
+  font-size: 2.2rem;
+  letter-spacing: 0.08em;
+  color: var(--dspln-black);
+}
+
+.dspln-account__stat-label {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dspln-muted);
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-account__stats,
+  .account > div.dspln-account__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .dspln-account__stat {
+    padding: 1.6rem 2rem;
+  }
+
+  .dspln-account__stat + .dspln-account__stat {
+    border-left: none;
+    border-top: 1px solid var(--dspln-border);
+  }
+}
+
+/* Order status badges */
+.dspln-account__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid var(--dspln-border);
+  padding: 0.3rem 1.1rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dspln-black);
+  white-space: nowrap;
+}
+
+.dspln-account__status::before {
+  content: '';
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--dspln-muted);
+}
+
+.dspln-account__status--good::before {
+  background: var(--dspln-black);
+}
+
+.dspln-account__status--alert::before {
+  background: var(--dspln-accent);
+}
+
+/* ---------------------------------------------------------------- */
+/* Shell: profile panel left, tabbed content right                  */
+/* The .account/.order > div... selectors mirror customer.css's     */
+/* structural div:nth-of-type(2) rules so this file (loaded later)  */
+/* wins the cascade.                                                */
+/* ---------------------------------------------------------------- */
+
+.dspln-account__layout,
+:is(.account, .order, .addresses) > div.dspln-account__layout {
+  display: block;
+}
+
+.dspln-account__content,
+:is(.account, .order) > div.dspln-account__layout > div.dspln-account__content {
+  display: block;
+  padding-right: 0;
+  min-width: 0;
+  background: var(--dspln-white);
+}
+
+@media screen and (min-width: 990px) {
+  .dspln-account__layout,
+  :is(.account, .order, .addresses) > div.dspln-account__layout {
+    display: grid;
+    grid-template-columns: 6.4rem 28rem minmax(0, 1fr);
+    gap: 0;
+    margin-top: 0;
+  }
+
+  .dspln-account__content,
+  :is(.account, .order) > div.dspln-account__layout > div.dspln-account__content {
+    padding-left: 5.6rem;
+  }
+}
+
+/* Black icon rail */
+.dspln-account-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--dspln-black);
+  padding: 1.6rem 0.4rem;
+}
+
+.dspln-account-rail__brand,
+.dspln-account .dspln-account-rail a.dspln-account-rail__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.6rem;
+  height: 3.6rem;
+  margin-bottom: 1.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: var(--dspln-white);
+  font-size: 1.6rem;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+
+.dspln-account-rail__item,
+.dspln-account .dspln-account-rail a.dspln-account-rail__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0.2rem;
+  width: 100%;
+  color: #b1b1b1;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-align: center;
+}
+
+.dspln-account-rail__item svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.dspln-account-rail__item:hover,
+.dspln-account-rail__item--active,
+.dspln-account .dspln-account-rail a.dspln-account-rail__item:hover,
+.dspln-account .dspln-account-rail a.dspln-account-rail__item--active {
+  color: var(--dspln-white);
+}
+
+.dspln-account-rail__item--logout {
+  margin-top: auto;
+}
+
+@media screen and (max-width: 989px) {
+  .dspln-account-rail {
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0;
+  }
+
+  .dspln-account-rail__brand,
+  .dspln-account .dspln-account-rail a.dspln-account-rail__brand {
+    margin-bottom: 0;
+    width: 3.2rem;
+    height: 3.2rem;
+  }
+
+  .dspln-account-rail__item,
+  .dspln-account .dspln-account-rail a.dspln-account-rail__item {
+    width: auto;
+    padding: 0.6rem 1rem;
+  }
+
+  .dspln-account-rail__item--logout {
+    margin-top: 0;
+  }
+}
+
+/* Gray profile panel */
+.dspln-account-profile {
+  background: var(--dspln-soft);
+  padding: 3.2rem 2.4rem;
+  text-align: center;
+}
+
+.dspln-account-profile__monogram {
+  width: 7.2rem;
+  height: 7.2rem;
+  margin: 0 auto 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dspln-black);
+  color: var(--dspln-white);
+  font-size: 2.4rem;
+  letter-spacing: 0.12em;
+  text-indent: 0.12em;
+  text-transform: uppercase;
+}
+
+.dspln-account-profile__name {
+  color: var(--dspln-black);
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.dspln-account-profile__email {
+  font-size: 1.3rem;
+  color: var(--dspln-muted);
+  margin: 0.4rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.dspln-account-profile__kicker {
+  margin: 2.8rem 0 0.4rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--dspln-border);
+  font-size: 1.1rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dspln-black);
+}
+
+/* format_address renders a <p> of address lines */
+.dspln-account-profile p:not(.dspln-account-profile__name):not(.dspln-account-profile__kicker) {
+  font-size: 1.3rem;
+  line-height: 1.7;
+  color: var(--dspln-muted);
+}
+
+.dspln-account-profile__logout {
+  margin-top: 2.4rem;
+}
+
+@media screen and (max-width: 989px) {
+  .dspln-account-profile {
+    margin-bottom: 3.2rem;
+    padding: 2.4rem 2rem 2rem;
+  }
+}
+
+/* Tab bar */
+.dspln-account-nav {
+  display: flex;
+  gap: 3.2rem;
+  border-bottom: 1px solid var(--dspln-border);
+  margin-bottom: 3.2rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dspln-account-nav__tab,
+.dspln-account .dspln-account-nav a.dspln-account-nav__tab {
+  flex: none;
+  padding: 0 0 1.4rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--dspln-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+
+.dspln-account-nav__tab:hover,
+.dspln-account .dspln-account-nav a.dspln-account-nav__tab:hover {
+  color: var(--dspln-black);
+}
+
+.dspln-account-nav__tab--active,
+.dspln-account .dspln-account-nav a.dspln-account-nav__tab--active {
+  color: var(--dspln-black);
+  border-bottom-color: var(--dspln-black);
+}
+
+.dspln-account__tab-panel[hidden] {
+  display: none;
+}
+
+/* Recent orders list (overview tab) */
+.dspln-account__recent {
+  list-style: none;
+  margin: 0 0 2rem;
+  padding: 0;
+}
+
+.dspln-account__recent-row {
+  display: grid;
+  grid-template-columns: 8rem 1fr auto auto;
+  gap: 1.6rem;
+  align-items: center;
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--dspln-border);
+  font-size: 1.4rem;
+}
+
+.dspln-account__recent-row:first-child {
+  border-top: 1px solid var(--dspln-black);
+}
+
+.dspln-account__recent-name {
+  color: var(--dspln-black);
+}
+
+.dspln-account__recent-date {
+  color: var(--dspln-muted);
+}
+
+.dspln-account__recent-total {
+  color: var(--dspln-black);
+  text-align: right;
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-account__recent-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .dspln-account__recent-date {
+    order: 3;
+  }
+
+  .dspln-account__recent-total {
+    order: 4;
+  }
+}
+
+/* Tables (order history + order details) */
+.dspln-account table {
+  border: none;
+  box-shadow: none;
+  font-size: 1.4rem;
+}
+
+@media screen and (min-width: 750px) {
+  .dspln-account table {
+    box-shadow: none;
+    border-top: 1px solid var(--dspln-black);
+  }
+
+  .dspln-account th {
+    font-size: 1.1rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dspln-black);
+    border-bottom: 1px solid var(--dspln-border);
+    padding: 1.4rem 1rem 1.4rem 0;
+    text-align: left;
+  }
+
+  .dspln-account td {
+    border-bottom: 1px solid var(--dspln-border);
+    padding: 1.6rem 1rem 1.6rem 0;
+    color: var(--dspln-muted);
+  }
+
+  .dspln-account tbody td:first-of-type,
+  .dspln-account td a {
+    color: var(--dspln-black);
+  }
+
+  .dspln-account tfoot td {
+    color: var(--dspln-black);
+  }
+
+  .dspln-account tfoot tr:last-of-type td {
+    font-size: 1.5rem;
+    border-bottom: none;
+    border-top: 1px solid var(--dspln-black);
+  }
+
+  .dspln-account tbody tr:hover td {
+    background: var(--dspln-soft);
+  }
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-account tr {
+    border: 1px solid var(--dspln-border);
+    margin-top: 1.6rem;
+    padding: 0.4rem 1.4rem;
+  }
+
+  .dspln-account td {
+    border: none;
+    padding: 1rem 0;
+  }
+
+  .dspln-account td::before {
+    color: var(--dspln-muted);
+    font-size: 1.1rem;
+    letter-spacing: 0.14em;
+  }
+}
+
+.dspln-account__tab-panel .pagination {
+  margin-top: 3rem;
+}
+
+/* Neutralize customer.css's 750-989px structural flex/padding rules
+   that would otherwise hit every div inside the order content column */
+@media screen and (min-width: 750px) and (max-width: 989px) {
+  .order > div.dspln-account__layout > div.dspln-account__content div {
+    padding-right: 0;
+  }
+
+  .order > div.dspln-account__layout > div.dspln-account__content .dspln-account__panel {
+    padding-right: 2.4rem;
+  }
+}
+
+/* Empty state (no orders yet / no designs yet) */
+.dspln-account__empty {
+  border: 1px solid var(--dspln-border);
+  padding: 3.2rem 2.4rem;
+  text-align: center;
+}
+
+.dspln-account__empty p {
+  margin: 0 0 2rem;
+  color: var(--dspln-muted);
+}
+
+/* My Designs panel */
+.dspln-account__designs {
+  margin-top: 4.8rem;
+}
+
+.dspln-account__designs .dspln-account__empty {
+  background: var(--dspln-soft);
+  border-color: var(--dspln-soft);
+  padding: 4rem 2.4rem;
+}
+
+.dspln-account__designs .dspln-account__empty p {
+  max-width: 44rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.dspln-account__designs .dspln-account__button--secondary,
+.dspln-account .dspln-account__designs a.dspln-account__button--secondary {
+  border-color: var(--dspln-black);
+}
+
+/* Order page */
+.dspln-account--order .dspln-account__order-meta {
+  color: var(--dspln-muted);
+  font-size: 1.3rem;
+}
+
+.dspln-account__order-addresses {
+  display: block;
+  margin-top: 4rem;
+}
+
+@media screen and (min-width: 750px) {
+  .dspln-account__order-addresses,
+  .order > div:nth-of-type(2) > .dspln-account__order-addresses {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.4rem;
+  }
+}
+
+.dspln-account__panel,
+.order > div:nth-of-type(2) .dspln-account__panel {
+  border: 1px solid var(--dspln-border);
+  padding: 2.4rem;
+}
+
+.dspln-account__panel h2 {
+  margin-top: 0;
+}
+
+.dspln-account__panel p {
+  color: var(--dspln-muted);
+  font-size: 1.3rem;
+}
+
+.dspln-account__panel address {
+  font-style: normal;
+  font-size: 1.4rem;
+  line-height: 1.7;
+  color: var(--dspln-muted);
+}
+
+.order > div:nth-of-type(2) .dspln-account__panel p {
+  font-size: 1.4rem;
+  line-height: 1.7;
+  color: var(--dspln-muted);
+  margin: 0 0 1.2rem;
+}
+
+.order > div:nth-of-type(2) .dspln-account__panel p strong {
+  color: var(--dspln-black);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 1.1rem;
+  letter-spacing: 0.14em;
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-account__panel + .dspln-account__panel {
+    margin-top: 1.6rem;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Narrow auth pages (login, register, reset, activate) + addresses */
+/* ---------------------------------------------------------------- */
+
+.dspln-account--login h1,
+.dspln-account--register h1,
+.dspln-account--reset h1,
+.dspln-account--activate h1,
+.dspln-account--addresses h1 {
+  margin-bottom: 1.2rem;
+}
+
+.dspln-account--login > div > p,
+.dspln-account--reset > p,
+.dspln-account--activate > p {
+  color: var(--dspln-muted);
+}
+
+.dspln-account--login a,
+.dspln-account--register a,
+.dspln-account--reset a,
+.dspln-account--activate a {
+  font-size: 1.2rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dspln-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.4em;
+}
+
+.dspln-account--login a:hover,
+.dspln-account--register a:hover,
+.dspln-account--reset a:hover,
+.dspln-account--activate a:hover {
+  color: var(--dspln-black);
+}
+
+.dspln-account--login .field + a,
+.dspln-account--login button + a {
+  display: inline-block;
+  margin-top: 1.6rem;
+}
+
+.dspln-account--login hr {
+  border: none;
+  border-top: 1px solid var(--dspln-border);
+  margin: 4rem 0 2.4rem;
+}
+
+/* Addresses: widen out of customer.css's narrow centered column and
+   into the same shell as the dashboard */
+.customer.addresses.dspln-account--addresses {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding-left: 2.4rem;
+  padding-right: 2.4rem;
+  text-align: left;
+}
+
+@media screen and (min-width: 750px) {
+  .customer.addresses.dspln-account--addresses {
+    max-width: var(--page-width);
+    padding-left: 5rem;
+    padding-right: 5rem;
+  }
+}
+
+@media screen and (min-width: 1140px) {
+  .customer.addresses.dspln-account--addresses {
+    padding-left: 8rem;
+    padding-right: 8rem;
+  }
+}
+
+.dspln-account--addresses .dspln-account__address-list {
+  text-align: left;
+}
+
+.dspln-account__address-list li[data-address] {
+  border: 1px solid var(--dspln-border);
+  padding: 2.4rem;
+  margin-top: 2.4rem;
+  text-align: left;
+}
+
+.dspln-account__address-list li[data-address] > h2 {
+  font-size: 1.2rem;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0.8rem;
+  color: var(--dspln-muted);
+}
+
+.dspln-account__address-list li[data-address] > p {
+  font-size: 1.4rem;
+  line-height: 1.7;
+  color: var(--dspln-muted);
+  margin: 0;
+}
+
+/* Edit keeps a quiet bordered look, delete becomes a muted text button */
+.dspln-account--addresses li[data-address] > button {
+  margin: 2rem 1.2rem 0 0;
+  min-height: 3.6rem;
+  padding: 0.8rem 1.8rem;
+  font-size: 1.1rem;
+}
+
+.dspln-account--addresses li[data-address] > button[aria-controls] {
+  background: var(--dspln-white);
+  color: var(--dspln-black);
+  border: 1px solid var(--dspln-border);
+}
+
+.dspln-account--addresses li[data-address] > button[aria-controls]:hover {
+  border-color: var(--dspln-black);
+}
+
+.dspln-account--addresses li[data-address] > button[data-target] {
+  background: transparent;
+  border: none;
+  color: var(--dspln-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.4em;
+  box-shadow: none;
+}
+
+.dspln-account--addresses li[data-address] > button[data-target]:hover {
+  color: var(--dspln-black);
+}
+
+.dspln-account--addresses form button[type='reset'] {
+  background: var(--dspln-white);
+  color: var(--dspln-black);
+  border: 1px solid var(--dspln-border);
+}
