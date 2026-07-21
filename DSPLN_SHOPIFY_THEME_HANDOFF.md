@@ -172,6 +172,21 @@ No Shopify preview was completed because Shopify CLI authorization expired.
 
 No commit, push, deploy, or publish was done for these latest theme changes.
 
+## Stores & Deployment Pipeline
+
+Two Shopify stores:
+
+- **DEV store: `dspln-dev-2.myshopify.com`** — syncs its theme from the
+  `dev-store-theme` branch (mirrored from `dev` by
+  `.github/workflows/mirror-dev-theme.yml`). All review happens here.
+- **LIVE store: dspln.com (`f39242.myshopify.com`)** — syncs from
+  `main-store-theme` (mirrored from `main` by `mirror-live-theme.yml`).
+
+Pipeline (Dev Store First, per AGENTS.md): feature branch → merge to
+`dev` → review on the DEV store → only after explicit approval, merge to
+`main` → live mirror. Promotion to live requires the words "promote to
+live" after a dev-store review — never inferred from anything less.
+
 ## How To Preview Safely
 
 Use Shopify CLI theme dev. This creates a temporary preview and does not publish the theme.
