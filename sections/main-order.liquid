@@ -18,11 +18,14 @@
 <div class="customer order dspln-account dspln-account--order section-{{ section.id }}-padding">
   <div class="dspln-account__header">
     <h1 class="customer__title">{{ 'customer.account.title' | t }}</h1>
-    <a class="dspln-account__text-link" href="{{ routes.account_url }}">{{ 'customer.account.return' | t }}</a>
   </div>
 
-  <div>
-    <div>
+  <div class="dspln-account__layout">
+    {% render 'dspln-account-profile' %}
+
+    <div class="dspln-account__content">
+      {% render 'dspln-account-nav', active: 'orders' %}
+
       <h2>{{ 'customer.order.title' | t: name: order.name }}</h2>
       {%- assign order_date = order.created_at | time_tag: format: 'date_at_time' -%}
       <p class="dspln-account__order-meta">{{ 'customer.order.date_html' | t: date: order_date }}</p>
@@ -304,8 +307,7 @@
           </tr>
         </tfoot>
       </table>
-    </div>
-    <div class="dspln-account__order-addresses">
+      <div class="dspln-account__order-addresses">
       <div class="dspln-account__panel">
         <h2>{{ 'customer.order.billing_address' | t }}</h2>
         <p>
@@ -321,6 +323,7 @@
           {{ order.fulfillment_status_label }}
         </p>
         {{ order.shipping_address | format_address }}
+      </div>
       </div>
     </div>
   </div>
