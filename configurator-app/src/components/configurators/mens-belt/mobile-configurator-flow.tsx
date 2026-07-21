@@ -21,6 +21,8 @@ import {
   PANT_LOGO_SLOTS,
   PANT_SUBPART_LABEL,
   PANT_SUBPARTS,
+  PART_CAMERA_VIEW,
+  type CameraView,
   type GiPart,
 } from './gi-config';
 import { SectionAddRemove } from './part-sections/section-add-remove';
@@ -50,6 +52,8 @@ interface MobileStep {
   part: GiPart;
   content: ReactNode;
   description?: ReactNode;
+  /** Camera view framed when the merchant scrolls to this step. */
+  view?: CameraView;
 }
 
 const PREFERRED_MOBILE_STEP_BY_PART: Partial<Record<GiPart, string>> = {
@@ -191,6 +195,7 @@ export const MobileConfiguratorFlow = memo(
     const {
       selectedPart,
       setSelectedPart,
+      setCameraView,
       partVisibility,
       setPartVisible,
       partColors,
@@ -295,12 +300,14 @@ export const MobileConfiguratorFlow = memo(
           key: 'belt-size',
           title: 'Belt Size',
           part: 'belt',
+          view: 'front',
           content: <BeltSizeSection value={beltSize} onChange={setBeltSize} />,
         },
         {
           key: 'belt-color',
           title: 'Belt Color',
           part: 'belt',
+          view: 'belt-close',
           content: (
             <SectionColorSwatches
               title="Belt Color"
@@ -314,6 +321,7 @@ export const MobileConfiguratorFlow = memo(
           key: 'belt-left-text',
           title: 'Left Belt End Text',
           part: 'belt',
+          view: 'left-belt-end',
           content: (
             <BeltEndTextSection
               title="Left Belt End Text"
@@ -333,6 +341,7 @@ export const MobileConfiguratorFlow = memo(
           key: 'belt-right-text',
           title: 'Right Belt End Text',
           part: 'belt',
+          view: 'right-belt-end',
           content: (
             <BeltEndTextSection
               title="Right Belt End Text"
@@ -464,7 +473,9 @@ export const MobileConfiguratorFlow = memo(
       if (!step) return;
       mobileStepPartRef.current = step.part;
       setSelectedPart(step.part);
-    }, [setSelectedPart, step]);
+      // Scrolling to a step frames what that step customizes.
+      setCameraView(step.view ?? PART_CAMERA_VIEW[step.part]);
+    }, [setCameraView, setSelectedPart, step]);
 
     useEffect(() => {
       if (selectedPart === mobileStepPartRef.current) return;

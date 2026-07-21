@@ -21,6 +21,12 @@ import {
   PANT_LOGO_SLOTS,
   PANT_SUBPART_LABEL,
   PANT_SUBPARTS,
+  KIMONO_SUBPART_CAMERA_VIEW,
+  KIMONO_LOGO_SLOT_CAMERA_VIEW,
+  PANT_SUBPART_CAMERA_VIEW,
+  PANT_LOGO_SLOT_CAMERA_VIEW,
+  PART_CAMERA_VIEW,
+  type CameraView,
   type GiPart,
 } from './gi-config';
 import { SectionAddRemove } from './part-sections/section-add-remove';
@@ -50,6 +56,8 @@ interface MobileStep {
   part: GiPart;
   content: ReactNode;
   description?: ReactNode;
+  /** Camera view framed when the merchant scrolls to this step. */
+  view?: CameraView;
 }
 
 const PREFERRED_MOBILE_STEP_BY_PART: Partial<Record<GiPart, string>> = {
@@ -191,6 +199,7 @@ export const MobileConfiguratorFlow = memo(
     const {
       selectedPart,
       setSelectedPart,
+      setCameraView,
       partVisibility,
       setPartVisible,
       beltRank,
@@ -232,12 +241,14 @@ export const MobileConfiguratorFlow = memo(
         },
         {
           key: 'kimono-size',
+          view: 'front',
           title: 'Kimono Size',
           part: 'jacket',
           content: <SectionKimonoSize />,
         },
         ...KIMONO_SUBPARTS.map<MobileStep>((sub) => ({
           key: `kimono-${sub}`,
+          view: KIMONO_SUBPART_CAMERA_VIEW[sub],
           title: KIMONO_SUBPART_LABEL[sub],
           part: 'jacket',
           content: (
@@ -252,6 +263,7 @@ export const MobileConfiguratorFlow = memo(
           const logo = kimonoLogos[slot];
           return {
             key: `kimono-logo-${slot}`,
+            view: KIMONO_LOGO_SLOT_CAMERA_VIEW[slot],
             title: KIMONO_LOGO_SLOT_LABEL[slot],
             part: 'jacket',
             content: (
@@ -293,12 +305,14 @@ export const MobileConfiguratorFlow = memo(
         },
         {
           key: 'belt-size',
+          view: 'front',
           title: 'Belt Size',
           part: 'belt',
           content: <BeltSizeSection value={beltSize} onChange={setBeltSize} />,
         },
         {
           key: 'belt-color',
+          view: 'belt-close',
           title: 'Belt Rank Color',
           part: 'belt',
           content: (
@@ -347,6 +361,7 @@ export const MobileConfiguratorFlow = memo(
         },
         {
           key: 'belt-left-text',
+          view: 'left-belt-end',
           title: 'Left Belt End Text',
           part: 'belt',
           content: (
@@ -366,6 +381,7 @@ export const MobileConfiguratorFlow = memo(
         },
         {
           key: 'belt-right-text',
+          view: 'right-belt-end',
           title: 'Right Belt End Text',
           part: 'belt',
           content: (
@@ -403,6 +419,7 @@ export const MobileConfiguratorFlow = memo(
         },
         {
           key: 'pant-size',
+          view: 'front',
           title: 'Pant Size',
           part: 'pants',
           content: (
@@ -415,6 +432,7 @@ export const MobileConfiguratorFlow = memo(
         },
         ...PANT_SUBPARTS.map<MobileStep>((sub) => ({
           key: `pant-${sub}`,
+          view: PANT_SUBPART_CAMERA_VIEW[sub],
           title: PANT_SUBPART_LABEL[sub],
           part: 'pants',
           content: (
@@ -430,6 +448,7 @@ export const MobileConfiguratorFlow = memo(
           const logo = pantLogos[slot];
           return {
             key: `pant-logo-${slot}`,
+            view: PANT_LOGO_SLOT_CAMERA_VIEW[slot],
             title: PANT_LOGO_SLOT_LABEL[slot],
             part: 'pants',
             content: (
@@ -495,7 +514,9 @@ export const MobileConfiguratorFlow = memo(
       if (!step) return;
       mobileStepPartRef.current = step.part;
       setSelectedPart(step.part);
-    }, [setSelectedPart, step]);
+      // Scrolling to a step frames what that step customizes.
+      setCameraView(step.view ?? PART_CAMERA_VIEW[step.part]);
+    }, [setCameraView, setSelectedPart, step]);
 
     useEffect(() => {
       if (selectedPart === mobileStepPartRef.current) return;

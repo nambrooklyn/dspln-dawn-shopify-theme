@@ -22,6 +22,10 @@ import {
   PANT_SUBPART_LABEL,
   PANT_SUBPARTS,
   STUDIO_ONLY_KIMONO_LOGO_SLOTS,
+  KIMONO_SUBPART_CAMERA_VIEW,
+  KIMONO_LOGO_SLOT_CAMERA_VIEW,
+  PART_CAMERA_VIEW,
+  type CameraView,
   type GiPart,
 } from './gi-config';
 import { isStudioMode } from '../shared/studio-mode';
@@ -59,6 +63,8 @@ interface MobileStep {
   part: GiPart;
   content: ReactNode;
   description?: ReactNode;
+  /** Camera view framed when the merchant scrolls to this step. */
+  view?: CameraView;
 }
 
 const PREFERRED_MOBILE_STEP_BY_PART: Partial<Record<GiPart, string>> = {
@@ -201,6 +207,7 @@ export const MobileConfiguratorFlow = memo(
     const {
       selectedPart,
       setSelectedPart,
+      setCameraView,
       partVisibility,
       setPartVisible,
       partColors,
@@ -243,6 +250,7 @@ export const MobileConfiguratorFlow = memo(
         },
         {
           key: 'kimono-size',
+          view: 'front',
           title: 'Kimono Size',
           part: 'jacket',
           content: <SectionKimonoSize />,
@@ -251,6 +259,7 @@ export const MobileConfiguratorFlow = memo(
           key: `kimono-${sub}`,
           title: KIMONO_SUBPART_LABEL[sub],
           part: 'jacket',
+          view: KIMONO_SUBPART_CAMERA_VIEW[sub],
           content: (
             <SectionColorSwatches
               title={KIMONO_SUBPART_LABEL[sub]}
@@ -265,6 +274,7 @@ export const MobileConfiguratorFlow = memo(
             key: `kimono-logo-${slot}`,
             title: KIMONO_LOGO_SLOT_LABEL[slot],
             part: 'jacket',
+            view: KIMONO_LOGO_SLOT_CAMERA_VIEW[slot],
             content: (
               <SectionLogoUpload
                 title={KIMONO_LOGO_SLOT_LABEL[slot]}
@@ -471,7 +481,9 @@ export const MobileConfiguratorFlow = memo(
       if (!step) return;
       mobileStepPartRef.current = step.part;
       setSelectedPart(step.part);
-    }, [setSelectedPart, step]);
+      // Scrolling to a step frames what that step customizes.
+      setCameraView(step.view ?? PART_CAMERA_VIEW[step.part]);
+    }, [setCameraView, setSelectedPart, step]);
 
     useEffect(() => {
       if (selectedPart === mobileStepPartRef.current) return;
