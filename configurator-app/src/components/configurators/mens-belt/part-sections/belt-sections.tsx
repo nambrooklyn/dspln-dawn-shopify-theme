@@ -8,7 +8,7 @@ import {
   nameForHex,
 } from '../gi-config';
 import { SectionColorSwatches } from './section-color-swatches';
-import { BASE_SIZES } from './size-options';
+import { BELT_BASE_SIZES } from './size-options';
 
 const FONT_OPTIONS = BELT_FONT_OPTIONS.map((font) => ({
   label: font.name,
@@ -35,8 +35,7 @@ export const BeltEndTextSection = memo(
     onTextChange: (value: string) => void;
     onFontChange: (value: string) => void;
     onColorChange: (value: string) => void;
-    /** Called when the merchant starts editing this belt end (input
-     *  focus / font / thread color) — used to frame that belt end. */
+    /** Called when the merchant starts editing this belt end. */
     onActivate?: () => void;
   }) => {
     const currentColorName = nameForHex(color) ?? 'Custom';
@@ -124,9 +123,8 @@ export const BeltEndTextSection = memo(
 BeltEndTextSection.displayName = 'BeltEndTextSection';
 
 /**
- * Belt customization sections. v1 ships with just the intro + add/remove
- * toggle so the merchant can include/exclude the belt. Embroidered text
- * controls land in the next iteration.
+ * Belt customization sections. Single-item belt product: the belt is
+ * always included, so there is no add/remove toggle.
  */
 export const BeltSections = memo(() => {
   const {
@@ -152,7 +150,7 @@ export const BeltSections = memo(() => {
           </span>
         </div>
         <div className="grid grid-cols-4 gap-1">
-          {BASE_SIZES.map((size) => {
+          {BELT_BASE_SIZES.map((size) => {
             const isSelected = size === beltSize;
             return (
               <button

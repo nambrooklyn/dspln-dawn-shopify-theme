@@ -1,8 +1,8 @@
 import type { GiSerializedState, KimonoLogo } from './gi-state';
 import type { KimonoLogoSlot, PantLogoSlot } from './gi-config';
-import { currentGiProductConfig } from '../shared/gi-product-config';
+import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 
-const PRODUCT_CONFIG = currentGiProductConfig();
+const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS['mens-belt'];
 const DB_NAME = PRODUCT_CONFIG.localDraftDbName;
 const DB_VERSION = 1;
 const DESIGN_STORE = 'designs';

@@ -4,15 +4,47 @@ import { Button } from '@/components/ui/button';
 
 import type { GiSerializedState } from './gi-state';
 import type { GiPart } from './gi-config';
-import { currentGiProductConfig } from '../shared/gi-product-config';
 import { createLineDesignId, productionTechPackUrl } from '../shared/order-flow';
+import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 
-const PRODUCT_CONFIG = currentGiProductConfig();
+const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS['mens-belt'];
 
 const CART_STORAGE_KEY = PRODUCT_CONFIG.testCartStorageKey;
 const CONFIG_STORAGE_PREFIX = PRODUCT_CONFIG.configStoragePrefix;
 const SHOPIFY_CART_ADD_MESSAGE = 'dspln:shopify-cart:add';
 const SHOPIFY_CART_UPDATE_MESSAGE = 'dspln:shopify-cart:update';
+const SHOPIFY_CART_FALLBACK_TIMEOUT_MS = 1800;
+
+// Direct /cart/add fallback is disabled for the belt product: variant IDs
+// are environment-specific (dev vs live store), so adds must go through the
+// theme's cart bridge, which resolves the price ladder from the page itself.
+const PRICE_VARIANTS_BY_TOTAL: Record<number, number> = {
+  65: 48070065750312,
+  70: 48070065783080,
+  75: 48070065815848,
+  80: 48070065848616,
+  85: 48070065881384,
+  90: 48070065914152,
+  95: 48070065946920,
+  100: 48070064537896,
+  105: 48070064570664,
+  110: 48070064603432,
+  115: 48070064636200,
+  120: 48070064668968,
+  125: 48070064701736,
+  130: 48070064734504,
+  135: 48070064767272,
+  140: 48070064800040,
+  145: 48070064832808,
+  150: 48070064865576,
+  155: 48070064898344,
+  160: 48070064931112,
+  165: 48070064963880,
+  170: 48070064996648,
+  175: 48070065029416,
+  180: 48070065062184,
+  190: 48358831128872,
+};
 
 type ShopifyChargeVariantKey =
   | 'kimono'
@@ -134,8 +166,6 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
           spec.belt.embroidery.rightThreadColor,
       },
     );
-  } else {
-    props.push({ name: 'Belt', value: 'NO' });
   }
 
   if (spec.partVisibility.pants) {
@@ -161,7 +191,6 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
       },
     );
   }
-  // Single-item product: absent parts are omitted entirely.
 
   return props;
 }
@@ -196,12 +225,10 @@ function calculateConfiguredTotal(spec: GiSerializedState) {
   const beltTextTotal =
     (spec.belt.embroidery.leftEnd.trim() ? 10 : 0) +
     (spec.belt.embroidery.rightEnd.trim() ? 10 : 0);
-  // Free-placement text layers render on the jacket, $10 each.
-  const textLayerTotal = (spec.textLayers?.length ?? 0) * 10;
 
   return (
     baseTotal +
-    (spec.partVisibility.jacket ? kimonoLogoTotal + textLayerTotal : 0) +
+    (spec.partVisibility.jacket ? kimonoLogoTotal : 0) +
     (spec.partVisibility.pants ? pantLogoTotal : 0) +
     (spec.partVisibility.belt ? beltTextTotal : 0)
   );
@@ -277,26 +304,6 @@ function buildShopifyCharges({
         variantKey: isBackLogo ? 'backLogo25' : 'logo10',
         quantity: 1,
         unitPrice: isBackLogo ? 25 : 10,
-        properties: buildChargeProperties({
-          configuratorId,
-          label,
-          summary,
-        }),
-      });
-    });
-  }
-
-  if (spec.partVisibility.jacket) {
-    (spec.textLayers ?? []).forEach((layer, index) => {
-      const label = `Custom Text ${index + 1}: ${layer.text}`;
-      charges.push({
-        key: `${configuratorId}-text-${layer.id}`,
-        label,
-        // Bills through the existing $10 add-on variant — no Shopify
-        // admin changes needed.
-        variantKey: 'logo10',
-        quantity: 1,
-        unitPrice: 10,
         properties: buildChargeProperties({
           configuratorId,
           label,
@@ -459,8 +466,88 @@ function cartPropertiesForShopify(line: ShopifyCartLine) {
   return properties;
 }
 
+export function isShopifyIframeMode() {
+  return typeof window !== 'undefined' && window.parent !== window;
+}
+
+function addHiddenInput(form: HTMLFormElement, name: string, value: string) {
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = name;
+  input.value = value;
+  form.appendChild(input);
+}
+
+export function waitForShopifyCartParentResult(
+  timeoutMs = SHOPIFY_CART_FALLBACK_TIMEOUT_MS,
+) {
+  if (typeof window === 'undefined') {
+    return Promise.resolve<'added' | 'error' | 'timeout'>('timeout');
+  }
+
+  return new Promise<'added' | 'error' | 'timeout'>((resolve) => {
+    const timer = window.setTimeout(() => {
+      window.removeEventListener('message', handleMessage);
+      resolve('timeout');
+    }, timeoutMs);
+
+    function handleMessage(event: MessageEvent) {
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+
+      if (
+        data.type === 'dspln:shopify-cart:added' ||
+        data.type === 'dspln:shopify-cart:updated'
+      ) {
+        window.clearTimeout(timer);
+        window.removeEventListener('message', handleMessage);
+        resolve('added');
+      }
+
+      if (data.type === 'dspln:shopify-cart:error') {
+        window.clearTimeout(timer);
+        window.removeEventListener('message', handleMessage);
+        resolve('error');
+      }
+    }
+
+    window.addEventListener('message', handleMessage);
+  });
+}
+
+export function submitShopifyCartFallback(line: ShopifyCartLine) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return false;
+  }
+
+  const configuredTotal = Math.round(line.unitPrice);
+  const variantId = PRICE_VARIANTS_BY_TOTAL[configuredTotal];
+  if (!variantId) return false;
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = new URL('/cart/add', PRODUCT_CONFIG.shopifyProductUrl).toString();
+  form.target = '_top';
+  form.style.display = 'none';
+
+  addHiddenInput(form, 'id', String(variantId));
+  addHiddenInput(form, 'quantity', String(line.quantity || 1));
+  addHiddenInput(form, 'return_to', '/cart');
+
+  const properties = cartPropertiesForShopify(line);
+
+  Object.entries(properties).forEach(([name, value]) => {
+    if (!value) return;
+    addHiddenInput(form, `properties[${name}]`, value);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+  return true;
+}
+
 export function sendLinesToShopifyParent(lines: ShopifyCartLine[]) {
-  if (typeof window === 'undefined' || window.parent === window) {
+  if (!isShopifyIframeMode()) {
     return false;
   }
 

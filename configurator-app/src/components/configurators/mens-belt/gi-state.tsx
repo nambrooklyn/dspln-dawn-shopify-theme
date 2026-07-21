@@ -31,9 +31,9 @@ import {
   type PantLogoSlot,
   type PantSubPart,
 } from './gi-config';
-import { currentGiProductConfig } from '../shared/gi-product-config';
+import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 
-const PRODUCT_CONFIG = currentGiProductConfig();
+const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS['mens-belt'];
 
 export interface KimonoLogo {
   imageUrl: string; // blob: URL (local for v1; signed URL in prod)
@@ -63,34 +63,10 @@ export interface GiLayer {
   visible: boolean;
 }
 
-/** Custom world-space placement for a logo slot, set by dragging the
- *  artwork in studio mode. Serialized with the design so a customer
- *  opening a shared link sees the artwork exactly where it was left. */
-export interface KimonoLogoAnchorOverride {
-  position: [number, number, number];
-  rotation: [number, number, number];
-}
-
-/** A free-placement text decal (studio feature). Pure data — the PNG is
- *  regenerated from these parameters at render time, so the layer
- *  serializes losslessly into the design spec and costs no storage. */
-export interface GiTextLayer {
-  id: string;
-  text: string;
-  /** CSS font-family stack from TEXT_FONTS. */
-  font: string;
-  colorHex: string;
-  position: [number, number, number];
-  /** Surface orientation from the drag raycast (no roll). */
-  rotation: [number, number, number];
-  /** In-plane rotation applied on top of the surface orientation. */
-  rotateDeg: number;
-  /** 100 = base text height of 1.6 in. */
-  scalePct: number;
-}
+export type BeltTextTargetSlot = 'leftEnd' | 'rightEnd';
 
 export interface GiSerializedState {
-  kind: 'gi';
+  kind: 'mens-belt';
   partColors: Record<GiPart, string>;
   partVisibility: Record<GiPart, boolean>;
   price: {
@@ -115,8 +91,6 @@ export interface GiSerializedState {
         }
       >
     >;
-    // Optional so designs saved before drag-to-move still hydrate.
-    logoAnchors?: Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>;
   };
   belt: {
     size: string;
@@ -150,8 +124,6 @@ export interface GiSerializedState {
     >;
   };
   layers: Array<Omit<GiLayer, 'imageUrl'> & { imageDataUrl?: string }>;
-  // Optional so designs saved before free text layers still hydrate.
-  textLayers?: GiTextLayer[];
   cameraView: CameraView;
 }
 
@@ -214,18 +186,6 @@ interface GiStateValue {
   kimonoLogos: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   setKimonoLogo: (slot: KimonoLogoSlot, logo: KimonoLogo) => void;
   removeKimonoLogo: (slot: KimonoLogoSlot) => void;
-  // Drag-to-move placements (studio). Missing entry = default anchor.
-  kimonoLogoAnchors: Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>;
-  setKimonoLogoAnchor: (
-    slot: KimonoLogoSlot,
-    anchor: KimonoLogoAnchorOverride | null,
-  ) => void;
-
-  // Free-placement text decals (studio-created, +$10 each).
-  textLayers: GiTextLayer[];
-  addTextLayer: (layer: GiTextLayer) => void;
-  updateTextLayer: (id: string, patch: Partial<Omit<GiTextLayer, 'id'>>) => void;
-  removeTextLayer: (id: string) => void;
   pantLogos: Partial<Record<PantLogoSlot, KimonoLogo>>;
   setPantLogo: (slot: PantLogoSlot, logo: KimonoLogo) => void;
   removePantLogo: (slot: PantLogoSlot) => void;
@@ -250,10 +210,22 @@ interface GiStateValue {
   setKimonoBodyMesh: (mesh: Mesh | null) => void;
   kimonoLogoMeshes: Mesh[];
   setKimonoLogoMeshes: (meshes: Mesh[]) => void;
+  kimonoLogoTargetMeshes: Partial<Record<KimonoLogoSlot, Mesh>>;
+  setKimonoLogoTargetMeshes: (
+    meshes: Partial<Record<KimonoLogoSlot, Mesh>>,
+  ) => void;
   beltMesh: Mesh | null;
   setBeltMesh: (mesh: Mesh | null) => void;
+  beltTextTargetMeshes: Partial<Record<BeltTextTargetSlot, Mesh>>;
+  setBeltTextTargetMeshes: (
+    meshes: Partial<Record<BeltTextTargetSlot, Mesh>>,
+  ) => void;
   pantLogoMeshes: Partial<Record<PantLogoSlot, Mesh>>;
   setPantLogoMeshes: (meshes: Partial<Record<PantLogoSlot, Mesh>>) => void;
+  pantLogoTargetMeshes: Partial<Record<PantLogoSlot, Mesh>>;
+  setPantLogoTargetMeshes: (
+    meshes: Partial<Record<PantLogoSlot, Mesh>>,
+  ) => void;
 
   // Camera view (front / back).
   cameraView: CameraView;
@@ -291,6 +263,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     ...GI_DEFAULT_COLORS,
   }));
   const [selectedPart, setSelectedPart] = useState<GiPart>('belt');
+  // Single-item product: only the belt exists — jacket/pants never render.
   const [partVisibility, setPartVisibilityState] = useState<
     Record<GiPart, boolean>
   >({ jacket: false, pants: false, belt: true });
@@ -350,45 +323,8 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     },
     [],
   );
-  const [textLayers, setTextLayersState] = useState<GiTextLayer[]>([]);
-  const addTextLayer = useCallback((layer: GiTextLayer) => {
-    setTextLayersState((prev) => [...prev, layer]);
-  }, []);
-  const updateTextLayer = useCallback(
-    (id: string, patch: Partial<Omit<GiTextLayer, 'id'>>) => {
-      setTextLayersState((prev) =>
-        prev.map((layer) => (layer.id === id ? { ...layer, ...patch } : layer)),
-      );
-    },
-    [],
-  );
-  const removeTextLayer = useCallback((id: string) => {
-    setTextLayersState((prev) => prev.filter((layer) => layer.id !== id));
-  }, []);
-
-  const [kimonoLogoAnchors, setKimonoLogoAnchorsState] = useState<
-    Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>
-  >({});
-  const setKimonoLogoAnchor = useCallback(
-    (slot: KimonoLogoSlot, anchor: KimonoLogoAnchorOverride | null) => {
-      setKimonoLogoAnchorsState((prev) => {
-        const next = { ...prev };
-        if (anchor) next[slot] = anchor;
-        else delete next[slot];
-        return next;
-      });
-    },
-    [],
-  );
   const removeKimonoLogo = useCallback((slot: KimonoLogoSlot) => {
     setKimonoLogosState((prev) => {
-      const next = { ...prev };
-      delete next[slot];
-      return next;
-    });
-    // A removed logo's custom placement must not leak onto the next
-    // upload in that slot.
-    setKimonoLogoAnchorsState((prev) => {
       const next = { ...prev };
       delete next[slot];
       return next;
@@ -422,16 +358,43 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
   const setKimonoLogoMeshes = useCallback((meshes: Mesh[]) => {
     setKimonoLogoMeshesState(meshes);
   }, []);
+  const [kimonoLogoTargetMeshes, setKimonoLogoTargetMeshesState] = useState<
+    Partial<Record<KimonoLogoSlot, Mesh>>
+  >({});
+  const setKimonoLogoTargetMeshes = useCallback(
+    (meshes: Partial<Record<KimonoLogoSlot, Mesh>>) => {
+      setKimonoLogoTargetMeshesState(meshes);
+    },
+    [],
+  );
   const [beltMesh, setBeltMeshState] = useState<Mesh | null>(null);
   const setBeltMesh = useCallback((mesh: Mesh | null) => {
     setBeltMeshState(mesh);
   }, []);
+  const [beltTextTargetMeshes, setBeltTextTargetMeshesState] = useState<
+    Partial<Record<BeltTextTargetSlot, Mesh>>
+  >({});
+  const setBeltTextTargetMeshes = useCallback(
+    (meshes: Partial<Record<BeltTextTargetSlot, Mesh>>) => {
+      setBeltTextTargetMeshesState(meshes);
+    },
+    [],
+  );
   const [pantLogoMeshes, setPantLogoMeshesState] = useState<
     Partial<Record<PantLogoSlot, Mesh>>
   >({});
   const setPantLogoMeshes = useCallback(
     (meshes: Partial<Record<PantLogoSlot, Mesh>>) => {
       setPantLogoMeshesState(meshes);
+    },
+    [],
+  );
+  const [pantLogoTargetMeshes, setPantLogoTargetMeshesState] = useState<
+    Partial<Record<PantLogoSlot, Mesh>>
+  >({});
+  const setPantLogoTargetMeshes = useCallback(
+    (meshes: Partial<Record<PantLogoSlot, Mesh>>) => {
+      setPantLogoTargetMeshesState(meshes);
     },
     [],
   );
@@ -536,7 +499,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     }, {});
 
     return {
-      kind: 'gi',
+      kind: PRODUCT_CONFIG.stateKind,
       partColors,
       partVisibility,
       price: {
@@ -568,7 +531,6 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
           },
         },
         logos,
-        logoAnchors: kimonoLogoAnchors,
       },
       belt: {
         size: beltSize,
@@ -605,7 +567,6 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
         },
       },
       layers: layers.map(({ imageUrl: _imageUrl, ...rest }) => rest),
-      textLayers,
       cameraView,
     };
   }, [
@@ -614,14 +575,12 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     kimonoSize,
     kimonoSubColors,
     kimonoLogos,
-    kimonoLogoAnchors,
     pantLogos,
     beltEmbroidery,
     beltSize,
     pantSize,
     pantSubColors,
     layers,
-    textLayers,
     cameraView,
   ]);
 
@@ -654,14 +613,11 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
 	        rightThreadColor: state.belt.embroidery.rightThreadColor,
 	      });
       setKimonoLogosState({ ...(logoImages?.kimono ?? {}) });
-      setKimonoLogoAnchorsState({ ...(state.kimono.logoAnchors ?? {}) });
       setPantLogosState({ ...(logoImages?.pant ?? {}) });
-      setTextLayersState([...(state.textLayers ?? [])]);
       setLayers([]);
       setSelectedLayerId(null);
       // Always present a restored design from the front — resuming at
-      // whatever focus view was active at save time (a sleeve, the belt
-      // end) is disorienting on page load.
+      // whatever focus view was active at save time is disorienting.
       setCameraView('front');
       const firstVisiblePart = GI_PARTS.find((part) => state.partVisibility[part]);
       setSelectedPart(firstVisiblePart ?? GI_PARTS[0]);
@@ -694,12 +650,6 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       kimonoLogos,
       setKimonoLogo,
       removeKimonoLogo,
-      kimonoLogoAnchors,
-      setKimonoLogoAnchor,
-      textLayers,
-      addTextLayer,
-      updateTextLayer,
-      removeTextLayer,
       pantLogos,
       setPantLogo,
       removePantLogo,
@@ -709,10 +659,16 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setKimonoBodyMesh,
       kimonoLogoMeshes,
       setKimonoLogoMeshes,
+      kimonoLogoTargetMeshes,
+      setKimonoLogoTargetMeshes,
       beltMesh,
       setBeltMesh,
+      beltTextTargetMeshes,
+      setBeltTextTargetMeshes,
       pantLogoMeshes,
       setPantLogoMeshes,
+      pantLogoTargetMeshes,
+      setPantLogoTargetMeshes,
       cameraView,
       cameraViewResetKey,
       setCameraView,
@@ -748,12 +704,6 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       kimonoLogos,
       setKimonoLogo,
       removeKimonoLogo,
-      kimonoLogoAnchors,
-      setKimonoLogoAnchor,
-      textLayers,
-      addTextLayer,
-      updateTextLayer,
-      removeTextLayer,
       pantLogos,
       setPantLogo,
       removePantLogo,
@@ -763,10 +713,16 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setKimonoBodyMesh,
       kimonoLogoMeshes,
       setKimonoLogoMeshes,
+      kimonoLogoTargetMeshes,
+      setKimonoLogoTargetMeshes,
       beltMesh,
       setBeltMesh,
+      beltTextTargetMeshes,
+      setBeltTextTargetMeshes,
       pantLogoMeshes,
       setPantLogoMeshes,
+      pantLogoTargetMeshes,
+      setPantLogoTargetMeshes,
       cameraView,
       cameraViewResetKey,
       setCameraView,

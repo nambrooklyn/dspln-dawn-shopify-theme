@@ -1,4 +1,4 @@
-import { currentGiProductConfig } from '../shared/gi-product-config';
+import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 
 // Hardcoded gi configurator constants for v1.
 // Once the real .glb arrives and the catalog row has a configuratorSlug,
@@ -27,6 +27,7 @@ export const GI_DEFAULT_COLORS: Record<GiPart, string> = {
 export const GI_PART_PRICES: Record<GiPart, number> = {
   jacket: 55,
   pants: 45,
+  // Standalone belt product base price (matches the Shopify tda_price ladder).
   belt: 28,
 };
 
@@ -193,15 +194,7 @@ export const KIMONO_LOGO_SLOTS = [
   'left-sleeve',
   'right-sleeve',
   'back',
-  'back-skirt',
 ] as const;
-
-/** Slots that only appear in studio mode (?studio=1) — used for special
- *  customer requests. Customers still see artwork placed there when they
- *  open a shared design link; they just don't get the upload control. */
-export const STUDIO_ONLY_KIMONO_LOGO_SLOTS: readonly KimonoLogoSlot[] = [
-  'back-skirt',
-];
 export type KimonoLogoSlot = (typeof KIMONO_LOGO_SLOTS)[number];
 
 export const KIMONO_LOGO_SLOT_LABEL: Record<KimonoLogoSlot, string> = {
@@ -209,7 +202,6 @@ export const KIMONO_LOGO_SLOT_LABEL: Record<KimonoLogoSlot, string> = {
   'left-sleeve': 'Logo on Left Sleeve',
   'right-sleeve': 'Logo on Right Sleeve',
   back: 'Big Logo on Back',
-  'back-skirt': 'Logo Below Belt (Back)',
 };
 
 export interface KimonoLogoAnchor {
@@ -227,8 +219,8 @@ export const KIMONO_LOGO_ANCHORS: Record<KimonoLogoSlot, KimonoLogoAnchor> = {
   // Wearer's left chest = camera's RIGHT in the front view.
   'left-chest': {
     position: [0.215, 2, 0.42],
-    rotation: [0, 0.5, -Math.PI / 18],
-    defaultSizeIn: { w: 1.95, h: 1.95 },
+    rotation: [0, 0.85, -Math.PI / 9],
+    defaultSizeIn: { w: 1.755, h: 1.755 },
   },
   // Wearer's left sleeve = camera's right side. Uses the same square
   // print box as the left chest, projected onto the outside bicep.
@@ -251,29 +243,13 @@ export const KIMONO_LOGO_ANCHORS: Record<KimonoLogoSlot, KimonoLogoAnchor> = {
     rotation: [0, Math.PI, 0],
     defaultSizeIn: { w: 3.7, h: 3.7 },
   },
-  // Wide strip on the back skirt, just below the belt (studio-only
-  // placement for special requests). Sits on the draped skirt panel, so
-  // it protrudes slightly more than the upper back.
-  'back-skirt': {
-    // 4.2 in wide: the back panel curves away at the side seams, so a
-    // wider strip gets its first/last letters culled by the projector.
-    position: [0, 1.43, -0.46],
-    rotation: [0, Math.PI, 0],
-    defaultSizeIn: { w: 4.2, h: 1.6 },
-  },
 };
 
 export const KIMONO_MESH_TO_SUBPART: Record<string, KimonoSubPart> = {
   Kimono_Body: 'body',
   Kimono_Lapel: 'lapel',
-  Kimono_Reinforcement_1: 'reinforcement',
-  Kimono_Reinforcement_2: 'reinforcement',
-  Kimono_Reinforcement_3: 'reinforcement',
-  Kimono_Reinforcement_4: 'reinforcement',
-  Kimono_Stitching_1: 'stitching',
-  Kimono_Stitching_2: 'stitching',
-  Kimono_Stitching_3: 'stitching',
-  Kimono_Lapel_Label_Stitching: 'stitching',
+  Kimono_Reinforcement: 'reinforcement',
+  Kimono_Stitching: 'stitching',
 };
 
 export const PANT_SUBPARTS = [
@@ -299,16 +275,10 @@ export const PANT_SUBPART_DEFAULT: Record<PantSubPart, string> = {
 };
 
 export const PANT_MESH_TO_SUBPART: Record<string, PantSubPart> = {
-  Pant_Body_1: 'body',
-  Pant_Body_2: 'body',
-  Pant_Body_3: 'body',
+  Pant_Body: 'body',
   Pant_Drawcord: 'drawcord',
-  Pant_Reinforcements_1: 'reinforcement',
-  Pant_Reinforcements_2: 'reinforcement',
-  Pants_Stitching_1: 'stitching',
-  Pants_Stitching_2: 'stitching',
-  Pants_Stitching_3: 'stitching',
-  Pants_Stitching_4: 'stitching',
+  Pant_Reinforcement: 'reinforcement',
+  Pant_Stitching: 'stitching',
 };
 
 export const PANT_LOGO_SLOTS = ['left-pant', 'right-pant'] as const;
@@ -322,7 +292,7 @@ export const PANT_LOGO_SLOT_LABEL: Record<PantLogoSlot, string> = {
 export const PANT_LOGO_ANCHORS: Record<PantLogoSlot, KimonoLogoAnchor> = {
   // Wearer's left pant leg = camera's right in front view.
   'left-pant': {
-    position: [0.235, 1.08, 0.25],
+    position: [0.28375, 1.08, 0.25],
     rotation: [0, 0.16, 0],
     defaultSizeIn: { w: 1.95, h: 1.95 },
   },
@@ -356,7 +326,6 @@ export type CameraView =
   | 'left-sleeve-close'
   | 'right-sleeve-close'
   | 'back-close'
-  | 'back-skirt-close'
   | 'left-thigh-close'
   | 'right-thigh-close'
   | 'body-close'
@@ -367,78 +336,78 @@ export type CameraView =
   | 'drawcord-close';
 
 // Camera positions for Front/Back tabs. Tuned to frame the full gi
-// (head to feet) given the model auto-scales to ~2.5 units tall.
-// Target y = 1.25 = exact vertical center of the model so the gi sits
-// dead-center in the canvas (not biased high or low).
-// Focus views (…-close) frame the area a customization option affects.
-// Wearer's left = camera's RIGHT (+x) in the front view — slot names are
-// wearer-relative, positions are camera-relative.
+// (head to feet) with the women's GLB sitting lower in the viewport.
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
-  front: [0, 1.15, 2.0],
-  back: [0, 1.15, -2.0],
-  left: [-2.0, 1.15, 0],
-  right: [2.0, 1.15, 0],
-  'left-belt-end': [0.77, 1.19, 1.2],
-  'right-belt-end': [-0.77, 1.19, 1.21],
-  'belt-close': [0, 1.18, 1.7],
-  'pants-close': [-0.75, 1.01, 1.78],
-  'lapel-close': [-0.92, 2.22, 1.74],
-  'chest-close': [1.04, 1.99, 1.15],
-  'left-sleeve-close': [2.35, 2.01, 0.02],
-  'right-sleeve-close': [-2.89, 2.2, 0.82],
-  'back-close': [-0.07, 2.05, -1.92],
-  'back-skirt-close': [0, 1, -2.1],
+  // Standalone belt product: cardinals frame the belt (womens model wears
+  // it at ~y1.75 per the measured belt text targets), not the full body.
+  front: [0, 1.75, 2.0],
+  back: [0, 1.75, -2.0],
+  left: [-2.0, 1.75, 0],
+  right: [2.0, 1.75, 0],
+  // Aimed at the womens model's MEASURED belt-text targets (world y ~1.78);
+  // the previous hand-tuned y1.5/1.55 still sat below the actual belt.
+  'left-belt-end': [0.79, 1.73, 1.2],
+  'right-belt-end': [-0.87, 1.73, 1.18],
+  'belt-close': [0.09, 1.91, 2.67],
+  'pants-close': [-1.77, 1.51, 2.57],
+  'lapel-close': [1.09, 2.67, 3.36],
+  'chest-close': [2.19, 2.5, 2.51],
+  'left-sleeve-close': [3.72, 2.45, 1.12],
+  'right-sleeve-close': [-3.81, 2.49, 1.3],
+  'back-close': [-0.16, 2.65, -4.02],
   'left-thigh-close': [1.3, 0.85, 1.7],
   'right-thigh-close': [-1.3, 0.85, 1.7],
-  'body-close': [0.59, 1.78, 2.5],
+  'body-close': [-1.73, 2.51, 3.72],
   'reinforcement-close': [1.28, 0.68, 1.81],
-  'stitching-close': [-0.75, 1.83, 0.78],
+  'stitching-close': [-0.99, 2.13, 1.91],
   'knees-close': [0.79, 0.03, -1.65],
   'pant-stitching-close': [-0.6, 0.89, 0.94],
-  'drawcord-close': [0.05, 1.41, 1.15],
+  'drawcord-close': [0.09, 1.64, 1.95],
 };
 
 export const MOBILE_CAMERA_POSITIONS: Record<
   CameraView,
   [number, number, number]
 > = {
-  front: [0, 1.15, 2.0],
-  back: [0, 1.15, -2.0],
-  left: [-2.0, 1.15, 0],
-  right: [2.0, 1.15, 0],
-  'left-belt-end': [0.77, 1.19, 1.2],
-  'right-belt-end': [-0.77, 1.19, 1.21],
-  'belt-close': [0, 1.18, 1.7],
-  'pants-close': [-0.75, 1.01, 1.78],
-  'lapel-close': [-0.92, 2.22, 1.74],
-  'chest-close': [1.04, 1.99, 1.15],
-  'left-sleeve-close': [2.35, 2.01, 0.02],
-  'right-sleeve-close': [-2.89, 2.2, 0.82],
-  'back-close': [-0.07, 2.05, -1.92],
-  'back-skirt-close': [0, 1, -2.1],
+  front: [0, 1.75, 2.4],
+  back: [0, 1.75, -2.4],
+  left: [-2.4, 1.75, 0],
+  right: [2.4, 1.75, 0],
+  // Aimed at the womens model's MEASURED belt-text targets (world y ~1.78);
+  // the previous hand-tuned y1.5/1.55 still sat below the actual belt.
+  'left-belt-end': [0.79, 1.73, 1.2],
+  'right-belt-end': [-0.87, 1.73, 1.18],
+  'belt-close': [0.09, 1.91, 2.67],
+  'pants-close': [-1.77, 1.51, 2.57],
+  'lapel-close': [1.09, 2.67, 3.36],
+  'chest-close': [2.19, 2.5, 2.51],
+  'left-sleeve-close': [3.72, 2.45, 1.12],
+  'right-sleeve-close': [-3.81, 2.49, 1.3],
+  'back-close': [-0.16, 2.65, -4.02],
   'left-thigh-close': [1.3, 0.85, 1.7],
   'right-thigh-close': [-1.3, 0.85, 1.7],
-  'body-close': [0.59, 1.78, 2.5],
+  'body-close': [-1.73, 2.51, 3.72],
   'reinforcement-close': [1.28, 0.68, 1.81],
-  'stitching-close': [-0.75, 1.83, 0.78],
+  'stitching-close': [-0.99, 2.13, 1.91],
   'knees-close': [0.79, 0.03, -1.65],
   'pant-stitching-close': [-0.6, 0.89, 0.94],
-  'drawcord-close': [0.05, 1.41, 1.15],
+  'drawcord-close': [0.09, 1.64, 1.95],
 };
 
 /** Camera view-to-view tween duration. Shared by the canvas tween and
  *  the capture flow's settle wait so they can't drift apart. */
 export const GI_CAMERA_TWEEN_MS = 800;
 
-export const CAMERA_TARGET: [number, number, number] = [0, 1.15, 0];
+export const CAMERA_TARGET: [number, number, number] = [0, 1.75, 0];
 
 export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   front: CAMERA_TARGET,
   back: CAMERA_TARGET,
   left: CAMERA_TARGET,
   right: CAMERA_TARGET,
-  'left-belt-end': [0.15, 1.25, 0.18],
-  'right-belt-end': [-0.16, 1.25, 0.18],
+  // Measured centers of belt_left/right_text_target on the womens model.
+  'left-belt-end': [0.26, 1.78, 0.33],
+  'right-belt-end': [-0.34, 1.78, 0.31],
   'belt-close': [0, 1.15, 0],
   'pants-close': [0, 0.62, 0],
   'lapel-close': [0, 1.66, 0],
@@ -446,7 +415,6 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   'left-sleeve-close': [0.4, 1.45, 0],
   'right-sleeve-close': [-0.4, 1.45, 0],
   'back-close': [0, 1.5, 0],
-  'back-skirt-close': [0, 0.98, 0],
   'left-thigh-close': [0.22, 0.8, 0],
   'right-thigh-close': [-0.22, 0.8, 0],
   'body-close': [0, 1.4, 0],
@@ -459,9 +427,8 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
 
 /**
  * Camera focus per customization option: selecting an option moves the
- * camera to frame the area it affects, so the change is visible without
- * manual orbiting. One map per option family; all feed setCameraView,
- * which tweens (~600ms) and then hands control back to OrbitControls.
+ * camera to frame the area it affects. All feed setCameraView, which
+ * tweens and then hands control back to OrbitControls.
  */
 export const PART_CAMERA_VIEW: Record<GiPart, CameraView> = {
   jacket: 'front',
@@ -481,7 +448,6 @@ export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = 
   'left-sleeve': 'left-sleeve-close',
   'right-sleeve': 'right-sleeve-close',
   back: 'back-close',
-  'back-skirt': 'back-skirt-close',
 };
 
 export const PANT_SUBPART_CAMERA_VIEW: Record<PantSubPart, CameraView> = {
@@ -496,6 +462,7 @@ export const PANT_LOGO_SLOT_CAMERA_VIEW: Record<PantLogoSlot, CameraView> = {
   'right-pant': 'right-thigh-close',
 };
 
+
 // Anchor for a logo placed on the jacket chest (front).
 // In world space relative to the placeholder gi origin (0,0,0).
 export const JACKET_CHEST_ANCHOR = {
@@ -508,4 +475,4 @@ export const JACKET_CHEST_ANCHOR = {
 // apps/user/public/models. Before production deploy this gets replaced
 // by a fetch to /api/configurator-models/gi that returns a signed S3 URL.
 // Keeping it as a single constant means the swap is one line.
-export const GI_MODEL_URL = currentGiProductConfig().modelUrl;
+export const GI_MODEL_URL = GI_PRODUCT_CONFIGS['mens-belt'].modelUrl;

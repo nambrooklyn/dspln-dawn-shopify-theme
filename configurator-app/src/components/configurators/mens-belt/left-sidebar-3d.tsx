@@ -5,10 +5,9 @@ import { PART_CAMERA_VIEW, type GiPart } from './gi-config';
 import { BeltSections } from './part-sections/belt-sections';
 
 /**
- * Left sidebar. Top tabs (Kimono / Belt / Pant) select which part the
- * merchant is customizing. The panel below shows that part's
- * customization sections — these mirror the corresponding accordion
- * sections from the D2C reference at dspln.com/products/customgi.
+ * Left sidebar. Single-item belt product: no part tabs — the panel shows
+ * the belt's customization sections directly. These mirror the belt
+ * accordion sections from the D2C reference at dspln.com/products/customgi.
  */
 export const LeftSidebar3D = memo(() => {
   const { setSelectedPart, setCameraView } = useGiState();

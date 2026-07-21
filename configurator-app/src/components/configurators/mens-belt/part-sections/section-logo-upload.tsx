@@ -5,26 +5,7 @@ import {
   type ChangeEvent,
   type DragEvent as ReactDragEvent,
 } from 'react';
-import {
-  Copy,
-  ImageIcon,
-  Minus,
-  MoveHorizontal,
-  MoveVertical,
-  Plus,
-  Replace,
-  RotateCcw,
-  RotateCw,
-  Trash2,
-  UploadCloud,
-} from 'lucide-react';
-
-interface LogoTransformControls {
-  offsetXIn: number;
-  offsetYIn: number;
-  scale: number;
-  rotationDeg: number;
-}
+import { ImageIcon, Replace, Trash2, UploadCloud } from 'lucide-react';
 
 interface SectionLogoUploadProps {
   /** Section title (e.g. "Logo on Left Sleeve"). */
@@ -35,13 +16,9 @@ interface SectionLogoUploadProps {
   imageUrl?: string;
   /** Original filename. */
   filename?: string;
-  transform?: LogoTransformControls;
   onUpload: (file: File, dimensions: { width: number; height: number }) => void;
   onRemove: () => void;
-  onDuplicate?: () => void;
-  onTransformChange?: (transform: Partial<LogoTransformControls>) => void;
-  /** Called when the merchant starts interacting with this slot (opens
-   *  the file picker) — used to frame the slot's area on the model. */
+  /** Called when the merchant starts interacting with this slot. */
   onActivate?: () => void;
 }
 
@@ -148,11 +125,8 @@ export const SectionLogoUpload = memo(
     priceLabel,
     imageUrl,
     filename,
-    transform,
     onUpload,
     onRemove,
-    onDuplicate,
-    onTransformChange,
     onActivate,
   }: SectionLogoUploadProps) => {
     const [isHovering, setIsHovering] = useState(false);
@@ -220,13 +194,6 @@ export const SectionLogoUpload = memo(
       },
       [handleFiles],
     );
-
-    const currentTransform = transform ?? {
-      offsetXIn: 0,
-      offsetYIn: 0,
-      scale: 1,
-      rotationDeg: 0,
-    };
 
     return (
       <section className="border-border border-b px-3 py-3">
@@ -360,169 +327,12 @@ export const SectionLogoUpload = memo(
         )}
 
         {filename && imageUrl ? (
-          <>
-            <div className="mt-2 flex items-center gap-1.5">
-              <p
-                className="text-muted-foreground min-w-0 flex-1 truncate text-[11px]"
-                title={filename}
-              >
-                {filename}
-              </p>
-              {onDuplicate ? (
-                <button
-                  type="button"
-                  onClick={onDuplicate}
-                  className="border-border hover:bg-muted flex h-7 w-7 items-center justify-center rounded border text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label={`Duplicate ${title}`}
-                  title="Duplicate"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
-
-            {onTransformChange ? (
-              <div className="mt-3 space-y-2 rounded-md border border-border bg-background p-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onTransformChange({
-                        offsetXIn: currentTransform.offsetXIn - 0.25,
-                      })
-                    }
-                    className="flex h-8 items-center justify-center gap-1 rounded border text-[10px] font-semibold uppercase tracking-wide hover:bg-muted"
-                    title="Move left"
-                  >
-                    <MoveHorizontal className="h-3 w-3" />
-                    Left
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onTransformChange({
-                        offsetXIn: currentTransform.offsetXIn + 0.25,
-                      })
-                    }
-                    className="flex h-8 items-center justify-center gap-1 rounded border text-[10px] font-semibold uppercase tracking-wide hover:bg-muted"
-                    title="Move right"
-                  >
-                    <MoveHorizontal className="h-3 w-3" />
-                    Right
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onTransformChange({
-                        offsetYIn: currentTransform.offsetYIn + 0.25,
-                      })
-                    }
-                    className="flex h-8 items-center justify-center gap-1 rounded border text-[10px] font-semibold uppercase tracking-wide hover:bg-muted"
-                    title="Move up"
-                  >
-                    <MoveVertical className="h-3 w-3" />
-                    Up
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onTransformChange({
-                        offsetYIn: currentTransform.offsetYIn - 0.25,
-                      })
-                    }
-                    className="flex h-8 items-center justify-center gap-1 rounded border text-[10px] font-semibold uppercase tracking-wide hover:bg-muted"
-                    title="Move down"
-                  >
-                    <MoveVertical className="h-3 w-3" />
-                    Down
-                  </button>
-                </div>
-
-                <label className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Size
-                  <input
-                    type="range"
-                    min="0.35"
-                    max="2.25"
-                    step="0.05"
-                    value={currentTransform.scale}
-                    onChange={(event) =>
-                      onTransformChange({ scale: Number(event.target.value) })
-                    }
-                    className="mt-1 block w-full accent-[#5c0000]"
-                  />
-                </label>
-
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onTransformChange({
-                        scale: Math.max(0.35, currentTransform.scale - 0.1),
-                      })
-                    }
-                    className="flex h-8 items-center justify-center rounded border hover:bg-muted"
-                    title="Smaller"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onTransformChange({
-                        scale: Math.min(2.25, currentTransform.scale + 0.1),
-                      })
-                    }
-                    className="flex h-8 items-center justify-center rounded border hover:bg-muted"
-                    title="Larger"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onTransformChange({
-                        rotationDeg: currentTransform.rotationDeg - 5,
-                      })
-                    }
-                    className="flex h-8 items-center justify-center rounded border hover:bg-muted"
-                    title="Rotate left"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onTransformChange({
-                        rotationDeg: currentTransform.rotationDeg + 5,
-                      })
-                    }
-                    className="flex h-8 items-center justify-center rounded border hover:bg-muted"
-                    title="Rotate right"
-                  >
-                    <RotateCw className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <label className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Rotation
-                  <input
-                    type="range"
-                    min="-180"
-                    max="180"
-                    step="1"
-                    value={currentTransform.rotationDeg}
-                    onChange={(event) =>
-                      onTransformChange({
-                        rotationDeg: Number(event.target.value),
-                      })
-                    }
-                    className="mt-1 block w-full accent-[#5c0000]"
-                  />
-                </label>
-              </div>
-            ) : null}
-          </>
+          <p
+            className="text-muted-foreground mt-2 truncate text-[11px]"
+            title={filename}
+          >
+            {filename}
+          </p>
         ) : null}
       </section>
     );

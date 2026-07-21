@@ -1,26 +1,19 @@
-import {
-  memo,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls, useProgress } from '@react-three/drei';
 import {
+  CanvasTexture,
   Color,
-  Euler,
-  Matrix4,
+  DoubleSide,
+  Mesh,
+  MeshBasicMaterial,
   PerspectiveCamera,
-  Quaternion,
   SRGBColorSpace,
-  Vector2,
+  TextureLoader,
   Vector3,
   WebGLRenderTarget,
-  type Mesh,
   type Scene as ThreeScene,
+  type Texture,
   type WebGLRenderer,
 } from 'three';
 
@@ -42,14 +35,16 @@ import {
 import { useDirectionalCanvasTouch } from '../shared/use-directional-canvas-touch';
 import { LayerDecal } from '../shared/layer-decal';
 import { FrameTicker } from '../shared/frame-ticker';
-import { IN_TO_WORLD, ProjectedDecal } from '../shared/projected-decal';
-import { isStudioMode } from '../shared/studio-mode';
-import { renderTextImage } from '../shared/text-image';
-import type { GiTextLayer } from './gi-state';
+import {
+  IN_TO_WORLD,
+  ProjectedDecal,
+  decalLoadStarted,
+  decalLoadSettled,
+} from '../shared/projected-decal';
 
 const CAMERA_MIN_DISTANCE = 1.2;
-const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
-const MOBILE_CAMERA_MAX_DISTANCE = 3.35;
+const DESKTOP_CAMERA_MAX_DISTANCE = 5.0;
+const MOBILE_CAMERA_MAX_DISTANCE = 4.6;
 
 // Surface normal for each slot — derived from the slot's plane
 // rotation (Y axis only, for our four anchors). Used to push the
@@ -61,7 +56,6 @@ const SLOT_NORMAL: Record<KimonoLogoSlot, [number, number, number]> = {
   'left-sleeve': [0.707, 0, 0.707],
   'right-sleeve': [-0.707, 0, 0.707],
   back: [0, 0, -1],
-  'back-skirt': [0, 0, -1],
 };
 
 const BELT_TEXT_PLACEMENTS = {
@@ -95,11 +89,101 @@ function makeBeltTextImageUrl(text: string, color: string, fontName: string) {
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `900 ${Math.max(108, Math.min(184, 1160 / Math.max(clean.length, 6)))}px ${fontCssForBeltFont(fontName)}`;
-  ctx.fillText(clean, canvas.width / 2, canvas.height / 2, canvas.width * 0.9);
+  ctx.font = `900 ${Math.max(150, Math.min(244, 1760 / Math.max(clean.length, 6)))}px ${fontCssForBeltFont(fontName)}`;
+  ctx.fillText(
+    clean,
+    canvas.width / 2,
+    canvas.height / 2 + 18,
+    canvas.width * 0.94,
+  );
 
   return canvas.toDataURL('image/png');
 }
+
+const BeltTextTargetMesh = memo(
+  ({ mesh, imageUrl }: { mesh: Mesh; imageUrl: string }) => {
+    const [texture, setTexture] = useState<Texture | null>(null);
+
+    useEffect(() => {
+      let cancelled = false;
+      let settled = false;
+      const settleOnce = () => {
+        if (!settled) {
+          settled = true;
+          decalLoadSettled();
+        }
+      };
+      // Track with the shared pending-decal counter: the tech-pack capture
+      // waits for it, so backgrounded generation can't photograph the white
+      // placeholder material before this texture loads.
+      decalLoadStarted();
+      const loader = new TextureLoader();
+      loader.load(
+        imageUrl,
+        (tex) => {
+          settleOnce();
+          if (cancelled) {
+            tex.dispose();
+            return;
+          }
+          tex.colorSpace = SRGBColorSpace;
+          tex.flipY = false;
+          setTexture(tex);
+        },
+        undefined,
+        () => {
+          settleOnce();
+          if (!cancelled) setTexture(null);
+        },
+      );
+      return () => {
+        cancelled = true;
+        settleOnce();
+        setTexture((prev) => {
+          prev?.dispose();
+          return null;
+        });
+      };
+    }, [imageUrl]);
+
+    const material = useMemo(
+      () =>
+        new MeshBasicMaterial({
+          transparent: true,
+          depthTest: true,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -8,
+          polygonOffsetUnits: -8,
+          side: DoubleSide,
+          toneMapped: false,
+        }),
+      [],
+    );
+
+    useEffect(() => {
+      material.map = texture;
+      material.needsUpdate = true;
+    }, [material, texture]);
+
+    useEffect(() => () => material.dispose(), [material]);
+
+    const targetObject = useMemo(() => {
+      mesh.updateMatrixWorld(true);
+      const next = new Mesh(mesh.geometry, material);
+      next.matrix.copy(mesh.matrixWorld);
+      next.matrixAutoUpdate = false;
+      next.renderOrder = 12;
+      next.frustumCulled = false;
+      return next;
+    }, [mesh, material]);
+
+    if (!texture) return null;
+
+    return <primitive object={targetObject} />;
+  },
+);
+BeltTextTargetMesh.displayName = 'BeltTextTargetMesh';
 
 const BeltText = memo(
   ({
@@ -108,12 +192,14 @@ const BeltText = memo(
     fontName,
     side,
     mesh,
+    targetMesh,
   }: {
     text: string;
     color: string;
     fontName: string;
     side: keyof typeof BELT_TEXT_PLACEMENTS;
     mesh: Mesh;
+    targetMesh?: Mesh;
   }) => {
     const clean = text.trim();
     const imageUrl = useMemo(
@@ -121,6 +207,9 @@ const BeltText = memo(
       [clean, color, fontName],
     );
     if (!clean || !imageUrl) return null;
+    if (targetMesh) {
+      return <BeltTextTargetMesh mesh={targetMesh} imageUrl={imageUrl} />;
+    }
     const cfg = BELT_TEXT_PLACEMENTS[side];
 
     return (
@@ -140,6 +229,144 @@ const BeltText = memo(
   },
 );
 BeltText.displayName = 'BeltText';
+
+const LogoTargetMesh = memo(
+  ({
+    mesh,
+    imageUrl,
+    flipX = false,
+  }: {
+    mesh: Mesh;
+    imageUrl: string;
+    flipX?: boolean;
+  }) => {
+    const [texture, setTexture] = useState<Texture | null>(null);
+
+    useEffect(() => {
+      let cancelled = false;
+      let settled = false;
+      const settleOnce = () => {
+        if (!settled) {
+          settled = true;
+          decalLoadSettled();
+        }
+      };
+      // Track with the shared pending-decal counter: the tech-pack capture
+      // waits for it, so backgrounded generation can't photograph the white
+      // placeholder material before this texture loads.
+      decalLoadStarted();
+      const loader = new TextureLoader();
+      loader.load(
+        imageUrl,
+        (tex) => {
+          settleOnce();
+          if (cancelled) {
+            tex.dispose();
+            return;
+          }
+          const source = tex.image as CanvasImageSource & {
+            naturalWidth?: number;
+            naturalHeight?: number;
+            width?: number;
+            height?: number;
+          };
+          const sourceWidth = source.naturalWidth ?? source.width ?? 0;
+          const sourceHeight = source.naturalHeight ?? source.height ?? 0;
+          if (!sourceWidth || !sourceHeight || typeof document === 'undefined') {
+            tex.colorSpace = SRGBColorSpace;
+            tex.flipY = false;
+            setTexture(tex);
+            return;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = 1024;
+          canvas.height = 1024;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            tex.colorSpace = SRGBColorSpace;
+            tex.flipY = false;
+            setTexture(tex);
+            return;
+          }
+
+          const sourceAspect = sourceWidth / sourceHeight;
+          const drawWidth =
+            sourceAspect >= 1 ? canvas.width : canvas.height * sourceAspect;
+          const drawHeight =
+            sourceAspect >= 1 ? canvas.width / sourceAspect : canvas.height;
+          const drawX = (canvas.width - drawWidth) / 2;
+          const drawY = (canvas.height - drawHeight) / 2;
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          if (flipX) {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+          } else {
+            ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+          }
+
+          tex.dispose();
+          const containedTexture = new CanvasTexture(canvas);
+          containedTexture.colorSpace = SRGBColorSpace;
+          containedTexture.flipY = false;
+          setTexture(containedTexture);
+        },
+        undefined,
+        () => {
+          settleOnce();
+          if (!cancelled) setTexture(null);
+        },
+      );
+      return () => {
+        cancelled = true;
+        settleOnce();
+        setTexture((prev) => {
+          prev?.dispose();
+          return null;
+        });
+      };
+    }, [imageUrl, flipX]);
+
+    const material = useMemo(
+      () =>
+        new MeshBasicMaterial({
+          transparent: true,
+          depthTest: true,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -8,
+          polygonOffsetUnits: -8,
+          side: DoubleSide,
+          toneMapped: false,
+        }),
+      [],
+    );
+
+    useEffect(() => {
+      material.map = texture;
+      material.needsUpdate = true;
+    }, [material, texture]);
+
+    useEffect(() => () => material.dispose(), [material]);
+
+    const targetObject = useMemo(() => {
+      mesh.updateMatrixWorld(true);
+      const next = new Mesh(mesh.geometry, material);
+      next.matrix.copy(mesh.matrixWorld);
+      next.matrixAutoUpdate = false;
+      next.renderOrder = 12;
+      next.frustumCulled = false;
+      return next;
+    }, [mesh, material]);
+
+    if (!texture) return null;
+
+    return <primitive object={targetObject} />;
+  },
+);
+LogoTargetMesh.displayName = 'LogoTargetMesh';
 
 function fitLogoToPrintArea(
   maxSizeIn: { w: number; h: number },
@@ -220,7 +447,7 @@ function pixelsToDataUrl(buf: Uint8Array, w: number, h: number) {
   return cv.toDataURL('image/jpeg', 0.95);
 }
 
-export interface GiProductionViews {
+interface GiProductionViews {
   front: string;
   back: string;
   left: string;
@@ -306,20 +533,20 @@ const CanvasBridge = memo(() => {
     if (typeof window !== 'undefined') {
       const globals = window as unknown as Record<string, unknown>;
       globals.__giRenderer = gl;
-      globals.__giScene = scene;
-      globals.__giCamera = camera;
       // Deterministic tech-pack capture (see captureGiProductionViews).
       globals.__giCaptureProductionViews = () =>
         captureGiProductionViews(gl, scene);
+      globals.__giScene = scene;
+      globals.__giCamera = camera;
     }
     return () => {
       setCanvasEl(null);
       if (typeof window !== 'undefined') {
         const globals = window as unknown as Record<string, unknown>;
         delete globals.__giRenderer;
+        delete globals.__giCaptureProductionViews;
         delete globals.__giScene;
         delete globals.__giCamera;
-        delete globals.__giCaptureProductionViews;
       }
     };
   }, [camera, gl, scene, setCanvasEl]);
@@ -330,56 +557,6 @@ CanvasBridge.displayName = 'CanvasBridge';
 
 const MOBILE_CAMERA_QUERY = '(max-width: 1023px)';
 
-// Base physical height of a text layer at 100% scale.
-const TEXT_LAYER_BASE_HEIGHT_IN = 1.6;
-
-/** One free-placement text decal. The PNG regenerates from the layer's
- *  parameters, and the in-plane rotation is composed onto the surface
- *  orientation captured while dragging. */
-const TextLayerDecal = memo(
-  ({ layer, meshes }: { layer: GiTextLayer; meshes: Mesh[] }) => {
-    const image = useMemo(
-      () => renderTextImage(layer.text, layer.font, layer.colorHex),
-      [layer.text, layer.font, layer.colorHex],
-    );
-    const rotation = useMemo(() => {
-      const surface = new Quaternion().setFromEuler(
-        new Euler(...layer.rotation),
-      );
-      surface.multiply(
-        new Quaternion().setFromAxisAngle(
-          new Vector3(0, 0, 1),
-          (layer.rotateDeg * Math.PI) / 180,
-        ),
-      );
-      const euler = new Euler().setFromQuaternion(surface);
-      return [euler.x, euler.y, euler.z] as [number, number, number];
-    }, [layer.rotation, layer.rotateDeg]);
-
-    if (!image) return null;
-    const heightIn = TEXT_LAYER_BASE_HEIGHT_IN * (layer.scalePct / 100);
-    const widthIn = heightIn * (image.width / image.height);
-    // One projection per target surface: on the chest the lapel overlaps
-    // the body, so text must land on whichever surface is on top.
-    return meshes.map((mesh) => (
-      <ProjectedDecal
-        key={mesh.uuid}
-        mesh={mesh}
-        imageUrl={image.dataUrl}
-        position={layer.position}
-        rotation={rotation}
-        widthWorld={widthIn * IN_TO_WORLD}
-        heightWorld={heightIn * IN_TO_WORLD}
-        depthWorld={0.3}
-        surfaceOffsetWorld={0.008}
-        depthTest
-        normalCullMinDot={0.18}
-      />
-    ));
-  },
-);
-TextLayerDecal.displayName = 'TextLayerDecal';
-
 const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   const {
     layers,
@@ -388,21 +565,20 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     cameraView,
     cameraViewResetKey,
     kimonoLogos,
-    kimonoLogoAnchors,
-    setKimonoLogoAnchor,
-    textLayers,
-    updateTextLayer,
     computedKimonoAnchors,
     kimonoBodyMesh,
     kimonoLogoMeshes,
+    kimonoLogoTargetMeshes,
     pantLogos,
     pantLogoMeshes,
+    pantLogoTargetMeshes,
     beltEmbroidery,
     partVisibility,
     scenePartVisibility,
     beltMesh,
+    beltTextTargetMeshes,
   } = useGiState();
-  const { camera, gl, raycaster } = useThree();
+  const { camera } = useThree();
   // OrbitControls instance ref; the impl type is awkward to import so we
   // pull it from the ref's runtime value when we need methods on it.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -436,10 +612,9 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     let raf = 0;
 
     // Accumulate CLAMPED per-frame deltas instead of wall-clock elapsed:
-    // color/logo changes can recomposite big textures and block the main
-    // thread mid-tween — with wall-clock timing the camera then teleports
-    // to the end ("it jumped"). Clamping means a stall pauses the glide
-    // and it resumes smoothly.
+    // texture recompositing can block the main thread mid-tween — with
+    // wall-clock timing the camera then teleports to the end. Clamping
+    // means a stall pauses the glide and it resumes smoothly.
     let progress = 0;
     let last = performance.now();
 
@@ -516,7 +691,9 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       );
       if (currentDistance <= 0) return;
 
-      camera.position.copy(target.clone().add(offset.setLength(nextDistance)));
+      camera.position.copy(
+        target.clone().add(offset.setLength(nextDistance)),
+      );
       controls.target.copy(target);
       controls.update();
     };
@@ -529,106 +706,6 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       );
     };
   }, [camera, useMobileCamera]);
-
-  // ——— Studio drag-to-move for kimono artwork ———
-  // Grab a logo/text decal and slide it along the jacket: the pointer is
-  // raycast onto the body mesh and the decal's anchor + orientation
-  // follow the surface. The final placement is stored in gi-state and
-  // serialized with the design, so customers see the moved artwork.
-  const isStudio = useMemo(() => isStudioMode(), []);
-  const draggingSlotRef = useRef<KimonoLogoSlot | null>(null);
-  const draggingTextIdRef = useRef<string | null>(null);
-  const lastDragUpdateRef = useRef(0);
-
-  // Draggable artwork lands on whichever jacket surface is on top: the
-  // lapel overlaps the body across the chest, so both are drag targets
-  // and projection surfaces.
-  const kimonoDragSurfaces = useMemo(() => {
-    if (!kimonoBodyMesh) return [];
-    const lapel = kimonoBodyMesh.parent?.getObjectByName('Kimono_Lapel');
-    return lapel && (lapel as Mesh).isMesh
-      ? [kimonoBodyMesh, lapel as Mesh]
-      : [kimonoBodyMesh];
-  }, [kimonoBodyMesh]);
-
-  const anchorFromPointer = useCallback(
-    (clientX: number, clientY: number) => {
-      if (kimonoDragSurfaces.length === 0) return null;
-      const rect = gl.domElement.getBoundingClientRect();
-      const ndc = new Vector2(
-        ((clientX - rect.left) / rect.width) * 2 - 1,
-        -((clientY - rect.top) / rect.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(ndc, camera);
-      const hit = raycaster.intersectObjects(kimonoDragSurfaces, false)[0];
-      if (!hit?.face) return null;
-      const normal = hit.face.normal
-        .clone()
-        .transformDirection(hit.object.matrixWorld)
-        .normalize();
-      // Anchor floats just off the fabric, like the static anchors do.
-      const position = hit.point.clone().addScaledVector(normal, 0.012);
-      // Orient the projector so +Z runs along the surface normal while
-      // world-up keeps the artwork upright (no roll).
-      const euler = new Euler().setFromRotationMatrix(
-        new Matrix4().lookAt(
-          position.clone().add(normal),
-          position,
-          new Vector3(0, 1, 0),
-        ),
-      );
-      return {
-        position: [position.x, position.y, position.z] as [
-          number,
-          number,
-          number,
-        ],
-        rotation: [euler.x, euler.y, euler.z] as [number, number, number],
-      };
-    },
-    [camera, gl, kimonoDragSurfaces, raycaster],
-  );
-
-  useEffect(() => {
-    if (!isStudio) return;
-
-    const handleMove = (event: PointerEvent) => {
-      if (!draggingSlotRef.current && !draggingTextIdRef.current) return;
-      event.preventDefault();
-      // DecalGeometry rebuilds on every anchor change — throttle so the
-      // drag stays smooth on the dense gi mesh.
-      const now = performance.now();
-      if (now - lastDragUpdateRef.current < 90) return;
-      lastDragUpdateRef.current = now;
-      const anchor = anchorFromPointer(event.clientX, event.clientY);
-      if (!anchor) return;
-      if (draggingSlotRef.current) {
-        setKimonoLogoAnchor(draggingSlotRef.current, anchor);
-      } else if (draggingTextIdRef.current) {
-        updateTextLayer(draggingTextIdRef.current, anchor);
-      }
-    };
-
-    const handleUp = (event: PointerEvent) => {
-      const slot = draggingSlotRef.current;
-      const textId = draggingTextIdRef.current;
-      if (!slot && !textId) return;
-      draggingSlotRef.current = null;
-      draggingTextIdRef.current = null;
-      const anchor = anchorFromPointer(event.clientX, event.clientY);
-      if (anchor && slot) setKimonoLogoAnchor(slot, anchor);
-      if (anchor && textId) updateTextLayer(textId, anchor);
-      if (controlsRef.current) controlsRef.current.enabled = true;
-      document.body.style.cursor = '';
-    };
-
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
-    return () => {
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
-    };
-  }, [anchorFromPointer, isStudio, setKimonoLogoAnchor, updateTextLayer]);
 
   return (
     <>
@@ -709,137 +786,60 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
               logo.imageWidth,
               logo.imageHeight,
             );
-            const override = kimonoLogoAnchors[slot];
-            const position =
-              override?.position ?? computedKimonoAnchors?.[slot] ?? cfg.position;
-            const rotation = override?.rotation ?? cfg.rotation;
+            const position = computedKimonoAnchors?.[slot] ?? cfg.position;
             const isSleeve = slot === 'left-sleeve' || slot === 'right-sleeve';
-            // Both back slots project onto the body mesh itself — the
-            // dedicated logo placement meshes only cover chest/sleeves.
-            // A dragged decal can be anywhere, so it always projects onto
-            // the body mesh with generic free-placement settings.
-            const isBackPanel = slot === 'back' || slot === 'back-skirt';
-            const targetMeshes = override
-              ? kimonoDragSurfaces
-              : !isBackPanel && kimonoLogoMeshes.length > 0
+            const targetMesh = kimonoLogoTargetMeshes[slot];
+            if (targetMesh) {
+              return (
+                <LogoTargetMesh
+                  key={`${slot}-${targetMesh.uuid}`}
+                  mesh={targetMesh}
+                  imageUrl={logo.imageUrl}
+                  flipX={slot === 'back'}
+                />
+              );
+            }
+            const targetMeshes =
+              slot !== 'back' && kimonoLogoMeshes.length > 0
                 ? kimonoLogoMeshes
                 : [kimonoBodyMesh];
-            const decals = targetMeshes.map((mesh) => (
+            return targetMeshes.map((mesh) => (
               <ProjectedDecal
                 key={`${slot}-${mesh.uuid}`}
                 mesh={mesh}
                 imageUrl={logo.imageUrl}
                 position={position}
-                rotation={rotation}
+                rotation={cfg.rotation}
                 widthWorld={decalSize.w * IN_TO_WORLD}
                 heightWorld={decalSize.h * IN_TO_WORLD}
                 depthWorld={
-                  override
-                    ? 0.3
-                    : slot === 'back'
-                      ? // Deep enough to keep projecting where the jacket
-                        // tapers inward at the waist — 0.36 clipped the
-                        // bottom of a full-size back logo. The box is too
-                        // narrow to ever reach the front panel (z ≈ +0.42).
-                        0.7
-                      : slot === 'back-skirt'
-                        ? 0.36
-                        : slot === 'left-chest'
-                          ? 0.18
-                          : isSleeve
-                            ? 0.32
-                            : undefined
+                  slot === 'back'
+                    ? 0.18
+                    : slot === 'left-chest'
+                      ? 0.32
+                    : isSleeve
+                        ? 0.32
+                        : undefined
                 }
-                surfaceOffsetWorld={override || isBackPanel ? 0.008 : 0.003}
+                surfaceOffsetWorld={
+                  slot === 'back' ? 0.003 : slot === 'left-chest' ? 0.006 : 0.003
+                }
                 depthTest
-                polygonOffsetFactor={isBackPanel ? -2 : undefined}
-                polygonOffsetUnits={isBackPanel ? -2 : undefined}
+                polygonOffsetFactor={slot === 'back' ? -16 : undefined}
+                polygonOffsetUnits={slot === 'back' ? -16 : undefined}
                 normalCullMinDot={
-                  // The deeper back box can catch sleeve fabric hanging
-                  // beside the torso; sleeves face sideways, so culling
-                  // triangles that don't face backwards drops them while
-                  // keeping the back panel (and its waist taper).
-                  slot === 'back' && !override ? 0.35 : 0.18
+                  slot === 'back' ? 0.12 : slot === 'left-chest' ? 0.08 : 0.18
                 }
+                frontSurfaceDepthWorld={slot === 'left-chest' ? 0.09 : undefined}
                 surfaceIsland={
-                  // The skirt strip spans the waist seam, so island
-                  // filtering would clip it; its shallow projection box
-                  // can't reach the front, so no filter is needed. Same
-                  // reasoning for dragged (override) placements.
-                  override
-                    ? undefined
-                    : slot === 'back'
-                      ? 'largest'
-                      : slot === 'back-skirt'
-                        ? undefined
-                        : 'frontmost'
+                  slot === 'back'
+                    ? 'largest'
+                    : slot === 'left-chest'
+                      ? undefined
+                      : 'frontmost'
                 }
               />
             ));
-            if (!isStudio) return decals;
-            return (
-              <group
-                key={slot}
-                onPointerDown={(event) => {
-                  event.stopPropagation();
-                  draggingSlotRef.current = slot;
-                  lastDragUpdateRef.current = 0;
-                  if (controlsRef.current) controlsRef.current.enabled = false;
-                  document.body.style.cursor = 'grabbing';
-                }}
-                onPointerOver={() => {
-                  if (!draggingSlotRef.current) {
-                    document.body.style.cursor = 'grab';
-                  }
-                }}
-                onPointerOut={() => {
-                  if (!draggingSlotRef.current) {
-                    document.body.style.cursor = '';
-                  }
-                }}
-              >
-                {decals}
-              </group>
-            );
-          })
-        : null}
-
-      {/* Free-placement text layers (studio-created, +$10 each). They
-          render for everyone; only dragging is studio-gated. */}
-      {partVisibility.jacket && scenePartVisibility.jacket && kimonoBodyMesh
-        ? textLayers.map((layer) => {
-            const decal = (
-              <TextLayerDecal
-                key={layer.id}
-                layer={layer}
-                meshes={kimonoDragSurfaces}
-              />
-            );
-            if (!isStudio) return decal;
-            return (
-              <group
-                key={layer.id}
-                onPointerDown={(event) => {
-                  event.stopPropagation();
-                  draggingTextIdRef.current = layer.id;
-                  lastDragUpdateRef.current = 0;
-                  if (controlsRef.current) controlsRef.current.enabled = false;
-                  document.body.style.cursor = 'grabbing';
-                }}
-                onPointerOver={() => {
-                  if (!draggingSlotRef.current && !draggingTextIdRef.current) {
-                    document.body.style.cursor = 'grab';
-                  }
-                }}
-                onPointerOut={() => {
-                  if (!draggingSlotRef.current && !draggingTextIdRef.current) {
-                    document.body.style.cursor = '';
-                  }
-                }}
-              >
-                {decal}
-              </group>
-            );
           })
         : null}
 
@@ -848,6 +848,16 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
             const slot = entry[0] as PantLogoSlot;
             const logo = entry[1];
             if (!logo) return null;
+            const targetMesh = pantLogoTargetMeshes[slot];
+            if (targetMesh) {
+              return (
+                <LogoTargetMesh
+                  key={`${slot}-${targetMesh.uuid}`}
+                  mesh={targetMesh}
+                  imageUrl={logo.imageUrl}
+                />
+              );
+            }
             const pantLogoMesh = pantLogoMeshes[slot];
             if (!pantLogoMesh) return null;
             const cfg = PANT_LOGO_ANCHORS[slot];
@@ -881,6 +891,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
             color={renderHexFor(beltEmbroidery.leftThreadColor)}
             fontName={beltEmbroidery.leftFont}
             side="leftEnd"
+            targetMesh={beltTextTargetMeshes.leftEnd}
           />
           <BeltText
             mesh={beltMesh}
@@ -888,6 +899,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
             color={renderHexFor(beltEmbroidery.rightThreadColor)}
             fontName={beltEmbroidery.rightFont}
             side="rightEnd"
+            targetMesh={beltTextTargetMeshes.rightEnd}
           />
         </>
       ) : null}

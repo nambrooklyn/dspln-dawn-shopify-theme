@@ -128,7 +128,9 @@ export const GI_PRODUCT_CONFIGS = {
     shopifyProductPath: '/products/belt',
     shopifyProductHandle: 'belt',
     shopifyProductUrl: 'https://dspln.com/products/belt',
-    modelUrl: '/models/fixed-sleeev-model-suit-2024.glb',
+    // The belt product renders the womens-gi model — its belt mesh has
+    // proper text-target/patch geometry the mens model lacks.
+    modelUrl: '/models/womens-gi-suit-edited-in-blender.glb?v=20260603-clean-model-5',
     designNamePrefix: 'Belt Design',
     savedDesignIdPrefix: 'mens_belt_saved',
     orderDesignIdPrefix: 'mens_belt_order',

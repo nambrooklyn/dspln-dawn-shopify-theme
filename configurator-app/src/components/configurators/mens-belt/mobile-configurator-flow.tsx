@@ -21,17 +21,15 @@ import {
   PANT_LOGO_SLOTS,
   PANT_SUBPART_LABEL,
   PANT_SUBPARTS,
-  STUDIO_ONLY_KIMONO_LOGO_SLOTS,
   type GiPart,
 } from './gi-config';
-import { isStudioMode } from '../shared/studio-mode';
 import { SectionAddRemove } from './part-sections/section-add-remove';
 import { SectionColorSwatches } from './part-sections/section-color-swatches';
 import { SectionKimonoSize } from './part-sections/section-kimono-size';
 import { SectionLogoUpload } from './part-sections/section-logo-upload';
 import { SectionSizeSelect } from './part-sections/section-size-select';
 import { BeltEndTextSection } from './part-sections/belt-sections';
-import { BASE_SIZES as BELT_SIZE_OPTIONS } from './part-sections/size-options';
+import { BELT_BASE_SIZES as BELT_SIZE_OPTIONS } from './part-sections/size-options';
 
 const KIMONO_LOGO_PRICE_LABEL: Record<
   (typeof KIMONO_LOGO_SLOTS)[number],
@@ -41,14 +39,7 @@ const KIMONO_LOGO_PRICE_LABEL: Record<
   'left-sleeve': '+$10',
   'right-sleeve': '+$10',
   back: '+$25',
-  'back-skirt': '+$25',
 };
-
-// Studio-only slots never show their upload step to customers; the
-// artwork itself still renders for anyone viewing a shared design.
-const VISIBLE_KIMONO_LOGO_SLOTS = KIMONO_LOGO_SLOTS.filter(
-  (slot) => isStudioMode() || !STUDIO_ONLY_KIMONO_LOGO_SLOTS.includes(slot),
-);
 
 const ADD_ON_PRICE = 10;
 const BACK_LOGO_PRICE = 25;
@@ -136,8 +127,7 @@ function MobileStepFrame({
   children: ReactNode;
   description?: ReactNode;
 }) {
-  // No wrap-around: the flow ends at the last step (and starts at the
-  // first) — looping Pant back to Kimono read as confusing.
+  // No wrap-around: the flow ends at the last step.
   const atStart = current <= 1;
   const atEnd = current >= total;
   return (
@@ -221,7 +211,6 @@ export const MobileConfiguratorFlow = memo(
       pantLogos,
       setPantLogo,
       removePantLogo,
-      textLayers,
     } = useGiState();
 
     const steps = useMemo<MobileStep[]>(() => {
@@ -259,7 +248,7 @@ export const MobileConfiguratorFlow = memo(
             />
           ),
         })),
-        ...VISIBLE_KIMONO_LOGO_SLOTS.map<MobileStep>((slot) => {
+        ...KIMONO_LOGO_SLOTS.map<MobileStep>((slot) => {
           const logo = kimonoLogos[slot];
           return {
             key: `kimono-logo-${slot}`,
@@ -430,6 +419,10 @@ export const MobileConfiguratorFlow = memo(
         }),
       ];
 
+      // Single-item belt product: only the belt steps, and no add/remove
+      // step — the belt is always included.
+      void kimonoSteps;
+      void pantSteps;
       return beltSteps.filter((step) => step.key !== 'belt-add');
     }, [
       beltEmbroidery.leftEnd,
@@ -489,9 +482,7 @@ export const MobileConfiguratorFlow = memo(
       (partVisibility.belt
         ? (beltEmbroidery.leftEnd.trim() ? ADD_ON_PRICE : 0) +
           (beltEmbroidery.rightEnd.trim() ? ADD_ON_PRICE : 0)
-        : 0) +
-      // Free-placement text layers render on the jacket, $10 each.
-      (partVisibility.jacket ? textLayers.length * ADD_ON_PRICE : 0);
+        : 0);
     const total =
       Object.entries(partVisibility).reduce(
         (sum, [part, visible]) =>
@@ -523,7 +514,7 @@ export const MobileConfiguratorFlow = memo(
           <div className="mx-auto grid max-w-[44rem] gap-3">
             <div className="flex items-baseline justify-between gap-4">
               <p className="text-foreground min-w-0 truncate text-left text-base font-semibold tracking-[0.08em] uppercase">
-                Mens Custom Gi Suit
+                Custom BJJ Belt
               </p>
               <p className="text-foreground shrink-0 text-right text-base font-semibold">
                 ${total.toFixed(2)}

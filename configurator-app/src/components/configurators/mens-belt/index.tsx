@@ -14,7 +14,6 @@ import {
   readGiDraftDocument,
   saveGiDraftDocument,
   type GiDraftDocument,
-  type GiDraftLogoImage,
 } from './gi-draft-storage';
 import {
   buildGiCloudDesignUrls,
@@ -27,8 +26,6 @@ import {
   type CloudArtworkLink,
 } from './gi-cloud-designs';
 import { SavedDesignsRail, type DraftStatus } from './saved-designs-rail';
-import { StudioTextTool } from './studio-text-tool';
-import { CameraTuner } from './camera-tuner';
 import { ConfiguratorShell } from './configurator-shell';
 import {
   exportGiPdf,
@@ -37,28 +34,32 @@ import {
   snapshotCanvasHighResolution,
   snapshotCanvasThumbnail,
 } from '../shared/export-pdf';
-import { createLineDesignId, getMissingGiSizeMessage } from '../shared/order-flow';
-import { copyTextToClipboard, isStudioMode } from '../shared/studio-mode';
 import { uploadPreviewImage } from '../shared/preview-upload';
+import { createLineDesignId, getMissingGiSizeMessage } from '../shared/order-flow';
 import {
   addShopifyTestCartLine,
   buildShopifyTestCartLine,
+  isShopifyIframeMode,
   readShopifyTestCart,
   sendLinesToShopifyParent,
   ShopifyCartDrawer,
+  submitShopifyCartFallback,
   type ShopifyCartLine,
+  waitForShopifyCartParentResult,
 } from './shopify-cart-simulator';
 import type { CameraView } from './gi-config';
 import { GI_CAMERA_TWEEN_MS } from './gi-config';
-import { currentGiProductConfig } from '../shared/gi-product-config';
+import { CameraTuner } from './camera-tuner';
+import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
 import {
   logoSetSignature,
   readActiveDesignLink,
   writeActiveDesignLink,
 } from '../shared/active-design-link';
+import { isStudioMode } from '../shared/studio-mode';
 
-const PRODUCT_CONFIG = currentGiProductConfig();
+const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS['mens-belt'];
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
 const ACTIVE_DESIGN_LINK_KEY = `${PRODUCT_CONFIG.configStoragePrefix}active-design-link:v1`;
 const SHOPIFY_GI_PRODUCT_PATH = PRODUCT_CONFIG.shopifyProductPath;
@@ -85,6 +86,58 @@ interface GiCartConfigData {
   };
 }
 
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string | null>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve(typeof reader.result === 'string' ? reader.result : null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function draftImagesToCartImages<TSlot extends string>(
+  images: GiDraftDocument['images']['kimono'] | GiDraftDocument['images']['pant'],
+) {
+  const entries = await Promise.all(
+    Object.entries(images).map(async ([slot, image]) => {
+      if (!image) return null;
+      const dataUrl = await blobToDataUrl(image.blob);
+      if (!dataUrl) return null;
+      return [
+        slot,
+        {
+          dataUrl,
+          filename: image.filename,
+          imageWidth: image.imageWidth,
+          imageHeight: image.imageHeight,
+        },
+      ] as const;
+    }),
+  );
+
+  return entries.reduce<Record<string, CartLogoImageData>>((acc, entry) => {
+    if (!entry) return acc;
+    const [slot, image] = entry;
+    acc[slot as TSlot] = image;
+    return acc;
+  }, {});
+}
+
+async function draftToCartConfigData(
+  draft: GiDraftDocument,
+): Promise<GiCartConfigData> {
+  return {
+    kind: 'gi-cart-config',
+    version: 1,
+    spec: draft.spec,
+    images: {
+      kimono: await draftImagesToCartImages(draft.images.kimono),
+      pant: await draftImagesToCartImages(draft.images.pant),
+    },
+  };
+}
+
 function mergeSavedDesigns(...groups: GiDraftDocument[][]) {
   const designsById = new Map<string, GiDraftDocument>();
   groups.flat().forEach((design) => {
@@ -104,89 +157,6 @@ function formatDesignName() {
     hour: 'numeric',
     minute: '2-digit',
   })}`;
-}
-
-function blobToDataUrl(blob: Blob) {
-  return new Promise<string | null>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      resolve(typeof reader.result === 'string' ? reader.result : null);
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function draftImagesToCartImages<TSlot extends string>(
-  images: Partial<Record<TSlot, GiDraftLogoImage>>,
-) {
-  const entries = await Promise.all(
-    Object.entries(images).map(async ([slot, image]) => {
-      if (!image) return null;
-      const draftImage = image as GiDraftLogoImage;
-      const dataUrl = await blobToDataUrl(draftImage.blob);
-      if (!dataUrl) return null;
-      return [
-        slot,
-        {
-          dataUrl,
-          filename: draftImage.filename,
-          imageWidth: draftImage.imageWidth,
-          imageHeight: draftImage.imageHeight,
-        },
-      ] as const;
-    }),
-  );
-
-  return entries.reduce<Record<string, CartLogoImageData>>((acc, entry) => {
-    if (!entry) return acc;
-    const [slot, image] = entry;
-    acc[slot] = image;
-    return acc;
-  }, {});
-}
-
-async function draftToCartConfigData(
-  draft: GiDraftDocument,
-): Promise<GiCartConfigData> {
-  return {
-    kind: 'gi-cart-config',
-    version: 1,
-    spec: draft.spec,
-    images: {
-      kimono: await draftImagesToCartImages(draft.images.kimono),
-      pant: await draftImagesToCartImages(draft.images.pant),
-    },
-  };
-}
-
-function dataUrlToLogo(image: CartLogoImageData) {
-  return {
-    imageUrl: image.dataUrl,
-    filename: image.filename,
-    imageWidth: image.imageWidth,
-    imageHeight: image.imageHeight,
-  };
-}
-
-function cartImagesToLogoImages<TSlot extends string>(
-  images: Record<string, CartLogoImageData> | undefined,
-) {
-  return Object.entries(images ?? {}).reduce<Partial<Record<TSlot, ReturnType<typeof dataUrlToLogo>>>>(
-    (acc, [slot, image]) => {
-      acc[slot as TSlot] = dataUrlToLogo(image);
-      return acc;
-    },
-    {},
-  );
-}
-
-function isGiCartConfigData(value: unknown): value is GiCartConfigData {
-  return (
-    Boolean(value) &&
-    typeof value === 'object' &&
-    (value as { kind?: unknown }).kind === 'gi-cart-config' &&
-    (value as { spec?: { kind?: unknown } }).spec?.kind === PRODUCT_CONFIG.stateKind
-  );
 }
 
 function broadcastCustomerDesignsChanged() {
@@ -217,32 +187,6 @@ function getCartEditMode() {
   return params.get('mode') === 'cart-edit' && Boolean(params.get('cart_line'));
 }
 
-function readLocalCartDesignDraft(designId: string | null): GiDraftDocument | null {
-  if (typeof window === 'undefined' || !designId) return null;
-
-  try {
-    const raw = window.localStorage.getItem(`${PRODUCT_CONFIG.configStoragePrefix}${designId}`);
-    if (!raw) return null;
-    const spec = JSON.parse(raw) as GiSerializedState;
-    if (spec?.kind !== PRODUCT_CONFIG.stateKind) return null;
-
-    const now = new Date().toISOString();
-    return {
-      id: designId,
-      name: formatDesignName(),
-      spec,
-      createdAt: now,
-      updatedAt: now,
-      images: {
-        kimono: {},
-        pant: {},
-      },
-    };
-  } catch {
-    return null;
-  }
-}
-
 const GiConfiguratorInner = memo(() => {
   const {
     layers,
@@ -257,12 +201,12 @@ const GiConfiguratorInner = memo(() => {
     setPantLogo,
   } = useGiState();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [isCartEditMode] = useState(getCartEditMode);
   const [isExporting, setIsExporting] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartLines, setCartLines] = useState<ShopifyCartLine[]>(() =>
     readShopifyTestCart(),
   );
+  const [isCartEditMode] = useState(getCartEditMode);
   const [savedDesigns, setSavedDesigns] = useState<GiDraftDocument[]>([]);
   const [draftStatus, setDraftStatus] = useState<DraftStatus>('loading');
   const [currentDesignId, setCurrentDesignId] = useState<string | null>(
@@ -282,7 +226,6 @@ const GiConfiguratorInner = memo(() => {
   );
   const [isSavingDesign, setIsSavingDesign] = useState(false);
   const [cloudOwnerContext] = useState(() => getGiCloudOwnerContext());
-  const [isStudio] = useState(isStudioMode);
   const draftReadyRef = useRef(false);
   const savingDesignRef = useRef(false);
   const markCleanRef = useRef(false);
@@ -356,27 +299,6 @@ const GiConfiguratorInner = memo(() => {
       const data = event.data;
       if (!data || typeof data !== 'object') return;
 
-      if (data.type === 'dspln:cart-design:hydrate') {
-        const configData = data.configData as GiSerializedState | GiCartConfigData | undefined;
-        const spec = isGiCartConfigData(configData) ? configData.spec : configData;
-        if (spec?.kind !== PRODUCT_CONFIG.stateKind) return;
-
-        hydrate(
-          spec,
-          isGiCartConfigData(configData)
-            ? {
-                kimono: cartImagesToLogoImages(configData.images.kimono),
-                pant: cartImagesToLogoImages(configData.images.pant),
-              }
-            : undefined,
-        );
-        if (typeof data.designId === 'string') {
-          setCurrentDesignId(data.designId);
-        }
-        setCurrentDesignName(formatDesignName());
-        return;
-      }
-
       if (data.type === SHOPIFY_CART_ADDED_MESSAGE) {
         toast.success('Added to Shopify cart');
       }
@@ -398,7 +320,7 @@ const GiConfiguratorInner = memo(() => {
     window.addEventListener('message', handleShopifyCartResult);
     return () =>
       window.removeEventListener('message', handleShopifyCartResult);
-  }, [hydrate]);
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -409,13 +331,7 @@ const GiConfiguratorInner = memo(() => {
         const linkedDesignId = getLinkedDesignId();
         const [autoDraft] = await Promise.all([
           linkedDesignId
-            ? getGiCloudDesign(linkedDesignId).catch(() => null).then(
-                (design) =>
-                  design ??
-                  readLocalCartDesignDraft(linkedDesignId) ??
-                  readGiDraftDocument(linkedDesignId) ??
-                  readGiDraftDocument(AUTO_GI_DRAFT_ID),
-              )
+            ? getGiCloudDesign(linkedDesignId).then((design) => design ?? readGiDraftDocument(AUTO_GI_DRAFT_ID))
             : readGiDraftDocument(AUTO_GI_DRAFT_ID),
           refreshSavedDesigns(),
         ]);
@@ -496,11 +412,7 @@ const GiConfiguratorInner = memo(() => {
       });
       await saveGiDraftDocument(draft);
 
-      // Cloud save is best-effort: if the API is unreachable the design
-      // still lives in this browser and the toast says so.
-      const cloudDraft = await saveGiCloudDesign(draft, cloudOwnerContext).catch(
-        () => null,
-      );
+      const cloudDraft = await saveGiCloudDesign(draft, cloudOwnerContext);
       if (cloudDraft) {
         await saveGiDraftDocument(cloudDraft);
         if (cloudDraft.id !== draft.id) {
@@ -595,48 +507,6 @@ const GiConfiguratorInner = memo(() => {
     [cloudOwnerContext, currentDesignId, refreshSavedDesigns],
   );
 
-  const handleCopyCustomerLink = useCallback(
-    async (design: GiDraftDocument) => {
-      try {
-        // The link only works when the design exists in the cloud — a
-        // local-only draft would open blank for the customer.
-        let cloudId = design.id;
-        const existing = await getGiCloudDesign(design.id).catch(() => null);
-        if (!existing) {
-          const cloudDraft = await saveGiCloudDesign(
-            design,
-            cloudOwnerContext,
-          ).catch(() => null);
-          if (!cloudDraft) {
-            toast.error('Design is not in the cloud yet', {
-              description:
-                'Cloud saving is unavailable, so a customer could not open this link.',
-            });
-            return;
-          }
-          cloudId = cloudDraft.id;
-          await refreshSavedDesigns();
-        }
-
-        const url = buildGiCloudDesignUrls(cloudId)?.designUrl;
-        if (!url) {
-          toast.error('Could not build the customer link');
-          return;
-        }
-
-        const copied = await copyTextToClipboard(url);
-        if (copied) {
-          toast.success('Customer link copied', { description: url });
-        } else {
-          toast.info('Copy this link', { description: url, duration: 15000 });
-        }
-      } catch {
-        toast.error('Could not copy the customer link');
-      }
-    },
-    [cloudOwnerContext, refreshSavedDesigns],
-  );
-
   const captureView = useCallback(
     async (view: CameraView): Promise<string | null> => {
       setCameraView(view);
@@ -646,6 +516,7 @@ const GiConfiguratorInner = memo(() => {
     },
     [getCanvasEl, setCameraView],
   );
+
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
@@ -724,7 +595,7 @@ const GiConfiguratorInner = memo(() => {
         productionUrl = cloudResult.productionUrl ?? fallbackUrls?.productionUrl;
         artworkLinks = cloudResult.artwork;
       } catch (err) {
-        console.error('[GiConfigurator] Cloud design save failed', err);
+        console.error('[MensBeltConfigurator] Cloud design save failed', err);
         toast.error('Could not save the production design', {
           description:
             'The gi was not added to cart because the Tech Pack and 3D Design links would not work.',
@@ -732,12 +603,8 @@ const GiConfiguratorInner = memo(() => {
         return;
       }
 
-      // The tech-pack views are NOT captured here anymore. Rendering the 6
-      // high-res views at add-to-cart was slow (~1 min) and wasteful — it ran
-      // for every cart even though most never convert. The tech pack is now
-      // rendered on demand from the Shopify admin order page (see the "Tech
-      // Pack" link → /tech-pack/gi), which loads this saved design and renders
-      // the views only when someone actually needs the production PDF.
+      // Tech-pack views are no longer captured at add-to-cart — the tech pack
+      // renders on demand from the admin order page (/tech-pack/gi).
 
       const line = buildShopifyTestCartLine({
         spec,
@@ -749,12 +616,23 @@ const GiConfiguratorInner = memo(() => {
         configData: cartConfigData,
       });
 
+      const parentCartResult = isShopifyIframeMode()
+        ? waitForShopifyCartParentResult()
+        : Promise.resolve<'added' | 'error' | 'timeout'>('timeout');
       const sentToShopifyParent = sendLinesToShopifyParent([line]);
 
       if (sentToShopifyParent) {
-        // In Shopify iframe mode the parent page owns the real cart drawer.
-        // Keep the local simulator out of the way.
-        await new Promise((r) => setTimeout(r, 300));
+        const result = await parentCartResult;
+        if (result === 'timeout') {
+          const didSubmitFallback = submitShopifyCartFallback(line);
+          if (didSubmitFallback) {
+            toast.info('Opening Shopify cart');
+            return;
+          }
+          toast.error('Shopify cart did not respond', {
+            description: 'Please refresh the page and try adding the gi again.',
+          });
+        }
         return;
       }
 
@@ -762,7 +640,7 @@ const GiConfiguratorInner = memo(() => {
       setCartLines(nextCart);
       setCartOpen(true);
       // eslint-disable-next-line no-console
-        console.log('[GiConfigurator] Shopify cart line:', line);
+      console.log('[MensBeltConfigurator] Shopify cart line:', line);
       await new Promise((r) => setTimeout(r, 300));
     } finally {
       setIsAddingToCart(false);
@@ -793,60 +671,6 @@ const GiConfiguratorInner = memo(() => {
             onLoginToSave={handleLoginToSave}
           />
         }
-        railContent={
-          isStudio ? (
-            <>
-            <CameraTuner />
-            <StudioTextTool />
-            <SavedDesignsRail
-              status={draftStatus}
-              savedDesigns={savedDesigns}
-              defaultDesignName={currentDesignName || formatDesignName()}
-              storageLabel={
-                cloudOwnerContext?.isCustomer
-                  ? 'Saved to your account'
-                  : 'Cloud saved for this browser'
-              }
-              onSaveDesign={handleSaveDesign}
-              activeDesignId={currentDesignId}
-              activeDesignName={currentDesignName}
-              onLoadDesign={handleLoadDesign}
-              onDeleteDesign={handleDeleteDesign}
-              onCopyCustomerLink={handleCopyCustomerLink}
-              onApplyKimonoLogo={setKimonoLogo}
-              onApplyPantLogo={setPantLogo}
-              currentKimonoLogos={kimonoLogos}
-              currentPantLogos={pantLogos}
-            />
-            </>
-          ) : (
-            // Dev-branch WIP: the saved-designs rail stays visible outside
-            // studio mode while the account/save flow is being built.
-            <SavedDesignsRail
-              status={draftStatus}
-              savedDesigns={savedDesigns}
-              defaultDesignName={currentDesignName || formatDesignName()}
-              storageLabel={
-                cloudOwnerContext?.isCustomer
-                  ? 'Saved to your account'
-                  : 'Saved for this browser only'
-              }
-              isSaving={isSavingDesign}
-              hasUnsavedChanges={hasUnsavedChanges}
-              isCustomer={cloudOwnerContext?.isCustomer}
-              onLoginToSave={handleLoginToSave}
-              onSaveDesign={handleSaveDesign}
-              activeDesignId={currentDesignId}
-              activeDesignName={currentDesignName}
-              onLoadDesign={handleLoadDesign}
-              onDeleteDesign={handleDeleteDesign}
-              onApplyKimonoLogo={setKimonoLogo}
-              onApplyPantLogo={setPantLogo}
-              currentKimonoLogos={kimonoLogos}
-              currentPantLogos={pantLogos}
-            />
-          )
-        }
         sceneTopContent={
           cloudOwnerContext?.isCustomer ? (
             <div
@@ -864,15 +688,38 @@ const GiConfiguratorInner = memo(() => {
                 Sign Out
               </a>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleLoginToSave}
-              className="text-foreground hover:text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase"
-            >
-              Log In To Save
-            </button>
-          )
+          ) : null
+          // Login entry points are hidden until the account flow ships:
+          // the theme doesn't pass customer identity yet, so the login
+          // round-trip appears broken to customers.
+        }
+        railContent={!isStudioMode() ? undefined :
+          <>
+          <CameraTuner />
+          <SavedDesignsRail
+            status={draftStatus}
+            savedDesigns={savedDesigns}
+            defaultDesignName={currentDesignName || formatDesignName()}
+            storageLabel={
+              cloudOwnerContext?.isCustomer
+                ? 'Saved to your account'
+                : 'Saved for this browser only'
+            }
+            isSaving={isSavingDesign}
+            hasUnsavedChanges={hasUnsavedChanges}
+            isCustomer={cloudOwnerContext?.isCustomer}
+            onLoginToSave={handleLoginToSave}
+            onSaveDesign={handleSaveDesign}
+            activeDesignId={currentDesignId}
+            activeDesignName={currentDesignName}
+            onLoadDesign={handleLoadDesign}
+            onDeleteDesign={handleDeleteDesign}
+            onApplyKimonoLogo={setKimonoLogo}
+            onApplyPantLogo={setPantLogo}
+            currentKimonoLogos={kimonoLogos}
+            currentPantLogos={pantLogos}
+          />
+          </>
         }
       >
         <GiCanvas />
