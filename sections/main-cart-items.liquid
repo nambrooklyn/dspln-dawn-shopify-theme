@@ -88,6 +88,9 @@
                     assign is_dspln_short_sleeve_rashguard_line_item = false
                     assign is_dspln_womens_gi_line_item = false
                     assign is_dspln_kids_gi_line_item = false
+                    assign is_dspln_mens_kimono_line_item = false
+                    assign is_dspln_mens_belt_line_item = false
+                    assign is_dspln_mens_pant_line_item = false
                     capture dspln_preview_image
                       render 'dspln-line-item-preview-url', item: item
                     endcapture
@@ -141,6 +144,18 @@
                         endif
                         if property_value contains 'kids_gi_' or property_value contains 'kids-gi'
                           assign is_dspln_kids_gi_line_item = true
+                          assign has_dspln_line_item_properties = true
+                        endif
+                        if property_value contains 'mens_kimono_' or property_value contains 'mens-kimono'
+                          assign is_dspln_mens_kimono_line_item = true
+                          assign has_dspln_line_item_properties = true
+                        endif
+                        if property_value contains 'mens_belt_' or property_value contains 'mens-belt'
+                          assign is_dspln_mens_belt_line_item = true
+                          assign has_dspln_line_item_properties = true
+                        endif
+                        if property_value contains 'mens_pant_' or property_value contains 'mens-pant'
+                          assign is_dspln_mens_pant_line_item = true
                           assign has_dspln_line_item_properties = true
                         endif
                       endif
@@ -294,7 +309,16 @@
                           {%- liquid
                             assign dspln_product_path = '/products/customgi'
                             assign dspln_template_view = 'gi-configurator-product-page'
-                            if is_dspln_womens_gi_line_item
+                            if is_dspln_mens_kimono_line_item
+                              assign dspln_product_path = '/products/kimono'
+                              assign dspln_template_view = 'mens-kimono-configurator-product-page'
+                            elsif is_dspln_mens_belt_line_item
+                              assign dspln_product_path = '/products/belt'
+                              assign dspln_template_view = 'mens-belt-configurator-product-page'
+                            elsif is_dspln_mens_pant_line_item
+                              assign dspln_product_path = '/products/pant'
+                              assign dspln_template_view = 'mens-pant-configurator-product-page'
+                            elsif is_dspln_womens_gi_line_item
                               assign dspln_product_path = '/products/womens-custom-gi-suit'
                               assign dspln_template_view = 'womens-gi-configurator-product-page'
                             elsif is_dspln_kids_gi_line_item

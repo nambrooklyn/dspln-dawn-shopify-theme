@@ -34,7 +34,15 @@
 
 <div class="dspln-line-item-properties" data-dspln-line-item-properties>
   <div class="dspln-line-item-properties__details">
-    {%- assign group_names = 'Kimono|Belt|Pant|Rashguard|Grappling Short' | split: '|' -%}
+    {%- liquid
+      # Single-item products (Kimono / Belt / Pant) render only their own
+      # group. Also shields against stale configurator bundles that still
+      # ship "Belt: NO" / "Pant: NO" properties for absent parts.
+      assign group_names = 'Kimono|Belt|Pant|Rashguard|Grappling Short' | split: '|'
+      if item_title_key == 'kimono' or item_title_key == 'belt' or item_title_key == 'pant'
+        assign group_names = item.product.title | split: '|'
+      endif
+    -%}
     {%- for group_name in group_names -%}
       {%- liquid
         assign group_key = group_name | downcase
@@ -222,7 +230,13 @@
       {%- assign group_body_clean = group_body | strip -%}
       {%- if group_body_clean != blank -%}
         <section class="dspln-line-item-properties__group">
-          <h3 class="dspln-line-item-properties__heading">{{ group_name }}</h3>
+          {%- comment -%}
+            Single-item products (Kimono / Belt / Pant) already show their
+            name as the line title — repeating it as a group heading is noise.
+          {%- endcomment -%}
+          {%- unless group_key == item_title_key -%}
+            <h3 class="dspln-line-item-properties__heading">{{ group_name }}</h3>
+          {%- endunless -%}
           <dl>{{ group_body }}</dl>
         </section>
       {%- endif -%}
