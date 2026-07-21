@@ -920,6 +920,10 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
         }
         minPolarAngle={(79 * Math.PI) / 192}
         maxPolarAngle={(113 * Math.PI) / 192}
+        // Belt product: the model only reads from the front, so orbiting is
+        // limited to ±20° around it.
+        minAzimuthAngle={(-20 * Math.PI) / 180}
+        maxAzimuthAngle={(20 * Math.PI) / 180}
       />
     </>
   );
