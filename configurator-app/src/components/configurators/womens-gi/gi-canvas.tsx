@@ -634,6 +634,43 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     return () => cancelAnimationFrame(raf);
   }, [cameraView, cameraViewResetKey, camera, useMobileCamera]);
 
+  // After a focus close-up the orbit pivot sits off-center (a sleeve, the
+  // pants). The moment the user grabs the canvas, glide the pivot back to
+  // the model's center so orbit/zoom frames the whole gi again instead of
+  // pivoting around the close-up point (zooming out otherwise keeps the
+  // close-up centered with the rest of the model off-screen).
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const cardinal: readonly string[] = ['front', 'back', 'left', 'right'];
+    if (cardinal.includes(cameraView)) return;
+
+    let raf = 0;
+    const handleStart = () => {
+      controls.removeEventListener('start', handleStart);
+      const startTgt = controls.target.clone();
+      const endTgt = new Vector3(...CAMERA_TARGET);
+      let progress = 0;
+      let last = performance.now();
+      const tick = () => {
+        const now = performance.now();
+        progress += Math.min(now - last, 50);
+        last = now;
+        const t = Math.min(1, progress / 450);
+        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        controls.target.lerpVectors(startTgt, endTgt, eased);
+        controls.update();
+        if (t < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    controls.addEventListener('start', handleStart);
+    return () => {
+      controls.removeEventListener('start', handleStart);
+      cancelAnimationFrame(raf);
+    };
+  }, [cameraView, cameraViewResetKey]);
+
   useEffect(() => {
     const handlePinch = (event: Event) => {
       const controls = controlsRef.current;
