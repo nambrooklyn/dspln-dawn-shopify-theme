@@ -465,7 +465,9 @@ cart-remove-button .icon-remove {
   }
 
   .cart-item--dspln-custom .cart-item__image-container {
-    align-items: center;
+    /* Top-aligned so the thumbnail lines up with the product title
+       instead of floating mid-row next to tall option lists. */
+    align-items: flex-start;
     justify-content: center;
     width: 100%;
     min-height: 360px;
@@ -689,10 +691,11 @@ cart-remove-button .icon-remove {
     grid-column: 1;
     grid-row: 1;
     width: 100%;
+    align-self: start;
   }
 
   body:has(cart-items) .cart-item__image-container {
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     width: 100%;
     min-height: 390px;
