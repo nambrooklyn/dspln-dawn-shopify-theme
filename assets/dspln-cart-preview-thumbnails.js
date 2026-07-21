@@ -531,7 +531,19 @@
         const url = await previewUrlForItem(item);
 
         const row = cartRows[index];
-        const image = row?.querySelector('.cart-item__image') || cartImages[index];
+        let image = row?.querySelector('.cart-item__image') || cartImages[index];
+        // Products without a featured image render an empty media cell —
+        // create the img so configured previews still show.
+        if (!image && url && row) {
+          const media = row.querySelector('.cart-item__media');
+          if (media) {
+            image = document.createElement('img');
+            image.className = 'cart-item__image';
+            image.width = 150;
+            image.loading = 'lazy';
+            media.appendChild(image);
+          }
+        }
         if (url) {
           setPreviewImage(image, url);
         } else if (isDsplnCustomRow(row, item)) {
