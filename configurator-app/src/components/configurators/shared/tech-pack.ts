@@ -28,6 +28,13 @@ interface GenerateGiTechPackInput {
   orderNumber?: string;
   productName?: string;
   includeSizeMeasurements?: boolean;
+  /**
+   * Which garment parts this PRODUCT sells. Parts not included are omitted
+   * from the tech pack entirely — unlike a removed part on the full gi,
+   * which still prints its section with "NO". Single-item configurators
+   * (kimono / belt / pant) pass just their own part.
+   */
+  includeParts?: { jacket?: boolean; belt?: boolean; pants?: boolean };
   /** Kids model proportions differ — shifts the thigh placement crop. */
   kidsProportions?: boolean;
   /** false = silent/archive mode: build the PDF but skip the browser download. */
@@ -1112,6 +1119,7 @@ async function drawSummaryPage({
   spec,
   kimonoLogos,
   pantLogos,
+  includeParts,
 }: {
   pdf: jsPDF;
   logoDataUrl: string;
@@ -1121,6 +1129,7 @@ async function drawSummaryPage({
   spec: GiSerializedState;
   kimonoLogos?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   pantLogos?: Partial<Record<PantLogoSlot, KimonoLogo>>;
+  includeParts: { jacket?: boolean; belt?: boolean; pants?: boolean };
 }) {
   pdf.addPage('letter', 'portrait');
   await drawHeader({ pdf, logoDataUrl, orderDate, shipDate, orderNumber });
@@ -1196,6 +1205,7 @@ async function drawSummaryPage({
   const SECTION_GAP = 36;
   let sectionY = 86;
 
+  if (includeParts.jacket) {
   sectionY += drawSummarySection({
     pdf,
     title: 'KIMONO',
@@ -1249,8 +1259,10 @@ async function drawSummaryPage({
       },
     ],
   });
-
   sectionY += SECTION_GAP;
+  }
+
+  if (includeParts.belt) {
   sectionY += drawSummarySection({
     pdf,
     title: 'BELT',
@@ -1259,12 +1271,15 @@ async function drawSummaryPage({
     notOrdered: !spec.partVisibility.belt,
     rows: beltRows,
   });
+  sectionY += SECTION_GAP;
+  }
 
+  if (includeParts.pants) {
   drawSummarySection({
     pdf,
     title: 'PANT',
     size: spec.pant.size,
-    y: sectionY + SECTION_GAP,
+    y: sectionY,
     notOrdered: !spec.partVisibility.pants,
     rows: [
       {
@@ -1303,6 +1318,7 @@ async function drawSummaryPage({
       },
     ],
   });
+  }
 }
 
 function drawPomMeasurementSection({
@@ -1421,6 +1437,7 @@ async function drawSizeMeasurementsPage({
   shipDate,
   orderNumber,
   spec,
+  includeParts,
 }: {
   pdf: jsPDF;
   logoDataUrl: string;
@@ -1428,11 +1445,12 @@ async function drawSizeMeasurementsPage({
   shipDate: Date;
   orderNumber: string;
   spec: GiSerializedState;
+  includeParts: { jacket?: boolean; belt?: boolean; pants?: boolean };
 }) {
   pdf.addPage('letter', 'portrait');
   const [kimonoPom, pantPom] = await Promise.all([
-    loadTechPackImage(KIMONO_POM_URL),
-    loadTechPackImage(PANT_POM_URL),
+    includeParts.jacket ? loadTechPackImage(KIMONO_POM_URL) : null,
+    includeParts.pants ? loadTechPackImage(PANT_POM_URL) : null,
   ]);
 
   await drawHeader({ pdf, logoDataUrl, orderDate, shipDate, orderNumber });
@@ -1442,10 +1460,16 @@ async function drawSizeMeasurementsPage({
   pdf.setTextColor(35);
   pdf.text('SIZE MEASUREMENTS', 306, 104, { align: 'center' });
 
+  const measuredParts =
+    includeParts.jacket && includeParts.pants
+      ? 'kimono and pant sizes'
+      : includeParts.jacket
+        ? 'kimono size'
+        : 'pant size';
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(8.5);
   pdf.setTextColor(85);
-  pdf.text('Strict measurements for the selected kimono and pant sizes.', 306, 124, {
+  pdf.text(`Strict measurements for the selected ${measuredParts}.`, 306, 124, {
     align: 'center',
   });
   pdf.text('All measurements in centimeters', 306, 139, { align: 'center' });
@@ -1454,25 +1478,31 @@ async function drawSizeMeasurementsPage({
   pdf.setLineWidth(0.45);
   pdf.line(18, 158, 594, 158);
 
-  drawPomMeasurementSection({
-    pdf,
-    title: 'KIMONO',
-    size: spec.kimono.size,
-    rows: KIMONO_SIZE_MEASUREMENTS[spec.kimono.size],
-    pomLetters: ['a', 'b', 'c', 'd', 'e'],
-    diagram: kimonoPom,
-    y: 178,
-  });
+  let sectionY = 178;
+  if (kimonoPom) {
+    drawPomMeasurementSection({
+      pdf,
+      title: 'KIMONO',
+      size: spec.kimono.size,
+      rows: KIMONO_SIZE_MEASUREMENTS[spec.kimono.size],
+      pomLetters: ['a', 'b', 'c', 'd', 'e'],
+      diagram: kimonoPom,
+      y: sectionY,
+    });
+    sectionY = 508;
+  }
 
-  drawPomMeasurementSection({
-    pdf,
-    title: 'PANT',
-    size: spec.pant.size,
-    rows: PANT_SIZE_MEASUREMENTS[spec.pant.size],
-    pomLetters: ['f', 'g', 'h', 'i'],
-    diagram: pantPom,
-    y: 508,
-  });
+  if (pantPom) {
+    drawPomMeasurementSection({
+      pdf,
+      title: 'PANT',
+      size: spec.pant.size,
+      rows: PANT_SIZE_MEASUREMENTS[spec.pant.size],
+      pomLetters: ['f', 'g', 'h', 'i'],
+      diagram: pantPom,
+      y: sectionY,
+    });
+  }
 }
 
 async function drawBrandingPage({
@@ -1851,6 +1881,7 @@ export async function generateGiTechPackPageOne({
   orderNumber = buildOrderNumber(orderDate),
   productName = 'gi',
   includeSizeMeasurements = true,
+  includeParts = { jacket: true, belt: true, pants: true },
   kidsProportions = false,
   download = true,
 }: GenerateGiTechPackInput) {
@@ -1972,9 +2003,11 @@ export async function generateGiTechPackPageOne({
     spec,
     kimonoLogos,
     pantLogos,
+    includeParts,
   });
 
-  if (includeSizeMeasurements) {
+  // Belt-only products have no kimono/pant measurements to print.
+  if (includeSizeMeasurements && (includeParts.jacket || includeParts.pants)) {
     await drawSizeMeasurementsPage({
       pdf,
       logoDataUrl,
@@ -1982,6 +2015,7 @@ export async function generateGiTechPackPageOne({
       shipDate,
       orderNumber,
       spec,
+      includeParts,
     });
   }
 

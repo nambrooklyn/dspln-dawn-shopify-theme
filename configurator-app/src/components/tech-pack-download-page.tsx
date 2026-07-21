@@ -117,7 +117,26 @@ function orderNumberForRecord(design: SavedDesignRecord) {
 function productNameForSource(source?: string) {
   if (source === 'dspln-womens-gi-configurator') return 'womens-gi';
   if (source === 'dspln-kids-gi-configurator') return 'kids-gi';
+  if (source === 'dspln-mens-kimono-configurator') return 'mens-kimono';
+  if (source === 'dspln-mens-belt-configurator') return 'mens-belt';
+  if (source === 'dspln-mens-pant-configurator') return 'mens-pant';
   return 'mens-gi';
+}
+
+// Which garment parts the ordered PRODUCT sells. Single-item configurators
+// (kimono / belt / pant) get a tech pack scoped to just their own part —
+// no "BELT: NO" / "PANT: NO" sections and no irrelevant measurement charts.
+function includePartsForSource(source?: string) {
+  if (source === 'dspln-mens-kimono-configurator') {
+    return { jacket: true, belt: false, pants: false };
+  }
+  if (source === 'dspln-mens-belt-configurator') {
+    return { jacket: false, belt: true, pants: false };
+  }
+  if (source === 'dspln-mens-pant-configurator') {
+    return { jacket: false, belt: false, pants: true };
+  }
+  return { jacket: true, belt: true, pants: true };
 }
 
 /**
@@ -381,6 +400,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           pantLogos,
           orderNumber: orderNumberForRecord(design),
           productName: productNameForSource(design.configData?.source),
+          includeParts: includePartsForSource(design.configData?.source),
           includeSizeMeasurements:
             design.configData?.source !== 'dspln-kids-gi-configurator',
           kidsProportions:
