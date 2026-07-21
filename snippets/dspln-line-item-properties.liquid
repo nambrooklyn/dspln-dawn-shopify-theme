@@ -35,12 +35,22 @@
 <div class="dspln-line-item-properties" data-dspln-line-item-properties>
   <div class="dspln-line-item-properties__details">
     {%- liquid
-      # Single-item products (Kimono / Belt / Pant) render only their own
-      # group. Also shields against stale configurator bundles that still
-      # ship "Belt: NO" / "Pant: NO" properties for absent parts.
+      # Single-item products (Kimono / Belt / Pant, mens or kids) render only
+      # their own group with no heading. Also shields against stale
+      # configurator bundles that still ship "Belt: NO" / "Pant: NO"
+      # properties for absent parts. Full gi suits never match: their titles
+      # ("Mens Custom Gi Suit") contain none of these words.
+      assign single_item_group = ''
+      if item_title_key contains 'kimono'
+        assign single_item_group = 'Kimono'
+      elsif item_title_key contains 'belt'
+        assign single_item_group = 'Belt'
+      elsif item_title_key contains 'pant'
+        assign single_item_group = 'Pant'
+      endif
       assign group_names = 'Kimono|Belt|Pant|Rashguard|Grappling Short' | split: '|'
-      if item_title_key == 'kimono' or item_title_key == 'belt' or item_title_key == 'pant'
-        assign group_names = item.product.title | split: '|'
+      if single_item_group != ''
+        assign group_names = single_item_group | split: '|'
       endif
     -%}
     {%- for group_name in group_names -%}
@@ -234,7 +244,7 @@
             Single-item products (Kimono / Belt / Pant) already show their
             name as the line title — repeating it as a group heading is noise.
           {%- endcomment -%}
-          {%- unless group_key == item_title_key -%}
+          {%- unless single_item_group != '' -%}
             <h3 class="dspln-line-item-properties__heading">{{ group_name }}</h3>
           {%- endunless -%}
           <dl>{{ group_body }}</dl>
