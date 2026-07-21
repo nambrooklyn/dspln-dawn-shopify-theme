@@ -1451,23 +1451,5 @@
         "default": "scheme-1"
       }
     ]
-  },
-  {
-    "name": "Country blocking",
-    "settings": [
-      {
-        "type": "checkbox",
-        "id": "country_blocker_enabled",
-        "label": "Enable country blocking",
-        "info": "Visitors located in the countries listed below see a generic \"site can't be reached\" screen instead of the store. Detection is IP-based and never applies inside the theme editor.",
-        "default": false
-      },
-      {
-        "type": "text",
-        "id": "country_blocker_countries",
-        "label": "Blocked country codes",
-        "info": "Comma-separated two-letter ISO country codes, e.g. CN, RU, KP. Leave empty to block no one."
-      }
-    ]
   }
 ]
