@@ -71,13 +71,6 @@ cart-items .title-wrapper-with-link {
   object-position: center top;
 }
 
-/* Single-item lines (Kimono / Belt / Pant): the white-trimmed garment fills
-   the whole preview tile, reading much larger than a full-suit thumbnail.
-   Scale it down so all cart lines feel the same visual weight. */
-.cart-item--dspln-single .cart-item__image--dspln-preview {
-  width: 65%;
-}
-
 .cart-item__image--dspln-pending,
 .cart-item__image[data-dspln-preview-pending='true'] {
   opacity: 0;
@@ -764,4 +757,15 @@ cart-remove-button .icon-remove {
     letter-spacing: 0.22em;
     line-height: 1;
   }
+}
+
+/* Single-item lines (Kimono / Belt / Pant, mens + kids): the white-trimmed
+   garment fills the whole preview tile, reading much larger than a full-suit
+   thumbnail. Scale it down so all cart lines carry the same visual weight.
+   Lives at the end of the file (with the body:has variant) to outrank the
+   layout blocks above that force .cart-item__image to width: 100%. */
+body:has(cart-items) .cart-item--dspln-single .cart-item__image--dspln-preview,
+.cart-item--dspln-single .cart-item__image--dspln-preview {
+  width: 65%;
+  max-width: 65%;
 }
