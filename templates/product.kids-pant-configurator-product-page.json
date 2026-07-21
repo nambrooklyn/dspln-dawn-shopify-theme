@@ -1,0 +1,63 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "dspln-configurator-product",
+      "settings": {
+        "platform_origin": "https://dspln-dawn-shopify-theme.netlify.app",
+        "configurator_slug": "kids-pant",
+        "product_family": "gi",
+        "customization_mode": "color-logo",
+        "product_group_label": "Custom Pants",
+        "show_header": false,
+        "desktop_min_height": 860,
+        "mobile_min_height": 820
+      }
+    },
+    "size_recommender": {
+      "type": "dspln-size-recommender",
+      "settings": {
+        "guide_link": "shopify://pages/sizing"
+      }
+    },
+    "process": {
+      "type": "dspln-process",
+      "blocks": {
+        "step_1": {
+          "type": "step",
+          "settings": {
+            "heading": "Customize your pants",
+            "text": "Pick your size, colors for the body, reinforcements, stitching and drawcord, and add logos to either thigh \u2014 all live in 3D."
+          }
+        },
+        "step_2": {
+          "type": "step",
+          "settings": {
+            "heading": "Review and check out",
+            "text": "Once you place your order we will send you a 3D model of your personal pants. Once we have your approval we will begin making them and send tracking details when it ships."
+          }
+        }
+      },
+      "block_order": [
+        "step_1",
+        "step_2"
+      ],
+      "settings": {
+        "heading": "THE PROCESS"
+      }
+    }
+  },
+  "order": [
+    "main",
+    "size_recommender",
+    "process"
+  ]
+}

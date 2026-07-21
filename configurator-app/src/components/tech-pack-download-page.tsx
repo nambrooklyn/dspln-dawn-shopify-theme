@@ -17,6 +17,10 @@ import {
   CAMERA_TARGETS as BELT_CAMERA_TARGETS,
 } from './configurators/mens-belt/gi-config';
 import {
+  CAMERA_POSITIONS as KIDS_BELT_CAMERA_POSITIONS,
+  CAMERA_TARGETS as KIDS_BELT_CAMERA_TARGETS,
+} from './configurators/kids-belt/gi-config';
+import {
   GiStateProvider as WomensProvider,
   useGiState as useWomensState,
 } from './configurators/womens-gi/gi-state';
@@ -124,6 +128,9 @@ function productNameForSource(source?: string) {
   if (source === 'dspln-mens-kimono-configurator') return 'mens-kimono';
   if (source === 'dspln-mens-belt-configurator') return 'mens-belt';
   if (source === 'dspln-mens-pant-configurator') return 'mens-pant';
+  if (source === 'dspln-kids-kimono-configurator') return 'kids-kimono';
+  if (source === 'dspln-kids-belt-configurator') return 'kids-belt';
+  if (source === 'dspln-kids-pant-configurator') return 'kids-pant';
   return 'mens-gi';
 }
 
@@ -131,13 +138,22 @@ function productNameForSource(source?: string) {
 // (kimono / belt / pant) get a tech pack scoped to just their own part —
 // no "BELT: NO" / "PANT: NO" sections and no irrelevant measurement charts.
 function includePartsForSource(source?: string) {
-  if (source === 'dspln-mens-kimono-configurator') {
+  if (
+    source === 'dspln-mens-kimono-configurator' ||
+    source === 'dspln-kids-kimono-configurator'
+  ) {
     return { jacket: true, belt: false, pants: false };
   }
-  if (source === 'dspln-mens-belt-configurator') {
+  if (
+    source === 'dspln-mens-belt-configurator' ||
+    source === 'dspln-kids-belt-configurator'
+  ) {
     return { jacket: false, belt: true, pants: false };
   }
-  if (source === 'dspln-mens-pant-configurator') {
+  if (
+    source === 'dspln-mens-pant-configurator' ||
+    source === 'dspln-kids-pant-configurator'
+  ) {
     return { jacket: false, belt: false, pants: true };
   }
   return { jacket: true, belt: true, pants: true };
@@ -353,7 +369,18 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
                   target: BELT_CAMERA_TARGETS['right-belt-end'],
                 },
               }
-            : undefined;
+            : design.configData?.source === 'dspln-kids-belt-configurator'
+              ? {
+                  'left-belt-end': {
+                    position: KIDS_BELT_CAMERA_POSITIONS['left-belt-end'],
+                    target: KIDS_BELT_CAMERA_TARGETS['left-belt-end'],
+                  },
+                  'right-belt-end': {
+                    position: KIDS_BELT_CAMERA_POSITIONS['right-belt-end'],
+                    target: KIDS_BELT_CAMERA_TARGETS['right-belt-end'],
+                  },
+                }
+              : undefined;
 
         if (typeof productionCapture !== 'function') {
           // Legacy live-canvas path only: give composites real painted frames
@@ -434,10 +461,12 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           orderNumber: orderNumberForRecord(design),
           productName: productNameForSource(design.configData?.source),
           includeParts: includePartsForSource(design.configData?.source),
-          includeSizeMeasurements:
-            design.configData?.source !== 'dspln-kids-gi-configurator',
-          kidsProportions:
-            design.configData?.source === 'dspln-kids-gi-configurator',
+          includeSizeMeasurements: !(design.configData?.source ?? '').startsWith(
+            'dspln-kids-',
+          ),
+          kidsProportions: (design.configData?.source ?? '').startsWith(
+            'dspln-kids-',
+          ),
           download: !silent,
         });
 
@@ -635,7 +664,8 @@ export function TechPackDownloadPage() {
       </WomensProvider>
     );
   }
-  if (source === 'dspln-kids-gi-configurator') {
+  // Kids single-item designs render on the kids model too.
+  if (source?.startsWith('dspln-kids-')) {
     return (
       <KidsProvider>
         <KidsTechPack design={design} />

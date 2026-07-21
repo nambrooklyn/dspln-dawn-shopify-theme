@@ -6,6 +6,9 @@ import { MensBeltConfigurator } from './mens-belt';
 import { MensPantConfigurator } from './mens-pant';
 import { AdultGrapplingShortConfigurator } from './adult-grappling-short';
 import { KidsGiConfigurator } from './kids-gi';
+import { KidsKimonoConfigurator } from './kids-kimono';
+import { KidsBeltConfigurator } from './kids-belt';
+import { KidsPantConfigurator } from './kids-pant';
 import { LongSleeveRashguardConfigurator } from './long-sleeve-rashguard';
 import { ShortSleeveRashguardConfigurator } from './short-sleeve-rashguard';
 import { WomensGiConfigurator } from './womens-gi';
@@ -22,6 +25,9 @@ export const CONFIGURATOR_REGISTRY: Record<string, ComponentType> = {
   'mens-pant': MensPantConfigurator,
   'womens-gi': WomensGiConfigurator,
   'kids-gi': KidsGiConfigurator,
+  'kids-kimono': KidsKimonoConfigurator,
+  'kids-belt': KidsBeltConfigurator,
+  'kids-pant': KidsPantConfigurator,
   'adult-grappling-short': AdultGrapplingShortConfigurator,
   'long-sleeve-rashguard': LongSleeveRashguardConfigurator,
   'short-sleeve-rashguard': ShortSleeveRashguardConfigurator,

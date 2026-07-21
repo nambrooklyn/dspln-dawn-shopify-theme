@@ -4,7 +4,10 @@ export type GiProductKey =
   | 'womens'
   | 'mens-kimono'
   | 'mens-belt'
-  | 'mens-pant';
+  | 'mens-pant'
+  | 'kids-kimono'
+  | 'kids-belt'
+  | 'kids-pant';
 
 export interface GiProductConfig {
   key: GiProductKey;
@@ -13,6 +16,9 @@ export interface GiProductConfig {
     | 'gi'
     | 'kids-gi'
     | 'womens-gi'
+    | 'kids-kimono'
+    | 'kids-belt'
+    | 'kids-pant'
     | 'mens-kimono'
     | 'mens-belt'
     | 'mens-pant';
@@ -97,6 +103,69 @@ export const GI_PRODUCT_CONFIGS = {
     netlifyPath: '/configurator/womens-gi',
     testCartStorageKey: 'dspln:womens-gi-shopify-test-cart',
     configStoragePrefix: 'dspln:womens-gi-config:',
+  },
+  'kids-kimono': {
+    key: 'kids-kimono',
+    slug: 'kids-kimono',
+    stateKind: 'kids-kimono',
+    productName: 'Kids BJJ Kimono',
+    productTitle: 'Kids Custom BJJ Kimono',
+    shopifyProductPath: '/products/kids-kimono',
+    shopifyProductHandle: 'kids-kimono',
+    shopifyProductUrl: 'https://dspln.com/products/kids-kimono',
+    modelUrl: '/models/big-kids-gi-suit-edited-in-blender-5.glb?v=20260602-belt-text-height-2',
+    designNamePrefix: 'Kids Kimono Design',
+    savedDesignIdPrefix: 'kids_kimono_saved',
+    orderDesignIdPrefix: 'kids_kimono_order',
+    localDraftDbName: 'dspln-kids-kimono-configurator',
+    fallbackStorageKey: 'dspln:kids-kimono-designs:fallback:v1',
+    guestTokenStorageKey: 'dspln:kids-kimono-cloud-guest-token',
+    cloudConfigSource: 'dspln-kids-kimono-configurator',
+    netlifyPath: '/configurator/kids-kimono',
+    testCartStorageKey: 'dspln:kids-kimono-shopify-test-cart',
+    configStoragePrefix: 'dspln:kids-kimono-config:',
+  },
+  'kids-belt': {
+    key: 'kids-belt',
+    slug: 'kids-belt',
+    stateKind: 'kids-belt',
+    productName: 'Kids BJJ Belt',
+    productTitle: 'Kids Custom BJJ Belt',
+    shopifyProductPath: '/products/kids-belt',
+    shopifyProductHandle: 'kids-belt',
+    shopifyProductUrl: 'https://dspln.com/products/kids-belt',
+    modelUrl: '/models/big-kids-gi-suit-edited-in-blender-5.glb?v=20260602-belt-text-height-2',
+    designNamePrefix: 'Kids Belt Design',
+    savedDesignIdPrefix: 'kids_belt_saved',
+    orderDesignIdPrefix: 'kids_belt_order',
+    localDraftDbName: 'dspln-kids-belt-configurator',
+    fallbackStorageKey: 'dspln:kids-belt-designs:fallback:v1',
+    guestTokenStorageKey: 'dspln:kids-belt-cloud-guest-token',
+    cloudConfigSource: 'dspln-kids-belt-configurator',
+    netlifyPath: '/configurator/kids-belt',
+    testCartStorageKey: 'dspln:kids-belt-shopify-test-cart',
+    configStoragePrefix: 'dspln:kids-belt-config:',
+  },
+  'kids-pant': {
+    key: 'kids-pant',
+    slug: 'kids-pant',
+    stateKind: 'kids-pant',
+    productName: 'Kids BJJ Pant',
+    productTitle: 'Kids Custom BJJ Pant',
+    shopifyProductPath: '/products/kids-pant',
+    shopifyProductHandle: 'kids-pant',
+    shopifyProductUrl: 'https://dspln.com/products/kids-pant',
+    modelUrl: '/models/big-kids-gi-suit-edited-in-blender-5.glb?v=20260602-belt-text-height-2',
+    designNamePrefix: 'Kids Pant Design',
+    savedDesignIdPrefix: 'kids_pant_saved',
+    orderDesignIdPrefix: 'kids_pant_order',
+    localDraftDbName: 'dspln-kids-pant-configurator',
+    fallbackStorageKey: 'dspln:kids-pant-designs:fallback:v1',
+    guestTokenStorageKey: 'dspln:kids-pant-cloud-guest-token',
+    cloudConfigSource: 'dspln-kids-pant-configurator',
+    netlifyPath: '/configurator/kids-pant',
+    testCartStorageKey: 'dspln:kids-pant-shopify-test-cart',
+    configStoragePrefix: 'dspln:kids-pant-config:',
   },
   'mens-kimono': {
     key: 'mens-kimono',
