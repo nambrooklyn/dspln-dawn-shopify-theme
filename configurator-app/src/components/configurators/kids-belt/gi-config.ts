@@ -385,17 +385,19 @@ export type CameraView =
 // dead-center in the canvas (not biased high or low).
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
 // Standalone belt product: cardinals frame the belt (kids belt sits ~y1.4).
-  front: [0, 1.4, 1.6],
-  back: [0, 1.4, -1.6],
-  left: [-1.6, 1.4, 0],
-  right: [1.6, 1.4, 0],
+// Standalone belt product: y = 1.48 is the measured vertical center of the
+// visible belt meshes (y 1.32–1.65) so the belt sits centered in the canvas.
+  front: [0, 1.48, 1.6],
+  back: [0, 1.48, -1.6],
+  left: [-1.6, 1.48, 0],
+  right: [1.6, 1.48, 0],
   // Belt-end close-ups are aimed at the kids model's MEASURED belt-text
   // target meshes (world y ≈ 1.45–1.49 — the kids belt sits higher than the
   // adult's, whose values these used to copy), keeping the same camera offset
   // the adult framing uses.
   'left-belt-end': [0.75, 1.44, 1.09],
   'right-belt-end': [-0.84, 1.4, 1.07],
-  'belt-close': [0, 1.18, 1.7],
+  'belt-close': [-0.06, 1.37, 1.7],
   'pants-close': [-0.75, 1.01, 1.78],
   'lapel-close': [-0.92, 2.22, 1.74],
   'chest-close': [1.04, 1.99, 1.15],
@@ -416,13 +418,13 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   CameraView,
   [number, number, number]
 > = {
-  front: [0, 1.4, 2.0],
-  back: [0, 1.4, -2.0],
-  left: [-2.0, 1.4, 0],
-  right: [2.0, 1.4, 0],
+  front: [0, 1.48, 2.0],
+  back: [0, 1.48, -2.0],
+  left: [-2.0, 1.48, 0],
+  right: [2.0, 1.48, 0],
   'left-belt-end': [0.75, 1.44, 1.09],
   'right-belt-end': [-0.84, 1.4, 1.07],
-  'belt-close': [0, 1.18, 1.7],
+  'belt-close': [-0.06, 1.37, 1.7],
   'pants-close': [-0.75, 1.01, 1.78],
   'lapel-close': [-0.92, 2.22, 1.74],
   'chest-close': [1.04, 1.99, 1.15],
@@ -443,7 +445,7 @@ export const MOBILE_CAMERA_POSITIONS: Record<
  *  the capture flow's settle wait so they can't drift apart. */
 export const GI_CAMERA_TWEEN_MS = 800;
 
-export const CAMERA_TARGET: [number, number, number] = [0, 1.4, 0];
+export const CAMERA_TARGET: [number, number, number] = [0, 1.48, 0];
 
 export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   front: CAMERA_TARGET,
@@ -453,7 +455,7 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   // Measured centers of belt_left/right_text_target on the kids model.
   'left-belt-end': [0.22, 1.49, 0.22],
   'right-belt-end': [-0.32, 1.45, 0.2],
-  'belt-close': [0, 1.15, 0],
+  'belt-close': [0, 1.48, 0],
   'pants-close': [0, 0.62, 0],
   'lapel-close': [0, 1.66, 0],
   'chest-close': [0.15, 1.58, 0],

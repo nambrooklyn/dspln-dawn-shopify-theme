@@ -986,6 +986,8 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
         }
         minPolarAngle={(79 * Math.PI) / 192}
         maxPolarAngle={(113 * Math.PI) / 192}
+        minAzimuthAngle={(-20 * Math.PI) / 180}
+        maxAzimuthAngle={(20 * Math.PI) / 180}
       />
     </>
   );
