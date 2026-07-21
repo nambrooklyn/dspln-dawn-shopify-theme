@@ -66,6 +66,9 @@ cart-items .title-wrapper-with-link {
   aspect-ratio: 1;
   background: rgb(var(--color-background));
   object-fit: contain;
+  /* Anchor the garment to the top of the frame so it lines up with the
+     line title instead of floating vertically centered. */
+  object-position: center top;
 }
 
 .cart-item__image--dspln-pending,

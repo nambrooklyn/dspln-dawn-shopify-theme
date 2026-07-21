@@ -195,6 +195,87 @@
     images().forEach(clearPendingImage);
   }
 
+  // Snapshots are captured as centered squares with white padding, so the
+  // garment floats mid-thumbnail instead of lining up with the line title.
+  // Trim the white margins client-side (preview-image serves CORS `*`, and
+  // data: URLs never taint the canvas). Cached per URL — the cart re-renders
+  // often and the pixel scan isn't free.
+  const trimmedUrlCache = new Map();
+
+  function trimmedPreviewUrl(url) {
+    const cached = trimmedUrlCache.get(url);
+    if (cached) return cached;
+
+    const promise = new Promise((resolve) => {
+      const probe = new Image();
+      probe.crossOrigin = 'anonymous';
+      probe.onload = () => {
+        try {
+          const width = probe.naturalWidth;
+          const height = probe.naturalHeight;
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d', { willReadFrequently: true });
+          context.drawImage(probe, 0, 0);
+          const data = context.getImageData(0, 0, width, height).data;
+
+          let minX = width;
+          let minY = height;
+          let maxX = -1;
+          let maxY = -1;
+          const step = 2;
+          for (let y = 0; y < height; y += step) {
+            for (let x = 0; x < width; x += step) {
+              const i = (y * width + x) * 4;
+              if (
+                data[i + 3] > 16 &&
+                (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245)
+              ) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+          if (maxX < 0) {
+            resolve(url);
+            return;
+          }
+
+          const margin = Math.round(Math.max(width, height) * 0.02);
+          minX = Math.max(0, minX - margin);
+          minY = Math.max(0, minY - margin);
+          maxX = Math.min(width - 1, maxX + margin);
+          maxY = Math.min(height - 1, maxY + margin);
+          const cropWidth = maxX - minX + 1;
+          const cropHeight = maxY - minY + 1;
+          // Nothing meaningful to remove — keep the original bytes.
+          if (cropWidth > width * 0.94 && cropHeight > height * 0.94) {
+            resolve(url);
+            return;
+          }
+
+          const out = document.createElement('canvas');
+          out.width = cropWidth;
+          out.height = cropHeight;
+          out
+            .getContext('2d')
+            .drawImage(canvas, minX, minY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+          resolve(out.toDataURL('image/jpeg', 0.9));
+        } catch (error) {
+          // Tainted canvas or decode failure — the padded original still works.
+          resolve(url);
+        }
+      };
+      probe.onerror = () => resolve(url);
+      probe.src = url;
+    });
+    trimmedUrlCache.set(url, promise);
+    return promise;
+  }
+
   function setPreviewImage(image, url) {
     if (!image || !url) return;
 
@@ -210,6 +291,14 @@
     if (frame) {
       frame.setAttribute('data-dspln-preview-frame', 'true');
     }
+
+    // Swap in the white-trimmed version once ready (padded original shows
+    // in the meantime, so there's no flash of empty thumbnail).
+    Promise.resolve(trimmedPreviewUrl(url)).then((trimmed) => {
+      if (trimmed && trimmed !== url && image.src !== trimmed) {
+        image.src = trimmed;
+      }
+    });
   }
 
   function isDsplnCustomRow(row, item) {
