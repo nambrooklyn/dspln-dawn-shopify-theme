@@ -172,6 +172,94 @@
   }
 }
 
+/* Overview stat strip. The .account > div... selector matches customer.css's
+   structural div:nth-of-type(2) rules so this file (loaded later) wins. */
+.dspln-account__stats,
+.account > div.dspln-account__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--dspln-border);
+  margin-bottom: 4rem;
+}
+
+@media screen and (min-width: 990px) {
+  .account > div.dspln-account__stats > div:first-of-type {
+    padding: 2.2rem 2.4rem;
+  }
+}
+
+.dspln-account__stat {
+  padding: 2.2rem 2.4rem;
+  text-align: center;
+}
+
+.dspln-account__stat + .dspln-account__stat {
+  border-left: 1px solid var(--dspln-border);
+}
+
+.dspln-account__stat-value {
+  display: block;
+  font-size: 2.2rem;
+  letter-spacing: 0.08em;
+  color: var(--dspln-black);
+}
+
+.dspln-account__stat-label {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dspln-muted);
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-account__stats,
+  .account > div.dspln-account__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .dspln-account__stat {
+    padding: 1.6rem 2rem;
+  }
+
+  .dspln-account__stat + .dspln-account__stat {
+    border-left: none;
+    border-top: 1px solid var(--dspln-border);
+  }
+}
+
+/* Order status badges */
+.dspln-account__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid var(--dspln-border);
+  padding: 0.3rem 1.1rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dspln-black);
+  white-space: nowrap;
+}
+
+.dspln-account__status::before {
+  content: '';
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--dspln-muted);
+}
+
+.dspln-account__status--good::before {
+  background: var(--dspln-black);
+}
+
+.dspln-account__status--alert::before {
+  background: var(--dspln-accent);
+}
+
 /* Two-column dashboard: orders + designs left, details right.
    Selectors mirror customer.css's structural .account > div:nth-of-type(2)
    rules at equal-or-higher specificity so this file (loaded later) wins. */
@@ -209,6 +297,26 @@
   font-size: 1.4rem;
   line-height: 1.7;
   color: var(--dspln-muted);
+}
+
+.dspln-account__aside .dspln-account__aside-name {
+  color: var(--dspln-black);
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.dspln-account__aside .dspln-account__aside-email {
+  font-size: 1.3rem;
+  margin: 0.2rem 0 0;
+}
+
+.dspln-account__aside .dspln-account__kicker {
+  margin: 2.4rem 0 0.4rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dspln-black);
 }
 
 .dspln-account__aside .dspln-account__button {
@@ -264,6 +372,10 @@
     border-bottom: none;
     border-top: 1px solid var(--dspln-black);
   }
+
+  .dspln-account tbody tr:hover td {
+    background: var(--dspln-soft);
+  }
 }
 
 @media screen and (max-width: 749px) {
@@ -304,6 +416,23 @@
 /* My Designs panel */
 .dspln-account__designs {
   margin-top: 4.8rem;
+}
+
+.dspln-account__designs .dspln-account__empty {
+  background: var(--dspln-soft);
+  border-color: var(--dspln-soft);
+  padding: 4rem 2.4rem;
+}
+
+.dspln-account__designs .dspln-account__empty p {
+  max-width: 44rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.dspln-account__designs .dspln-account__button--secondary,
+.dspln-account .dspln-account__designs a.dspln-account__button--secondary {
+  border-color: var(--dspln-black);
 }
 
 /* Order page */

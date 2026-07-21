@@ -29,6 +29,21 @@
     </a>
   </div>
 
+  <div class="dspln-account__stats">
+    <div class="dspln-account__stat">
+      <span class="dspln-account__stat-value">{{ customer.orders_count }}</span>
+      <span class="dspln-account__stat-label">{{ 'customer.orders.title' | t }}</span>
+    </div>
+    <div class="dspln-account__stat">
+      <span class="dspln-account__stat-value">{{ customer.total_spent | money }}</span>
+      <span class="dspln-account__stat-label">Total spent</span>
+    </div>
+    <div class="dspln-account__stat">
+      <span class="dspln-account__stat-value">{{ customer.addresses_count }}</span>
+      <span class="dspln-account__stat-label">{{ 'customer.addresses.title' | t }}</span>
+    </div>
+  </div>
+
   <div class="dspln-account__grid">
     <div class="dspln-account__orders">
       <h2>{{ 'customer.orders.title' | t }}</h2>
@@ -74,14 +89,18 @@
                     role="cell"
                     data-label="{{ 'customer.orders.payment_status' | t }}"
                   >
-                    {{ order.financial_status_label }}
+                    <span class="dspln-account__status{% if order.financial_status == 'paid' %} dspln-account__status--good{% elsif order.financial_status == 'refunded' or order.financial_status == 'voided' %} dspln-account__status--alert{% endif %}">
+                      {{- order.financial_status_label -}}
+                    </span>
                   </td>
                   <td
                     headers="RowOrder ColumnFulfillment"
                     role="cell"
                     data-label="{{ 'customer.orders.fulfillment_status' | t }}"
                   >
-                    {{ order.fulfillment_status_label }}
+                    <span class="dspln-account__status{% if order.fulfillment_status == 'fulfilled' %} dspln-account__status--good{% endif %}">
+                      {{- order.fulfillment_status_label -}}
+                    </span>
                   </td>
                   <td headers="RowOrder ColumnTotal" role="cell" data-label="{{ 'customer.orders.total' | t }}">
                     {{ order.total_net_amount | money_with_currency }}
@@ -174,7 +193,13 @@
     <div class="dspln-account__aside">
       <h2>{{ 'customer.account.details' | t }}</h2>
 
-      {{ customer.default_address | format_address }}
+      <p class="dspln-account__aside-name">{{ customer.name }}</p>
+      <p class="dspln-account__aside-email">{{ customer.email }}</p>
+
+      {%- if customer.default_address != blank -%}
+        <p class="dspln-account__kicker">{{ 'customer.addresses.default' | t }}</p>
+        {{ customer.default_address | format_address }}
+      {%- endif -%}
 
       <a class="dspln-account__button dspln-account__button--secondary" href="{{ routes.account_addresses_url }}">
         {{ 'customer.account.view_addresses' | t }} ({{ customer.addresses_count }})
