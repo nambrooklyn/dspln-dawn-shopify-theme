@@ -469,9 +469,17 @@ interface GiProductionViews {
  * desktop framing, so the shared PDF generator (subject-crop for garment
  * views, fraction-crop for belt-end pages) needs no changes.
  */
+type BeltEndViewOverrides = Partial<
+  Record<
+    'left-belt-end' | 'right-belt-end',
+    { position: [number, number, number]; target: [number, number, number] }
+  >
+>;
+
 function captureGiProductionViews(
   gl: WebGLRenderer,
   scene: ThreeScene,
+  viewOverrides?: BeltEndViewOverrides,
 ): GiProductionViews | null {
   // 4K buffer: the garment occupies only part of the frame, and the crop
   // that lands on the page needs ~300 DPI at ~7in — 2560px left renders
@@ -494,8 +502,9 @@ function captureGiProductionViews(
 
   const buf = new Uint8Array(W * H * 4);
   const shoot = (view: keyof typeof CAMERA_POSITIONS) => {
-    const [px, py, pz] = CAMERA_POSITIONS[view];
-    const [tx, ty, tz] = CAMERA_TARGETS[view];
+    const override = viewOverrides?.[view as keyof BeltEndViewOverrides];
+    const [px, py, pz] = override?.position ?? CAMERA_POSITIONS[view];
+    const [tx, ty, tz] = override?.target ?? CAMERA_TARGETS[view];
     cam.position.set(px, py, pz);
     cam.up.set(0, 1, 0);
     cam.lookAt(tx, ty, tz);
@@ -587,8 +596,9 @@ const CanvasBridge = memo(() => {
       const globals = window as unknown as Record<string, unknown>;
       globals.__giRenderer = gl;
       // Deterministic tech-pack capture (see captureGiProductionViews).
-      globals.__giCaptureProductionViews = () =>
-        captureGiProductionViews(gl, scene);
+      globals.__giCaptureProductionViews = (
+        overrides?: BeltEndViewOverrides,
+      ) => captureGiProductionViews(gl, scene, overrides);
       globals.__giScene = scene;
       globals.__giCamera = camera;
     }

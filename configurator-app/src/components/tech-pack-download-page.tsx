@@ -13,6 +13,10 @@ import {
 } from './configurators/gi/gi-state';
 import { GiCanvas as WomensCanvas } from './configurators/womens-gi/gi-canvas';
 import {
+  CAMERA_POSITIONS as BELT_CAMERA_POSITIONS,
+  CAMERA_TARGETS as BELT_CAMERA_TARGETS,
+} from './configurators/mens-belt/gi-config';
+import {
   GiStateProvider as WomensProvider,
   useGiState as useWomensState,
 } from './configurators/womens-gi/gi-state';
@@ -314,7 +318,16 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
 
         const productionCapture = (
           window as unknown as {
-            __giCaptureProductionViews?: () => {
+            __giCaptureProductionViews?: (overrides?: {
+              'left-belt-end'?: {
+                position: [number, number, number];
+                target: [number, number, number];
+              };
+              'right-belt-end'?: {
+                position: [number, number, number];
+                target: [number, number, number];
+              };
+            }) => {
               front: string;
               back: string;
               left: string;
@@ -324,6 +337,23 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
             } | null;
           }
         ).__giCaptureProductionViews;
+
+        // Standalone belt designs render on the womens canvas, whose belt-end
+        // presets frame a worn belt and cut the text off at the frame edge.
+        // Use the belt product's own tuned views instead.
+        const beltEndOverrides =
+          design.configData?.source === 'dspln-mens-belt-configurator'
+            ? {
+                'left-belt-end': {
+                  position: BELT_CAMERA_POSITIONS['left-belt-end'],
+                  target: BELT_CAMERA_TARGETS['left-belt-end'],
+                },
+                'right-belt-end': {
+                  position: BELT_CAMERA_POSITIONS['right-belt-end'],
+                  target: BELT_CAMERA_TARGETS['right-belt-end'],
+                },
+              }
+            : undefined;
 
         if (typeof productionCapture !== 'function') {
           // Legacy live-canvas path only: give composites real painted frames
@@ -356,7 +386,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         let rightBeltEnd: string | undefined;
 
         if (typeof productionCapture === 'function') {
-          const shots = productionCapture();
+          const shots = productionCapture(beltEndOverrides);
           if (shots) {
             front = shots.front;
             back = shots.back;
