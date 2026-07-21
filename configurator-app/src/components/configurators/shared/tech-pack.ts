@@ -1566,6 +1566,7 @@ function logoPlacementPages({
   rightImage,
   kidsProportions = false,
   pantsOnly = false,
+  kimonoOnly = false,
 }: {
   kimonoLogos?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   pantLogos?: Partial<Record<PantLogoSlot, KimonoLogo>>;
@@ -1580,6 +1581,12 @@ function logoPlacementPages({
    * thigh sits near the TOP of the image rather than ~67% down the full gi.
    */
   pantsOnly?: boolean;
+  /**
+   * Kimono-only product: the back render is all jacket, so the big back
+   * logo spans most of the image height — the full-gi crop (top 55%)
+   * would clip it.
+   */
+  kimonoOnly?: boolean;
 }) {
   const pages: LogoPlacementPage[] = [];
 
@@ -1601,7 +1608,9 @@ function logoPlacementPages({
                 : frontImage,
         viewCrop:
           slot === 'back'
-            ? { x: 0.08, y: 0, width: 0.84, height: 0.55 }
+            ? kimonoOnly
+              ? { x: 0.08, y: 0.02, width: 0.84, height: 0.92 }
+              : { x: 0.08, y: 0, width: 0.84, height: 0.55 }
             : slot === 'left-sleeve' || slot === 'right-sleeve'
               ? { x: 0, y: 0, width: 1, height: 0.62 }
               : { x: 0.03, y: 0, width: 0.94, height: 0.55 },
@@ -2045,6 +2054,7 @@ export async function generateGiTechPackPageOne({
     rightImage,
     kidsProportions,
     pantsOnly: Boolean(includeParts.pants) && !includeParts.jacket,
+    kimonoOnly: Boolean(includeParts.jacket) && !includeParts.pants,
   });
 
   for (const page of placementPages) {

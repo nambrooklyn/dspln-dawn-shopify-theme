@@ -2,6 +2,7 @@ import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls, useProgress } from '@react-three/drei';
 import {
+  Box3,
   CanvasTexture,
   Color,
   DoubleSide,
@@ -506,12 +507,64 @@ function captureGiProductionViews(
     return pixelsToDataUrl(buf, W, H);
   };
 
+  // Fit the four cardinal views to the visible garment. Single-item
+  // products (kimono / belt / pant) occupy a fraction of the full-body
+  // presets, which starved the tech pack's subject crop of pixels and
+  // printed soft. Shadow planes (PlaneGeometry) are skipped so the fit
+  // hugs the garment itself; belt-end detail views keep their presets.
+  scene.updateMatrixWorld(true);
+  const bounds = new Box3();
+  scene.traverse((obj) => {
+    const mesh = obj as Mesh;
+    if (!mesh.isMesh || mesh.geometry?.type === 'PlaneGeometry') return;
+    // traverse() visits hidden subtrees too — honor the visibility chain.
+    let node: typeof obj | null = obj;
+    while (node) {
+      if (!node.visible) return;
+      node = node.parent;
+    }
+    bounds.expandByObject(mesh);
+  });
+
+  const hasBounds = !bounds.isEmpty();
+  const center = bounds.getCenter(new Vector3());
+  const size = bounds.getSize(new Vector3());
+  const fitMargin = 1.12;
+  const tanV = Math.tan(((cam.fov / 2) * Math.PI) / 180);
+  const tanH = tanV * (W / H);
+
+  const shootFit = (dir: 'front' | 'back' | 'left' | 'right') => {
+    if (!hasBounds) return shoot(dir);
+    const facing = dir === 'front' || dir === 'back';
+    const width = facing ? size.x : size.z;
+    const depth = facing ? size.z : size.x;
+    const dist =
+      Math.max(
+        (size.y * fitMargin) / 2 / tanV,
+        (width * fitMargin) / 2 / tanH,
+      ) +
+      depth / 2;
+    cam.position.set(
+      center.x + (dir === 'left' ? -dist : dir === 'right' ? dist : 0),
+      center.y,
+      center.z + (dir === 'front' ? dist : dir === 'back' ? -dist : 0),
+    );
+    cam.up.set(0, 1, 0);
+    cam.lookAt(center.x, center.y, center.z);
+    cam.updateMatrixWorld(true);
+    cam.updateProjectionMatrix();
+    gl.clear();
+    gl.render(scene, cam);
+    gl.readRenderTargetPixels(rt, 0, 0, W, H, buf);
+    return pixelsToDataUrl(buf, W, H);
+  };
+
   try {
     return {
-      front: shoot('front'),
-      back: shoot('back'),
-      left: shoot('left'),
-      right: shoot('right'),
+      front: shootFit('front'),
+      back: shootFit('back'),
+      left: shootFit('left'),
+      right: shootFit('right'),
       leftBeltEnd: shoot('left-belt-end'),
       rightBeltEnd: shoot('right-belt-end'),
       width: W,
