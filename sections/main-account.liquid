@@ -1,4 +1,5 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
+{{ 'dspln-account.css' | asset_url | stylesheet_tag }}
 
 {%- style -%}
   .section-{{ section.id }}-padding {
@@ -14,10 +15,13 @@
   }
 {%- endstyle -%}
 
-<div class="customer account section-{{ section.id }}-padding">
-  <div>
+<div class="customer account dspln-account dspln-account--dashboard section-{{ section.id }}-padding">
+  <div class="dspln-account__header">
     <h1 class="customer__title">{{ 'customer.account.title' | t }}</h1>
-    <a href="{{ routes.account_logout_url }}">
+    {%- if customer.first_name != blank and section.settings.welcome_text != blank -%}
+      <p class="dspln-account__welcome">{{ section.settings.welcome_text }}, {{ customer.first_name }}</p>
+    {%- endif -%}
+    <a class="dspln-account__text-link" href="{{ routes.account_logout_url }}">
       <span class="svg-wrapper">
         {{- 'icon-account.svg' | inline_asset_content -}}
       </span>
@@ -25,8 +29,8 @@
     </a>
   </div>
 
-  <div>
-    <div>
+  <div class="dspln-account__grid">
+    <div class="dspln-account__orders">
       <h2>{{ 'customer.orders.title' | t }}</h2>
 
       {% paginate customer.orders by 20 %}
@@ -87,7 +91,17 @@
             </tbody>
           </table>
         {%- else -%}
-          <p>{{ 'customer.orders.none' | t }}</p>
+          <div class="dspln-account__empty">
+            <p>{{ 'customer.orders.none' | t }}</p>
+            {%- if section.settings.shop_button_label != blank -%}
+              <a
+                class="dspln-account__button"
+                href="{{ section.settings.shop_link | default: routes.all_products_collection_url }}"
+              >
+                {{ section.settings.shop_button_label }}
+              </a>
+            {%- endif -%}
+          </div>
         {%- endif -%}
 
         {%- if paginate.pages > 1 -%}
@@ -136,14 +150,33 @@
           {%- endif -%}
         {%- endif -%}
       {% endpaginate %}
+
+      {%- if section.settings.show_designs -%}
+        <div class="dspln-account__designs">
+          <h2>{{ section.settings.designs_heading }}</h2>
+          <div class="dspln-account__empty">
+            {%- if section.settings.designs_text != blank -%}
+              <p>{{ section.settings.designs_text }}</p>
+            {%- endif -%}
+            {%- if section.settings.designs_button_label != blank -%}
+              <a
+                class="dspln-account__button dspln-account__button--secondary"
+                href="{{ section.settings.designs_link | default: routes.all_products_collection_url }}"
+              >
+                {{ section.settings.designs_button_label }}
+              </a>
+            {%- endif -%}
+          </div>
+        </div>
+      {%- endif -%}
     </div>
 
-    <div>
+    <div class="dspln-account__aside">
       <h2>{{ 'customer.account.details' | t }}</h2>
 
       {{ customer.default_address | format_address }}
 
-      <a href="{{ routes.account_addresses_url }}">
+      <a class="dspln-account__button dspln-account__button--secondary" href="{{ routes.account_addresses_url }}">
         {{ 'customer.account.view_addresses' | t }} ({{ customer.addresses_count }})
       </a>
     </div>
@@ -154,6 +187,60 @@
 {
   "name": "t:sections.main-account.name",
   "settings": [
+    {
+      "type": "text",
+      "id": "welcome_text",
+      "label": "Welcome text (before first name)",
+      "default": "Welcome back"
+    },
+    {
+      "type": "header",
+      "content": "Empty order history"
+    },
+    {
+      "type": "text",
+      "id": "shop_button_label",
+      "label": "Shop button label",
+      "default": "Start shopping"
+    },
+    {
+      "type": "url",
+      "id": "shop_link",
+      "label": "Shop button link"
+    },
+    {
+      "type": "header",
+      "content": "My Designs"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_designs",
+      "label": "Show My Designs block",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "designs_heading",
+      "label": "Heading",
+      "default": "My Designs"
+    },
+    {
+      "type": "textarea",
+      "id": "designs_text",
+      "label": "Text",
+      "default": "Your saved gi designs will live here. Create a custom gi in the configurator and it will follow you home."
+    },
+    {
+      "type": "text",
+      "id": "designs_button_label",
+      "label": "Button label",
+      "default": "Design your gi"
+    },
+    {
+      "type": "url",
+      "id": "designs_link",
+      "label": "Button link"
+    },
     {
       "type": "header",
       "content": "t:sections.all.padding.section_padding_heading"
