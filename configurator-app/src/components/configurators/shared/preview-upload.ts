@@ -107,6 +107,61 @@ export async function shrinkArtworkDataUrl(
   return imageDataUrl;
 }
 
+/**
+ * Bounding box of the non-white pixels in a capture. 3D snapshots render a
+ * small garment inside a large white canvas — without trimming, the cart
+ * thumbnail is mostly empty margin and the model looks tiny and off-center.
+ */
+function visibleContentBounds(
+  image: HTMLImageElement,
+): { x: number; y: number; width: number; height: number } | null {
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) return null;
+  context.drawImage(image, 0, 0);
+
+  let data: Uint8ClampedArray;
+  try {
+    data = context.getImageData(0, 0, width, height).data;
+  } catch {
+    return null;
+  }
+
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  const step = 2; // sampling every other pixel is plenty for a bounding box
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const i = (y * width + x) * 4;
+      if (
+        data[i + 3] > 16 &&
+        (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245)
+      ) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  if (maxX < 0) return null;
+
+  // Breathing room around the garment, clamped to the frame.
+  const margin = Math.round(Math.max(width, height) * 0.04);
+  minX = Math.max(0, minX - margin);
+  minY = Math.max(0, minY - margin);
+  maxX = Math.min(width - 1, maxX + margin);
+  maxY = Math.min(height - 1, maxY + margin);
+  return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
 async function compressPreviewImage(
   imageDataUrl: string,
   outputSize: number,
@@ -128,19 +183,35 @@ async function compressPreviewImage(
         return;
       }
 
-      // Fit the whole image into the square (white padding) instead of
+      // Trim the white margins so the garment fills the thumbnail, then fit
+      // the trimmed region into the square (white padding) instead of
       // center-cropping — portrait captures from mobile would otherwise
       // lose the top/bottom of the model.
-      const scale =
-        outputSize / Math.max(image.naturalWidth, image.naturalHeight);
-      const drawWidth = Math.round(image.naturalWidth * scale);
-      const drawHeight = Math.round(image.naturalHeight * scale);
+      const bounds = visibleContentBounds(image) ?? {
+        x: 0,
+        y: 0,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      };
+      const scale = outputSize / Math.max(bounds.width, bounds.height);
+      const drawWidth = Math.round(bounds.width * scale);
+      const drawHeight = Math.round(bounds.height * scale);
       const drawX = Math.round((outputSize - drawWidth) / 2);
       const drawY = Math.round((outputSize - drawHeight) / 2);
 
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, outputSize, outputSize);
-      context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+      context.drawImage(
+        image,
+        bounds.x,
+        bounds.y,
+        bounds.width,
+        bounds.height,
+        drawX,
+        drawY,
+        drawWidth,
+        drawHeight,
+      );
 
       resolve(canvas.toDataURL('image/jpeg', quality));
     };
@@ -196,7 +267,10 @@ export async function uploadPreviewImage(
   if (!imageDataUrl.startsWith('data:image/')) return null;
 
   try {
-    const uploaded = await uploadPreviewCandidate(imageDataUrl);
+    // Trim + square-fit first so thumbnails fill their frame; raw capture
+    // only goes up if the canvas work fails (e.g. tainted context).
+    const trimmed = await compressPreviewImage(imageDataUrl, 720, 0.85);
+    const uploaded = await uploadPreviewCandidate(trimmed ?? imageDataUrl);
     if (uploaded) return uploaded;
 
     const retryOptions = [
