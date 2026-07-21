@@ -1,5 +1,4 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
-{{ 'dspln-account.css' | asset_url | stylesheet_tag }}
 
 {%- style -%}
   .section-{{ section.id }}-padding {
@@ -15,70 +14,19 @@
   }
 {%- endstyle -%}
 
-<div class="customer account dspln-account dspln-account--dashboard section-{{ section.id }}-padding">
-  <div class="dspln-account__header">
+<div class="customer account section-{{ section.id }}-padding">
+  <div>
     <h1 class="customer__title">{{ 'customer.account.title' | t }}</h1>
-    {%- if customer.first_name != blank and section.settings.welcome_text != blank -%}
-      <p class="dspln-account__welcome">{{ section.settings.welcome_text }}, {{ customer.first_name }}</p>
-    {%- endif -%}
+    <a href="{{ routes.account_logout_url }}">
+      <span class="svg-wrapper">
+        {{- 'icon-account.svg' | inline_asset_content -}}
+      </span>
+      {{ 'customer.log_out' | t }}
+    </a>
   </div>
 
-  <div class="dspln-account__layout">
-    {% render 'dspln-account-rail' %}
-    {% render 'dspln-account-profile' %}
-
-    <div class="dspln-account__content">
-      {% render 'dspln-account-nav', active: 'overview' %}
-
-      <div class="dspln-account__tab-panel" data-account-panel="overview" id="overview-panel">
-        <div class="dspln-account__stats">
-          <div class="dspln-account__stat">
-            <span class="dspln-account__stat-value">{{ customer.orders_count }}</span>
-            <span class="dspln-account__stat-label">{{ 'customer.orders.title' | t }}</span>
-          </div>
-          <div class="dspln-account__stat">
-            <span class="dspln-account__stat-value">{{ customer.total_spent | money }}</span>
-            <span class="dspln-account__stat-label">Total spent</span>
-          </div>
-          <div class="dspln-account__stat">
-            <span class="dspln-account__stat-value">{{ customer.addresses_count }}</span>
-            <span class="dspln-account__stat-label">{{ 'customer.addresses.title' | t }}</span>
-          </div>
-        </div>
-
-        <h2>Recent orders</h2>
-        {%- if customer.orders.size > 0 -%}
-          <ul class="dspln-account__recent" role="list">
-            {%- for order in customer.orders limit: 3 -%}
-              <li class="dspln-account__recent-row">
-                <a href="{{ order.customer_url }}" class="dspln-account__recent-name">{{ order.name }}</a>
-                <span class="dspln-account__recent-date">{{ order.created_at | time_tag: format: 'date' }}</span>
-                <span class="dspln-account__status{% if order.fulfillment_status == 'fulfilled' %} dspln-account__status--good{% endif %}">
-                  {{- order.fulfillment_status_label -}}
-                </span>
-                <span class="dspln-account__recent-total">{{ order.total_net_amount | money_with_currency }}</span>
-              </li>
-            {%- endfor -%}
-          </ul>
-          <a class="dspln-account__text-link" href="{{ routes.account_url }}#orders" data-account-tab="orders">
-            View all orders
-          </a>
-        {%- else -%}
-          <div class="dspln-account__empty">
-            <p>{{ 'customer.orders.none' | t }}</p>
-            {%- if section.settings.shop_button_label != blank -%}
-              <a
-                class="dspln-account__button"
-                href="{{ section.settings.shop_link | default: routes.all_products_collection_url }}"
-              >
-                {{ section.settings.shop_button_label }}
-              </a>
-            {%- endif -%}
-          </div>
-        {%- endif -%}
-      </div>
-
-      <div class="dspln-account__tab-panel" data-account-panel="orders" id="orders-panel" hidden>
+  <div>
+    <div>
       <h2>{{ 'customer.orders.title' | t }}</h2>
 
       {% paginate customer.orders by 20 %}
@@ -122,18 +70,14 @@
                     role="cell"
                     data-label="{{ 'customer.orders.payment_status' | t }}"
                   >
-                    <span class="dspln-account__status{% if order.financial_status == 'paid' %} dspln-account__status--good{% elsif order.financial_status == 'refunded' or order.financial_status == 'voided' %} dspln-account__status--alert{% endif %}">
-                      {{- order.financial_status_label -}}
-                    </span>
+                    {{ order.financial_status_label }}
                   </td>
                   <td
                     headers="RowOrder ColumnFulfillment"
                     role="cell"
                     data-label="{{ 'customer.orders.fulfillment_status' | t }}"
                   >
-                    <span class="dspln-account__status{% if order.fulfillment_status == 'fulfilled' %} dspln-account__status--good{% endif %}">
-                      {{- order.fulfillment_status_label -}}
-                    </span>
+                    {{ order.fulfillment_status_label }}
                   </td>
                   <td headers="RowOrder ColumnTotal" role="cell" data-label="{{ 'customer.orders.total' | t }}">
                     {{ order.total_net_amount | money_with_currency }}
@@ -143,17 +87,7 @@
             </tbody>
           </table>
         {%- else -%}
-          <div class="dspln-account__empty">
-            <p>{{ 'customer.orders.none' | t }}</p>
-            {%- if section.settings.shop_button_label != blank -%}
-              <a
-                class="dspln-account__button"
-                href="{{ section.settings.shop_link | default: routes.all_products_collection_url }}"
-              >
-                {{ section.settings.shop_button_label }}
-              </a>
-            {%- endif -%}
-          </div>
+          <p>{{ 'customer.orders.none' | t }}</p>
         {%- endif -%}
 
         {%- if paginate.pages > 1 -%}
@@ -202,135 +136,24 @@
           {%- endif -%}
         {%- endif -%}
       {% endpaginate %}
-      </div>
+    </div>
 
-      {%- if section.settings.show_designs -%}
-        <div class="dspln-account__tab-panel" data-account-panel="designs" id="designs-panel" hidden>
-          <div class="dspln-account__designs">
-            <h2>{{ section.settings.designs_heading }}</h2>
-            <div class="dspln-account__empty">
-              {%- if section.settings.designs_text != blank -%}
-                <p>{{ section.settings.designs_text }}</p>
-              {%- endif -%}
-              {%- if section.settings.designs_button_label != blank -%}
-                <a
-                  class="dspln-account__button dspln-account__button--secondary"
-                  href="{{ section.settings.designs_link | default: routes.all_products_collection_url }}"
-                >
-                  {{ section.settings.designs_button_label }}
-                </a>
-              {%- endif -%}
-            </div>
-          </div>
-        </div>
-      {%- endif -%}
+    <div>
+      <h2>{{ 'customer.account.details' | t }}</h2>
+
+      {{ customer.default_address | format_address }}
+
+      <a href="{{ routes.account_addresses_url }}">
+        {{ 'customer.account.view_addresses' | t }} ({{ customer.addresses_count }})
+      </a>
     </div>
   </div>
 </div>
-
-<script>
-  (function () {
-    var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-account-tab]'));
-    var panels = Array.prototype.slice.call(document.querySelectorAll('[data-account-panel]'));
-    if (!panels.length) return;
-
-    function show(name) {
-      var match = panels.some(function (p) {
-        return p.getAttribute('data-account-panel') === name;
-      });
-      if (!match) name = 'overview';
-      panels.forEach(function (p) {
-        p.hidden = p.getAttribute('data-account-panel') !== name;
-      });
-      tabs.forEach(function (t) {
-        var active = t.getAttribute('data-account-tab') === name && t.classList.contains('dspln-account-nav__tab');
-        t.classList.toggle('dspln-account-nav__tab--active', active);
-        if (t.classList.contains('dspln-account-nav__tab')) {
-          if (active) t.setAttribute('aria-current', 'page');
-          else t.removeAttribute('aria-current');
-        }
-      });
-    }
-
-    function fromLocation() {
-      var name = window.location.hash.replace('#', '');
-      if (!name && /[?&]page=/.test(window.location.search)) name = 'orders';
-      show(name || 'overview');
-    }
-
-    tabs.forEach(function (t) {
-      t.addEventListener('click', function (event) {
-        var name = t.getAttribute('data-account-tab');
-        event.preventDefault();
-        if (window.history.replaceState) window.history.replaceState(null, '', '#' + name);
-        show(name);
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      });
-    });
-
-    window.addEventListener('hashchange', fromLocation);
-    fromLocation();
-  })();
-</script>
 
 {% schema %}
 {
   "name": "t:sections.main-account.name",
   "settings": [
-    {
-      "type": "text",
-      "id": "welcome_text",
-      "label": "Welcome text (before first name)",
-      "default": "Welcome back"
-    },
-    {
-      "type": "header",
-      "content": "Empty order history"
-    },
-    {
-      "type": "text",
-      "id": "shop_button_label",
-      "label": "Shop button label",
-      "default": "Start shopping"
-    },
-    {
-      "type": "url",
-      "id": "shop_link",
-      "label": "Shop button link"
-    },
-    {
-      "type": "header",
-      "content": "My Designs"
-    },
-    {
-      "type": "checkbox",
-      "id": "show_designs",
-      "label": "Show My Designs block",
-      "default": true
-    },
-    {
-      "type": "text",
-      "id": "designs_heading",
-      "label": "Heading",
-      "default": "My Designs"
-    },
-    {
-      "type": "textarea",
-      "id": "designs_text",
-      "label": "Text",
-      "default": "Your saved gi designs will live here. Create a custom gi in the configurator and it will follow you home."
-    },
-    {
-      "type": "text",
-      "id": "designs_button_label",
-      "label": "Button label",
-      "default": "Design your gi"
-    },
-    {
-      "type": "url",
-      "id": "designs_link",
-      "label": "Button link"
-    },
     {
       "type": "header",
       "content": "t:sections.all.padding.section_padding_heading"
