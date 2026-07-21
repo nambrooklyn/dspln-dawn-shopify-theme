@@ -2,7 +2,12 @@
   const MARKER = 'data-dspln-cart-preview-thumbnails';
   const PREVIEW_PROPERTY = '_preview_image_url';
   const DESIGN_ID_PROPERTIES = ['_dspln_design_id', '_configurator_id'];
-  const DESIGN_LOOKUP_ORIGIN = 'https://dspln-dawn-shopify-theme.netlify.app';
+  // Try production first; fall back to the dev-branch deploy so carts on the
+  // dev store can resolve designs saved through the dev configurator build.
+  const DESIGN_LOOKUP_ORIGINS = [
+    'https://dspln-dawn-shopify-theme.netlify.app',
+    'https://dev--dspln-dawn-shopify-theme.netlify.app',
+  ];
   const LOCAL_PREVIEW_STORAGE_PREFIX = 'dspln:cart-preview:';
   const LOCAL_PREVIEW_FINGERPRINT_PREFIX = 'dspln:cart-preview:fingerprint:';
   const LOCAL_CONFIG_STORAGE_PREFIX = 'dspln:cart-config:';
@@ -73,26 +78,28 @@
     if (!designId) return '';
     if (designDataCache.has(designId)) return designDataCache.get(designId);
 
-    const lookupUrl = new URL('/.netlify/functions/customer-designs', DESIGN_LOOKUP_ORIGIN);
-    lookupUrl.searchParams.set('id', designId);
+    for (const origin of DESIGN_LOOKUP_ORIGINS) {
+      const lookupUrl = new URL('/.netlify/functions/customer-designs', origin);
+      lookupUrl.searchParams.set('id', designId);
 
-    try {
-      const response = await fetch(lookupUrl.toString(), {
-        headers: { Accept: 'application/json' },
-      });
-      if (!response.ok) {
-        designDataCache.set(designId, null);
-        return '';
+      try {
+        const response = await fetch(lookupUrl.toString(), {
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) continue;
+
+        const payload = await response.json();
+        const design = payload?.data?.design || null;
+        if (design) {
+          designDataCache.set(designId, design);
+          return design;
+        }
+      } catch {
+        // try the next origin
       }
-
-      const payload = await response.json();
-      const design = payload?.data?.design || null;
-      designDataCache.set(designId, design);
-      return design;
-    } catch {
-      designDataCache.set(designId, null);
-      return '';
     }
+    designDataCache.set(designId, null);
+    return '';
   }
 
   function localConfigFromDesignId(designId) {

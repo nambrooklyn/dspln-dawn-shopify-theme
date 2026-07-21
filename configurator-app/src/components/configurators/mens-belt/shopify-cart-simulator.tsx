@@ -110,9 +110,8 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
         value: logoYesNo(spec.kimono.logos.back?.filename),
       },
     );
-  } else {
-    props.push({ name: 'Kimono', value: 'NO' });
   }
+  // Single-item product: absent parts are omitted entirely.
 
   if (spec.partVisibility.belt) {
     props.push(
@@ -161,9 +160,8 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
         value: logoYesNo(spec.pant.logos['right-pant']?.filename),
       },
     );
-  } else {
-    props.push({ name: 'Pant', value: 'NO' });
   }
+  // Single-item product: absent parts are omitted entirely.
 
   return props;
 }
