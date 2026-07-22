@@ -3,6 +3,7 @@ import { FolderHeart, HelpCircle, ImageIcon, LogIn } from 'lucide-react';
 import { isStudioMode } from '../shared/studio-mode';
 
 import { openStorefrontPage } from '../shared/storefront-links';
+import { LockerRailButton } from '../shared/dspln-rail-links';
 
 function dispatchRailEvent(name: string) {
   if (typeof window === 'undefined') return;
@@ -20,6 +21,7 @@ export const RashguardActionRail = memo(
   ({ onLoginToSave }: { onLoginToSave?: () => void }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
+        <LockerRailButton className={railButtonClass} />
         {/* Login button hidden until the rashguard account flow ships. */}
         {/* Save/uploads UI is owner-only (?studio=1) until the
             account experience ships for customers. */}
