@@ -820,11 +820,26 @@ const GiConfiguratorInner = memo(() => {
               currentPantLogos={pantLogos}
             />
             </>
-          ) : (
-            // Customers don't see the save/designs rail until the account
-            // flow ships (matches the womens/kids configurators).
-            null
-          )
+          ) : cloudOwnerContext?.isCustomer ? (
+            // Signed-in customers get the saved-designs rail only — the
+            // studio tools (camera tuner, text tool) stay owner-only.
+            <SavedDesignsRail
+              status={draftStatus}
+              savedDesigns={savedDesigns}
+              defaultDesignName={currentDesignName || formatDesignName()}
+              storageLabel="Saved to your account"
+              onSaveDesign={handleSaveDesign}
+              activeDesignId={currentDesignId}
+              activeDesignName={currentDesignName}
+              onLoadDesign={handleLoadDesign}
+              onDeleteDesign={handleDeleteDesign}
+              onCopyCustomerLink={handleCopyCustomerLink}
+              onApplyKimonoLogo={setKimonoLogo}
+              onApplyPantLogo={setPantLogo}
+              currentKimonoLogos={kimonoLogos}
+              currentPantLogos={pantLogos}
+            />
+          ) : null
         }
         sceneTopContent={
           cloudOwnerContext?.isCustomer ? (
