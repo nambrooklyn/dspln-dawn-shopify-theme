@@ -1,5 +1,5 @@
 /**
- * DSPLN customer account portal (platform-owned "my account").
+ * The Locker — DSPLN's customer dashboard (platform-owned "my account").
  *
  * Identity: Shopify Customer Account API OAuth (passwordless email code).
  * Orders: queried live from the Customer Account GraphQL API.
@@ -89,7 +89,7 @@ async function fetchDesigns(email: string): Promise<PortalDesign[]> {
   }
 }
 
-export function AccountPortal() {
+export function TheLocker() {
   const [phase, setPhase] = useState<'boot' | 'login' | 'loading' | 'ready' | 'error'>('boot');
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('overview');
@@ -123,10 +123,10 @@ export function AccountPortal() {
 
   useEffect(() => {
     (async () => {
-      if (window.location.pathname.startsWith('/portal/callback')) {
+      if (window.location.pathname.startsWith('/locker/callback')) {
         try {
           await completeLogin();
-          window.history.replaceState(null, '', '/portal');
+          window.history.replaceState(null, '', '/locker');
         } catch (cause) {
           setError((cause as Error).message);
           setPhase('error');
@@ -158,7 +158,7 @@ export function AccountPortal() {
   if (phase === 'error') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-6 font-sans text-[#1c1b1b]">
-        <h1 className="text-xl uppercase tracking-[0.2em]">My Account</h1>
+        <h1 className="text-xl uppercase tracking-[0.2em]">The Locker</h1>
         <p className="max-w-md text-center text-sm text-[#6a6a6a]">{error}</p>
         <button
           type="button"
@@ -176,10 +176,10 @@ export function AccountPortal() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-white px-6 font-sans text-[#1c1b1b]">
         <div className="flex h-14 w-14 items-center justify-center bg-[#1c1b1b] text-2xl text-white">D</div>
         <div className="text-center">
-          <h1 className="text-2xl uppercase tracking-[0.24em]">My Account</h1>
+          <h1 className="text-2xl uppercase tracking-[0.24em]">The Locker</h1>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#6a6a6a]">
             Sign in with your email — we’ll send you a one-time code. Your designs and orders
-            will be waiting.
+            are waiting in your Locker.
           </p>
         </div>
         {isConfigured() ? (
@@ -194,7 +194,7 @@ export function AccountPortal() {
           <p className="max-w-md border border-[#dddddd] bg-[#f7f7f7] p-4 text-center text-xs leading-relaxed text-[#6a6a6a]">
             Portal not configured yet: set VITE_SHOPIFY_CUSTOMER_CLIENT_ID (and
             VITE_SHOPIFY_SHOP_ID) from the Headless channel’s Customer Account API settings,
-            or for a quick test set localStorage “dspln:portal:client-id”.
+            or for a quick test set localStorage “dspln:locker:client-id”.
           </p>
         )}
         <a href={shopOrigin} className={`${label} text-[#6a6a6a] underline underline-offset-4 hover:text-[#1c1b1b]`}>
@@ -258,7 +258,7 @@ export function AccountPortal() {
 
         {/* White content + tabs */}
         <main className="px-6 py-8 lg:px-12">
-          <h1 className="mb-6 text-xl uppercase tracking-[0.2em]">My Account</h1>
+          <h1 className="mb-6 text-xl uppercase tracking-[0.2em]">The Locker</h1>
 
           <div className="mb-8 flex gap-8 overflow-x-auto border-b border-[#dddddd]">
             {tabs.map((entry) => (
