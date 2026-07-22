@@ -65,10 +65,9 @@ export const ConfiguratorActionRail = memo(
           </button>
         ) : null}
 
-        {/* Save/uploads/text UI is owner-only (?studio=1) until the
-            account experience ships for customers. */}
-        {isStudioMode() ? (
-          <>
+        {/* Saved designs: signed-in customers (account flow shipped with
+            The Locker) and studio. Uploads/text stay owner-only. */}
+        {isCustomer || isStudioMode() ? (
           <button
             type="button"
             className={railButtonClass}
@@ -78,7 +77,10 @@ export const ConfiguratorActionRail = memo(
             <FolderHeart className="h-6 w-6 stroke-[1.7]" />
             <span className="text-[11px] font-medium leading-none">Saved</span>
           </button>
+        ) : null}
 
+        {isStudioMode() ? (
+          <>
           <button
             type="button"
             className={railButtonClass}
