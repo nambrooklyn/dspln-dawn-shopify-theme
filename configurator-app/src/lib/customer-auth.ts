@@ -10,7 +10,7 @@
  * settings in Shopify admin. It is not a secret, but it is per-store:
  *   - build-time: VITE_SHOPIFY_CUSTOMER_CLIENT_ID / VITE_SHOPIFY_SHOP_ID
  *   - runtime override (handy on branch deploys before Netlify env is
- *     set): localStorage 'dspln:portal:client-id' / 'dspln:portal:shop-id'
+ *     set): localStorage 'dspln:locker:client-id' / 'dspln:locker:shop-id'
  */
 
 const DEFAULT_SHOP_ID = '71435092012'; // dspln-dev-2
@@ -24,12 +24,12 @@ const runtimeOverride = (key: string): string | undefined => {
 };
 
 export const shopId = (): string =>
-  runtimeOverride('dspln:portal:shop-id') ||
+  runtimeOverride('dspln:locker:shop-id') ||
   (import.meta.env.VITE_SHOPIFY_SHOP_ID as string | undefined) ||
   DEFAULT_SHOP_ID;
 
 export const clientId = (): string =>
-  runtimeOverride('dspln:portal:client-id') ||
+  runtimeOverride('dspln:locker:client-id') ||
   (import.meta.env.VITE_SHOPIFY_CUSTOMER_CLIENT_ID as string | undefined) ||
   '';
 
@@ -39,9 +39,9 @@ const API_VERSION = '2026-07';
 export const graphqlEndpoint = (): string =>
   `https://shopify.com/${shopId()}/account/customer/api/${API_VERSION}/graphql`;
 
-const TOKENS_KEY = 'dspln:portal:tokens';
-const VERIFIER_KEY = 'dspln:portal:verifier';
-const STATE_KEY = 'dspln:portal:state';
+const TOKENS_KEY = 'dspln:locker:tokens';
+const VERIFIER_KEY = 'dspln:locker:verifier';
+const STATE_KEY = 'dspln:locker:state';
 
 interface StoredTokens {
   accessToken: string;
@@ -50,7 +50,7 @@ interface StoredTokens {
   expiresAt: number; // epoch ms
 }
 
-const redirectUri = () => `${window.location.origin}/portal/callback`;
+const redirectUri = () => `${window.location.origin}/locker/callback`;
 
 const randomString = (length: number): string => {
   const bytes = new Uint8Array(length);
@@ -141,7 +141,7 @@ async function tokenRequest(params: Record<string, string>): Promise<StoredToken
   return tokens;
 }
 
-/** Handle /portal/callback. Returns true when a code was exchanged. */
+/** Handle /locker/callback. Returns true when a code was exchanged. */
 export async function completeLogin(): Promise<boolean> {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
@@ -191,6 +191,6 @@ export function logout(): void {
   writeTokens(null);
   const url = new URL(`${authBase()}/logout`);
   if (tokens?.idToken) url.searchParams.set('id_token_hint', tokens.idToken);
-  url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/portal`);
+  url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/locker`);
   window.location.href = url.toString();
 }
