@@ -9,6 +9,7 @@ import {
 import { isStudioMode } from '../shared/studio-mode';
 
 import { openStorefrontPage } from '../shared/storefront-links';
+import { LockerRailButton } from '../shared/dspln-rail-links';
 
 function openSavedDesigns() {
   if (typeof window === 'undefined') return;
@@ -41,6 +42,7 @@ export const ConfiguratorActionRail = memo(
   }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
+        <LockerRailButton className={railButtonClass} />
         {/* The logged-out Login button is hidden until the account flow
             ships — the theme doesn't pass customer identity yet, so the
             login round-trip appears broken to customers. */}
