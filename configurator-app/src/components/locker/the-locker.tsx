@@ -370,14 +370,24 @@ export function TheLocker() {
               ) : (
                 <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                   {designs.map((design) => (
-                    <li key={design.id} className="border border-[#dddddd] p-3">
-                      {design.thumbnailUrl ? (
-                        <img src={design.thumbnailUrl} alt={design.name ?? 'Saved design'} className="mb-3 aspect-square w-full object-contain" />
-                      ) : (
-                        <div className="mb-3 flex aspect-square w-full items-center justify-center bg-[#f7f7f7] text-2xl text-[#dddddd]">D</div>
-                      )}
-                      <p className="truncate text-sm">{design.name ?? 'Untitled design'}</p>
-                      <p className={`mt-0.5 ${label} text-[#6a6a6a]`}>{design.productHandle ?? ''}</p>
+                    <li key={design.id} className="group border border-[#dddddd] transition-colors hover:border-[#1c1b1b]">
+                      {/* The theme's configurator product page reads ?design=<id>
+                          and loads it into the configurator iframe. */}
+                      <a
+                        href={`${shopOrigin}/products/${design.productHandle || 'customgi'}?design=${encodeURIComponent(design.id)}`}
+                        className="block p-3 no-underline"
+                      >
+                        {design.thumbnailUrl ? (
+                          <img src={design.thumbnailUrl} alt={design.name ?? 'Saved design'} className="mb-3 aspect-square w-full object-contain" />
+                        ) : (
+                          <div className="mb-3 flex aspect-square w-full items-center justify-center bg-[#f7f7f7] text-2xl text-[#dddddd]">D</div>
+                        )}
+                        <p className="truncate text-sm text-[#1c1b1b]">{design.name ?? 'Untitled design'}</p>
+                        <p className={`mt-0.5 ${label} text-[#6a6a6a]`}>{design.productHandle ?? ''}</p>
+                        <p className={`mt-2 ${label} text-[#6a6a6a] underline underline-offset-4 group-hover:text-[#1c1b1b]`}>
+                          Open in configurator
+                        </p>
+                      </a>
                     </li>
                   ))}
                 </ul>
