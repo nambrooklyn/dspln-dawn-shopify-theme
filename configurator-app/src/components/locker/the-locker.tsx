@@ -17,6 +17,7 @@ import {
   completeLogin,
   isConfigured,
   isLoggedIn,
+  lockerStorefrontOrigin,
   logout,
   shopId,
 } from '../../lib/customer-auth';
@@ -30,7 +31,6 @@ import {
   type CustomerOrder,
   type CustomerProfile,
 } from '../../lib/customer-api';
-import { storefrontOrigin } from '../configurators/shared/storefront-links';
 
 type Tab = 'overview' | 'orders' | 'designs';
 
@@ -109,7 +109,7 @@ export function TheLocker() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
-  const shopOrigin = useMemo(() => storefrontOrigin(), []);
+  const shopOrigin = useMemo(() => lockerStorefrontOrigin(), []);
   const shopifyProfileUrl = useMemo(
     () => `https://shopify.com/${shopId()}/account/profile`,
     [],
