@@ -3,7 +3,7 @@
  * Endpoint pattern verified via /.well-known/customer-account-api.
  */
 
-import { getAccessToken, graphqlEndpoint } from './customer-auth';
+import { getAccessToken, graphqlEndpoint, shopId } from './customer-auth';
 
 export interface CustomerProfile {
   firstName: string;
@@ -21,7 +21,7 @@ export interface CustomerOrder {
   statusPageUrl: string | null;
 }
 
-async function query<T>(document: string): Promise<T> {
+async function query<T>(document: string, variables?: Record<string, unknown>): Promise<T> {
   const token = await getAccessToken();
   if (!token) throw new Error('not-authenticated');
   const response = await fetch(graphqlEndpoint(), {
@@ -30,13 +30,84 @@ async function query<T>(document: string): Promise<T> {
       'Content-Type': 'application/json',
       Authorization: token,
     },
-    body: JSON.stringify({ query: document }),
+    body: JSON.stringify({ query: document, variables }),
   });
   const payload = await response.json();
   if (!response.ok || payload.errors?.length) {
     throw new Error(payload.errors?.[0]?.message || `Customer API error (${response.status})`);
   }
   return payload.data as T;
+}
+
+export async function updateProfile(input: {
+  firstName: string;
+  lastName: string;
+}): Promise<CustomerProfile> {
+  interface Result {
+    customerUpdate: {
+      customer: {
+        firstName: string | null;
+        lastName: string | null;
+        emailAddress: { emailAddress: string } | null;
+      } | null;
+      userErrors: Array<{ message: string }>;
+    };
+  }
+  const data = await query<Result>(
+    `mutation LockerProfileUpdate($input: CustomerUpdateInput!) {
+      customerUpdate(input: $input) {
+        customer { firstName lastName emailAddress { emailAddress } }
+        userErrors { message }
+      }
+    }`,
+    { input },
+  );
+  const result = data.customerUpdate;
+  if (result.userErrors.length || !result.customer) {
+    throw new Error(result.userErrors[0]?.message || 'Could not update your profile.');
+  }
+  return {
+    firstName: result.customer.firstName ?? '',
+    lastName: result.customer.lastName ?? '',
+    email: result.customer.emailAddress?.emailAddress ?? '',
+  };
+}
+
+async function avatarRequest(method: 'GET' | 'POST' | 'DELETE', body?: object) {
+  const token = await getAccessToken();
+  if (!token) throw new Error('not-authenticated');
+  return fetch('/.netlify/functions/customer-avatar', {
+    method,
+    headers: {
+      Authorization: token,
+      'X-Shopify-Shop-Id': shopId(),
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+export async function fetchAvatar(): Promise<string | null> {
+  const response = await avatarRequest('GET');
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('Could not load your profile photo.');
+  return URL.createObjectURL(await response.blob());
+}
+
+export async function saveAvatar(imageDataUrl: string): Promise<string> {
+  const response = await avatarRequest('POST', { imageDataUrl });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || 'Could not save your profile photo.');
+  }
+  const avatar = await fetchAvatar();
+  if (!avatar) throw new Error('Could not load your saved profile photo.');
+  return avatar;
+}
+
+export async function deleteAvatar(): Promise<void> {
+  const response = await avatarRequest('DELETE');
+  if (!response.ok) throw new Error('Could not remove your profile photo.');
 }
 
 export async function fetchProfile(): Promise<CustomerProfile> {

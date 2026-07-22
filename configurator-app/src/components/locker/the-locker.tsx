@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import {
   beginLogin,
@@ -20,7 +21,11 @@ import {
 } from '../../lib/customer-auth';
 import {
   fetchOrders,
+  fetchAvatar,
   fetchProfile,
+  deleteAvatar,
+  saveAvatar,
+  updateProfile,
   type CustomerOrder,
   type CustomerProfile,
 } from '../../lib/customer-api';
@@ -96,6 +101,12 @@ export function TheLocker() {
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [designs, setDesigns] = useState<PortalDesign[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingAvatar, setSavingAvatar] = useState(false);
 
   const shopOrigin = useMemo(() => storefrontOrigin(), []);
 
@@ -104,12 +115,15 @@ export function TheLocker() {
     try {
       const nextProfile = await fetchProfile();
       setProfile(nextProfile);
+      setFirstName(nextProfile.firstName);
+      setLastName(nextProfile.lastName);
       const [nextOrders, nextDesigns] = await Promise.all([
         fetchOrders().catch(() => [] as CustomerOrder[]),
         nextProfile.email ? fetchDesigns(nextProfile.email) : Promise.resolve([]),
       ]);
       setOrders(nextOrders);
       setDesigns(nextDesigns);
+      void fetchAvatar().then(setAvatarUrl).catch(() => setAvatarUrl(null));
       setPhase('ready');
     } catch (cause) {
       if ((cause as Error).message === 'not-authenticated') {
@@ -120,6 +134,70 @@ export function TheLocker() {
       setPhase('error');
     }
   }, []);
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const nextProfile = await updateProfile({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
+      setProfile(nextProfile);
+      setFirstName(nextProfile.firstName);
+      setLastName(nextProfile.lastName);
+      setEditingProfile(false);
+      toast.success('Profile updated');
+    } catch (cause) {
+      toast.error((cause as Error).message || 'Could not update your profile.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const chooseAvatar = (file: File | undefined) => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Choose a JPG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 1_500_000) {
+      toast.error('Profile photo must be smaller than 1.5 MB.');
+      return;
+    }
+    setSavingAvatar(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const nextUrl = await saveAvatar(String(reader.result));
+        if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+        setAvatarUrl(nextUrl);
+        toast.success('Profile photo updated');
+      } catch (cause) {
+        toast.error((cause as Error).message || 'Could not save your profile photo.');
+      } finally {
+        setSavingAvatar(false);
+      }
+    };
+    reader.onerror = () => {
+      setSavingAvatar(false);
+      toast.error('Could not read that image.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeAvatar = async () => {
+    setSavingAvatar(true);
+    try {
+      await deleteAvatar();
+      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+      setAvatarUrl(null);
+      toast.success('Profile photo removed');
+    } catch (cause) {
+      toast.error((cause as Error).message || 'Could not remove your profile photo.');
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -214,7 +292,7 @@ export function TheLocker() {
 
   return (
     <div className="min-h-screen bg-white font-sans text-[#1c1b1b]">
-      <div className="mx-auto grid max-w-[1420px] grid-cols-1 lg:grid-cols-[64px_280px_1fr]">
+      <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-[84px_320px_minmax(0,1fr)]">
         {/* Black icon rail */}
         <nav className="flex items-center justify-around bg-[#1c1b1b] px-2 py-2 lg:min-h-screen lg:flex-col lg:justify-start lg:py-6" aria-label="DSPLN">
           <a href={shopOrigin} className="mb-0 flex h-9 w-9 items-center justify-center border border-white/40 text-white lg:mb-6" aria-label="DSPLN home">
@@ -239,14 +317,94 @@ export function TheLocker() {
         </nav>
 
         {/* Gray profile panel */}
-        <aside className="bg-[#f7f7f7] px-6 py-8 text-center lg:min-h-screen">
-          <div className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center bg-[#1c1b1b] text-2xl uppercase tracking-[0.12em] text-white">
-            {initials}
+        <aside className="bg-[#f7f7f7] px-7 py-8 text-center lg:min-h-screen">
+          <div className="relative mx-auto mb-4 h-[88px] w-[88px] overflow-hidden rounded-full bg-[#1c1b1b] text-white">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Your profile" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-2xl uppercase tracking-[0.12em]">{initials}</span>
+            )}
+          </div>
+          <div className="mb-5 flex flex-wrap justify-center gap-x-3 gap-y-2">
+            <label className={`${label} cursor-pointer underline underline-offset-4 hover:text-[#6a6a6a]`}>
+              {savingAvatar ? 'Saving…' : avatarUrl ? 'Change photo' : 'Upload photo'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                disabled={savingAvatar}
+                onChange={(event) => {
+                  chooseAvatar(event.target.files?.[0]);
+                  event.currentTarget.value = '';
+                }}
+              />
+            </label>
+            {avatarUrl ? (
+              <button
+                type="button"
+                onClick={() => void removeAvatar()}
+                disabled={savingAvatar}
+                className={`${label} underline underline-offset-4 hover:text-[#6a6a6a] disabled:opacity-50`}
+              >
+                Remove
+              </button>
+            ) : null}
           </div>
           <p className="text-[15px] uppercase tracking-[0.08em]">
             {profile?.firstName} {profile?.lastName}
           </p>
           <p className="mt-1 break-all text-[13px] text-[#6a6a6a]">{profile?.email}</p>
+          <button
+            type="button"
+            onClick={() => setEditingProfile((current) => !current)}
+            className={`mt-4 border border-[#1c1b1b] px-5 py-2 ${label} hover:bg-[#1c1b1b] hover:text-white`}
+          >
+            {editingProfile ? 'Cancel' : 'Edit profile'}
+          </button>
+          {editingProfile ? (
+            <form
+              className="mt-5 space-y-4 border-t border-[#dddddd] pt-5 text-left"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveProfile();
+              }}
+            >
+              <label className={`block ${label}`}>
+                First name
+                <input
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  className="mt-2 h-11 w-full border border-[#cfcfcf] bg-white px-3 text-sm normal-case tracking-normal outline-none focus:border-[#1c1b1b]"
+                  autoComplete="given-name"
+                />
+              </label>
+              <label className={`block ${label}`}>
+                Last name
+                <input
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  className="mt-2 h-11 w-full border border-[#cfcfcf] bg-white px-3 text-sm normal-case tracking-normal outline-none focus:border-[#1c1b1b]"
+                  autoComplete="family-name"
+                />
+              </label>
+              <label className={`block ${label} text-[#6a6a6a]`}>
+                Email
+                <input
+                  value={profile?.email ?? ''}
+                  readOnly
+                  className="mt-2 h-11 w-full border border-[#dddddd] bg-[#eeeeee] px-3 text-sm normal-case tracking-normal"
+                />
+                <span className="mt-2 block normal-case tracking-normal">Used for secure sign-in and managed by Shopify.</span>
+              </label>
+              <button
+                type="submit"
+                disabled={savingProfile}
+                className={`w-full border border-[#1c1b1b] bg-[#1c1b1b] px-5 py-3 text-white ${label} hover:bg-white hover:text-[#1c1b1b] disabled:opacity-50`}
+              >
+                {savingProfile ? 'Saving…' : 'Save changes'}
+              </button>
+            </form>
+          ) : null}
           <div className="mt-7 border-t border-[#dddddd] pt-5">
             <p className={`${label} mb-1`}>Member of DSPLN</p>
             <p className="text-[13px] leading-relaxed text-[#6a6a6a]">
