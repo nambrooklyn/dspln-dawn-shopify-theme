@@ -16,6 +16,7 @@ import {
   completeLogin,
   isConfigured,
   isLoggedIn,
+  lockerStorefrontOrigin,
   logout,
 } from '../../lib/customer-auth';
 import {
@@ -24,7 +25,6 @@ import {
   type CustomerOrder,
   type CustomerProfile,
 } from '../../lib/customer-api';
-import { storefrontOrigin } from '../configurators/shared/storefront-links';
 
 type Tab = 'overview' | 'orders' | 'designs';
 
@@ -97,7 +97,7 @@ export function TheLocker() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [designs, setDesigns] = useState<PortalDesign[]>([]);
 
-  const shopOrigin = useMemo(() => storefrontOrigin(), []);
+  const shopOrigin = useMemo(() => lockerStorefrontOrigin(), []);
 
   const loadPortal = useCallback(async () => {
     setPhase('loading');

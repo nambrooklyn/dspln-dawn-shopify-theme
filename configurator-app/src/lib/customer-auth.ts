@@ -88,6 +88,27 @@ const writeTokens = (tokens: StoredTokens | null) => {
   else window.localStorage.removeItem(TOKENS_KEY);
 };
 
+/**
+ * Storefront the Locker pairs with. Branch deploys and local dev pair with
+ * the dev store; the production deploy pairs with dspln.com. Overridable via
+ * VITE_LOCKER_STOREFRONT_ORIGIN or localStorage 'dspln:locker:storefront-origin'.
+ */
+export const lockerStorefrontOrigin = (): string => {
+  const override = runtimeOverride('dspln:locker:storefront-origin');
+  if (override) return override;
+  const env = import.meta.env.VITE_LOCKER_STOREFRONT_ORIGIN as string | undefined;
+  if (env) return env;
+  const host = window.location.hostname;
+  if (
+    /--dspln-dawn-shopify-theme\.netlify\.app$/.test(host) ||
+    host === 'localhost' ||
+    host === '127.0.0.1'
+  ) {
+    return 'https://dspln-dev-2.myshopify.com';
+  }
+  return 'https://dspln.com';
+};
+
 export const isConfigured = (): boolean => clientId().length > 0;
 
 export const isLoggedIn = (): boolean => readTokens() !== null;
