@@ -18,6 +18,7 @@ import {
   isConfigured,
   isLoggedIn,
   logout,
+  shopId,
 } from '../../lib/customer-auth';
 import {
   fetchOrders,
@@ -109,6 +110,10 @@ export function TheLocker() {
   const [savingAvatar, setSavingAvatar] = useState(false);
 
   const shopOrigin = useMemo(() => storefrontOrigin(), []);
+  const shopifyProfileUrl = useMemo(
+    () => `https://shopify.com/${shopId()}/account/profile`,
+    [],
+  );
 
   const loadPortal = useCallback(async () => {
     setPhase('loading');
@@ -318,16 +323,23 @@ export function TheLocker() {
 
         {/* Gray profile panel */}
         <aside className="bg-[#f7f7f7] px-7 py-8 text-center lg:min-h-screen">
-          <div className="relative mx-auto mb-4 h-[88px] w-[88px] overflow-hidden rounded-full bg-[#1c1b1b] text-white">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Your profile" className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-2xl uppercase tracking-[0.12em]">{initials}</span>
-            )}
-          </div>
-          <div className="mb-5 flex flex-wrap justify-center gap-x-3 gap-y-2">
-            <label className={`${label} cursor-pointer underline underline-offset-4 hover:text-[#6a6a6a]`}>
-              {savingAvatar ? 'Saving…' : avatarUrl ? 'Change photo' : 'Upload photo'}
+          <div className="relative mx-auto mb-5 h-[88px] w-[88px]">
+            <div className="h-full w-full overflow-hidden rounded-full bg-[#1c1b1b] text-white">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Your profile" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-2xl uppercase tracking-[0.12em]">{initials}</span>
+              )}
+            </div>
+            <label
+              className="absolute -right-1 -bottom-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-[#f7f7f7] bg-[#1c1b1b] text-white shadow-sm transition-transform hover:scale-105"
+              title={avatarUrl ? 'Change profile photo' : 'Upload profile photo'}
+            >
+              <span className="sr-only">{avatarUrl ? 'Change profile photo' : 'Upload profile photo'}</span>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden="true">
+                <path d="m4 13.5-.7 3.2 3.2-.7 8.7-8.7-2.5-2.5L4 13.5Z" />
+                <path d="m11.8 5.7 2.5 2.5" />
+              </svg>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -339,16 +351,6 @@ export function TheLocker() {
                 }}
               />
             </label>
-            {avatarUrl ? (
-              <button
-                type="button"
-                onClick={() => void removeAvatar()}
-                disabled={savingAvatar}
-                className={`${label} underline underline-offset-4 hover:text-[#6a6a6a] disabled:opacity-50`}
-              >
-                Remove
-              </button>
-            ) : null}
           </div>
           <p className="text-[15px] uppercase tracking-[0.08em]">
             {profile?.firstName} {profile?.lastName}
@@ -394,8 +396,24 @@ export function TheLocker() {
                   readOnly
                   className="mt-2 h-11 w-full border border-[#dddddd] bg-[#eeeeee] px-3 text-sm normal-case tracking-normal"
                 />
-                <span className="mt-2 block normal-case tracking-normal">Used for secure sign-in and managed by Shopify.</span>
+                <span className="mt-2 block normal-case tracking-normal">Your email is your secure Shopify sign-in.</span>
               </label>
+              <a
+                href={shopifyProfileUrl}
+                className={`block text-center underline underline-offset-4 ${label} hover:text-[#6a6a6a]`}
+              >
+                Change email securely
+              </a>
+              {avatarUrl ? (
+                <button
+                  type="button"
+                  onClick={() => void removeAvatar()}
+                  disabled={savingAvatar}
+                  className={`block w-full text-center text-[#6a6a6a] underline underline-offset-4 ${label} hover:text-[#1c1b1b] disabled:opacity-50`}
+                >
+                  {savingAvatar ? 'Removing photo…' : 'Remove profile photo'}
+                </button>
+              ) : null}
               <button
                 type="submit"
                 disabled={savingProfile}
