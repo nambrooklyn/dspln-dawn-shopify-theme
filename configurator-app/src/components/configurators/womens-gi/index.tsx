@@ -151,13 +151,7 @@ function mergeSavedDesigns(...groups: GiDraftDocument[][]) {
 }
 
 function formatDesignName() {
-  return `${PRODUCT_CONFIG.designNamePrefix} ${new Date().toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })}`;
+  return PRODUCT_CONFIG.designNamePrefix;
 }
 
 function broadcastCustomerDesignsChanged() {
