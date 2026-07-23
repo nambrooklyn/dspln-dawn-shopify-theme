@@ -137,8 +137,14 @@
           </nav>
           <div class="menu-drawer__utility-links">
             {%- if shop.customer_accounts_enabled -%}
+              {%- liquid
+                assign locker_base = 'https://dspln-dawn-shopify-theme.netlify.app'
+                if shop.permanent_domain contains 'dspln-dev-2'
+                  assign locker_base = 'https://dev--dspln-dawn-shopify-theme.netlify.app'
+                endif
+              -%}
               <a
-                href="{%- if customer -%}{{ routes.account_url }}{%- else -%}{{ routes.account_login_url }}{%- endif -%}"
+                href="{{ locker_base }}/locker"
                 class="menu-drawer__account link focus-inset h5 medium-hide large-up-hide"
                 rel="nofollow"
               >
