@@ -39,8 +39,11 @@ export function lockerUrl(): string {
     // Fall back to the store encoded in the configurator query.
   }
   const shop = new URLSearchParams(window.location.search).get('shop');
+  const isDevDeploy = window.location.hostname.startsWith('dev--');
   return shop
     ? `https://${shop.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}/pages/locker`
+    : isDevDeploy
+      ? 'https://dspln-dev-2.myshopify.com/pages/locker'
     : 'https://dspln.com/pages/locker';
 }
 

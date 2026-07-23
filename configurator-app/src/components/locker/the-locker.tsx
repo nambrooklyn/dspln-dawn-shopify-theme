@@ -172,6 +172,10 @@ function StatusBadge({ value }: { value: string }) {
 
 export function TheLocker() {
   const customer = useMemo(queryCustomer, []);
+  const storefrontLockerUrl =
+    typeof window !== 'undefined' && window.location.hostname.startsWith('dev--')
+      ? 'https://dspln-dev-2.myshopify.com/pages/locker'
+      : 'https://dspln.com/pages/locker';
   const [page, setPage] = useState<LockerPage>('designs');
   const [designs, setDesigns] = useState<LockerDesign[]>([]);
   const [uploads, setUploads] = useState<LockerUpload[]>([]);
@@ -250,7 +254,7 @@ export function TheLocker() {
           </p>
         </div>
         <a
-          href="https://dspln.com/pages/locker"
+          href={storefrontLockerUrl}
           className={`border border-[#1c1b1b] bg-[#1c1b1b] px-9 py-4 text-white ${label}`}
         >
           Open DSPLN Locker
