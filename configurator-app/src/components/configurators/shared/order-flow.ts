@@ -34,6 +34,14 @@ export function getMissingGiSizeMessage(spec: {
   belt: { size?: string };
   pant: { size?: string };
 }) {
+  if (
+    !spec.partVisibility.jacket &&
+    !spec.partVisibility.belt &&
+    !spec.partVisibility.pants
+  ) {
+    return 'Please add at least one item—Kimono, Belt, or Pant—before adding this Gi to cart.';
+  }
+
   const missingParts: string[] = [];
   if (spec.partVisibility.jacket && !spec.kimono.size?.trim()) {
     missingParts.push('kimono');
