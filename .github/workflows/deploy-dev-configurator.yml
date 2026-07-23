@@ -1,0 +1,34 @@
+name: Rebuild dev configurator on Netlify
+
+# The configurator app deploys to Netlify from GitHub. Netlify's native
+# branch-deploy trigger for `dev` has been unreliable, leaving
+# dev--dspln-dawn-shopify-theme.netlify.app serving a stale bundle. This
+# workflow POSTs to a Netlify build hook on every `dev` push so the dev
+# deploy always rebuilds from the latest branch. Live/main is unaffected.
+#
+# Setup (one time): in Netlify -> Project configuration -> Build & deploy ->
+# Build hooks, add a hook for the `dev` branch, then save its URL as the
+# repo secret NETLIFY_DEV_BUILD_HOOK.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+
+jobs:
+  trigger-netlify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Netlify build hook
+        env:
+          HOOK: ${{ secrets.NETLIFY_DEV_BUILD_HOOK }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOOK:-}" ]; then
+            echo "NETLIFY_DEV_BUILD_HOOK secret is not set — skipping." >&2
+            echo "Add it in repo Settings -> Secrets and variables -> Actions." >&2
+            exit 0
+          fi
+          echo "Triggering Netlify dev rebuild..."
+          curl -fsS -X POST -d '{}' "$HOOK"
+          echo "Build hook triggered."
