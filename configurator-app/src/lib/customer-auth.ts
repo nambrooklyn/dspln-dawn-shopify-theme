@@ -109,6 +109,34 @@ export const lockerStorefrontOrigin = (): string => {
   return 'https://dspln.com';
 };
 
+/**
+ * The shop's permanent (.myshopify.com) domain — the value the theme passes
+ * to the configurator as `shop`, used inside the designs ownerKey
+ * (`shopify:{shopDomain}:{customerId}`). This is NOT the public storefront
+ * origin (dspln.com); it's the myshopify domain. Dev store default;
+ * overridable via VITE_LOCKER_SHOP_DOMAIN or localStorage.
+ */
+export const lockerShopDomain = (): string => {
+  const override = runtimeOverride('dspln:locker:shop-domain');
+  if (override) return override;
+  const env = import.meta.env.VITE_LOCKER_SHOP_DOMAIN as string | undefined;
+  if (env) return env;
+  const host = window.location.hostname;
+  if (
+    /--dspln-dawn-shopify-theme\.netlify\.app$/.test(host) ||
+    host === 'localhost' ||
+    host === '127.0.0.1'
+  ) {
+    return 'dspln-dev-2.myshopify.com';
+  }
+  // Production live store's permanent domain.
+  return 'f39242.myshopify.com';
+};
+
+/** The designs ownerKey for a signed-in customer (matches the configurator). */
+export const designsOwnerKey = (customerId: string): string =>
+  `shopify:${lockerShopDomain()}:${customerId}`;
+
 export const isConfigured = (): boolean => clientId().length > 0;
 
 export const isLoggedIn = (): boolean => readTokens() !== null;

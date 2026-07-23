@@ -17,6 +17,7 @@ import {
   completeLogin,
   isConfigured,
   isLoggedIn,
+  designsOwnerKey,
   lockerStorefrontOrigin,
   logout,
   shopId,
@@ -81,10 +82,14 @@ function StatusBadge({ value }: { value: string | null }) {
   );
 }
 
-async function fetchDesigns(email: string): Promise<PortalDesign[]> {
+async function fetchDesigns(customerId: string): Promise<PortalDesign[]> {
+  if (!customerId) return [];
   try {
+    // Query by the exact ownerKey the configurator saves under
+    // (shopify:{shopDomain}:{customerId}); the designs endpoint requires
+    // ownerKey and a broad email scan is unreliable on Netlify Blobs.
     const url = new URL('/api/customer-designs', window.location.origin);
-    url.searchParams.set('customerEmail', email);
+    url.searchParams.set('ownerKey', designsOwnerKey(customerId));
     const response = await fetch(url);
     if (!response.ok) return [];
     const payload = await response.json();
@@ -124,7 +129,7 @@ export function TheLocker() {
       setLastName(nextProfile.lastName);
       const [nextOrders, nextDesigns] = await Promise.all([
         fetchOrders().catch(() => [] as CustomerOrder[]),
-        nextProfile.email ? fetchDesigns(nextProfile.email) : Promise.resolve([]),
+        nextProfile.customerId ? fetchDesigns(nextProfile.customerId) : Promise.resolve([]),
       ]);
       setOrders(nextOrders);
       setDesigns(nextDesigns);

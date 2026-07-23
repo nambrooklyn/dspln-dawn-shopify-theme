@@ -9,6 +9,8 @@ export interface CustomerProfile {
   firstName: string;
   lastName: string;
   email: string;
+  /** Numeric Shopify customer id (extracted from the GID), for the designs ownerKey. */
+  customerId: string;
 }
 
 export interface CustomerOrder {
@@ -113,6 +115,7 @@ export async function deleteAvatar(): Promise<void> {
 export async function fetchProfile(): Promise<CustomerProfile> {
   interface Result {
     customer: {
+      id: string | null;
       firstName: string | null;
       lastName: string | null;
       emailAddress: { emailAddress: string } | null;
@@ -121,16 +124,23 @@ export async function fetchProfile(): Promise<CustomerProfile> {
   const data = await query<Result>(`
     query PortalProfile {
       customer {
+        id
         firstName
         lastName
         emailAddress { emailAddress }
       }
     }
   `);
+  // id is a GID like "gid://shopify/Customer/1234567890"; the designs
+  // ownerKey uses the trailing numeric id (same value the theme passes
+  // to the configurator as customerId).
+  const gid = data.customer.id ?? '';
+  const customerId = gid.split('/').pop() ?? '';
   return {
     firstName: data.customer.firstName ?? '',
     lastName: data.customer.lastName ?? '',
     email: data.customer.emailAddress?.emailAddress ?? '',
+    customerId,
   };
 }
 
