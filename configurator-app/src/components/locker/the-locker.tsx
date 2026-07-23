@@ -177,6 +177,7 @@ export function TheLocker() {
   const [uploads, setUploads] = useState<LockerUpload[]>([]);
   const [orders, setOrders] = useState<LockerOrder[]>([]);
   const [fit, setFit] = useState<FitProfile>(emptyFit);
+  const [selectedDesign, setSelectedDesign] = useState<LockerDesign | null>(null);
   const [loading, setLoading] = useState(Boolean(customer));
   const [savingFit, setSavingFit] = useState(false);
   const [error, setError] = useState('');
@@ -280,11 +281,14 @@ export function TheLocker() {
           >
             D
           </a>
-          {nav.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => setPage(entry.id)}
+            {nav.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => {
+                  setPage(entry.id);
+                  setSelectedDesign(null);
+                }}
               className={`w-full px-2 py-3 text-center ${label} ${
                 page === entry.id ? 'text-white' : 'text-[#aaa] hover:text-white'
               }`}
@@ -322,7 +326,7 @@ export function TheLocker() {
             <div>
               <p className={`${label} text-[#777]`}>The Locker</p>
               <h1 className="mt-2 text-xl uppercase tracking-[0.2em]">
-                {nav.find((entry) => entry.id === page)?.text}
+                {selectedDesign ? selectedDesign.name || 'Saved Design' : nav.find((entry) => entry.id === page)?.text}
               </h1>
             </div>
             {error ? <p className="text-sm text-[#842323]">{error}</p> : null}
@@ -332,7 +336,76 @@ export function TheLocker() {
 
           {!loading && page === 'designs' ? (
             <section>
-              {designs.length ? (
+              {selectedDesign ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDesign(null)}
+                    className={`${label} mb-6 underline underline-offset-4`}
+                  >
+                    ← All designs
+                  </button>
+                  <div className="grid gap-8 lg:grid-cols-[minmax(0,560px)_minmax(280px,1fr)]">
+                    <div className="aspect-square border border-[#ddd] bg-[#f7f7f7]">
+                      {selectedDesign.thumbnailUrl ? (
+                        <img
+                          src={selectedDesign.thumbnailUrl}
+                          alt={selectedDesign.name || 'Saved design'}
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <div className={`flex h-full items-center justify-center text-[#999] ${label}`}>
+                          Preview pending
+                        </div>
+                      )}
+                    </div>
+                    <div className="self-start border-t border-[#ddd] pt-6">
+                      <p className={label}>Saved design</p>
+                      <h2 className="mt-3 text-xl uppercase tracking-[0.12em]">
+                        {selectedDesign.name || 'Saved Design'}
+                      </h2>
+                      <p className="mt-3 text-sm text-[#777]">
+                        Last edited {formatDate(selectedDesign.updatedAt)}
+                      </p>
+                      <p className="mt-7 text-sm leading-relaxed text-[#666]">
+                        Open this design in the configurator to inspect it in 3D, continue editing,
+                        save a new version, or share it.
+                      </p>
+                      <a
+                        href={`${customer.storefrontOrigin}/products/${selectedDesign.productHandle || 'customgi'}?design=${encodeURIComponent(selectedDesign.id)}`}
+                        target="_top"
+                        className={`mt-7 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-7 py-4 text-white ${label}`}
+                      >
+                        Open in 3D
+                      </a>
+                      {uploads.some((upload) => upload.designId === selectedDesign.id) ? (
+                        <div className="mt-9 border-t border-[#ddd] pt-6">
+                          <h3 className={label}>Artwork in this design</h3>
+                          <div className="mt-4 grid grid-cols-3 gap-3">
+                            {uploads
+                              .filter((upload) => upload.designId === selectedDesign.id)
+                              .map((upload, index) => (
+                                <a
+                                  key={`${upload.url}-${index}`}
+                                  href={upload.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="aspect-square border border-[#ddd] bg-[#f7f7f7]"
+                                >
+                                  <img
+                                    src={upload.url}
+                                    alt={upload.filename || 'Uploaded artwork'}
+                                    className="h-full w-full object-contain p-2"
+                                  />
+                                </a>
+                              ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : designs.length ? (
                 <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                   {designs.map((design) => {
                     const designUrl = new URL(
@@ -362,10 +435,17 @@ export function TheLocker() {
                           <p className="mt-2 text-xs text-[#777]">
                             Last edited {formatDate(design.updatedAt)}
                           </p>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDesign(design)}
+                            className={`mt-5 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-5 py-3 text-white ${label}`}
+                          >
+                            View design
+                          </button>
                           <a
                             href={designUrl.toString()}
                             target="_top"
-                            className={`mt-5 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-5 py-3 text-white ${label}`}
+                            className={`ml-4 mt-5 inline-flex underline underline-offset-4 ${label}`}
                           >
                             Open in 3D
                           </a>
