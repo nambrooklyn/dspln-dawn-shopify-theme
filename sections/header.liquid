@@ -249,8 +249,20 @@
       {% render 'header-search', input_id: 'Search-In-Modal' %}
 
       {%- if shop.customer_accounts_enabled -%}
+        {%- comment -%}
+          Account icon goes to The Locker (DSPLN's platform-owned account
+          home), not Shopify's hosted account page. The Locker URL is chosen
+          by which store this theme is running on, so the dev store points at
+          the dev deploy and the live store at production.
+        {%- endcomment -%}
+        {%- liquid
+          assign locker_base = 'https://dspln-dawn-shopify-theme.netlify.app'
+          if shop.permanent_domain contains 'dspln-dev-2'
+            assign locker_base = 'https://dev--dspln-dawn-shopify-theme.netlify.app'
+          endif
+        -%}
         <a
-          href="{%- if customer -%}{{ routes.account_url }}{%- else -%}{{ routes.account_login_url }}{%- endif -%}"
+          href="{{ locker_base }}/locker"
           class="header__icon header__icon--account link focus-inset{% if section.settings.menu != blank %} small-hide{% endif %}"
           rel="nofollow"
         >
