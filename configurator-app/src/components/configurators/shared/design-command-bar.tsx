@@ -98,47 +98,30 @@ export const DesignCommandBar = memo(
 
     return (
       <>
-        <div className="border-border/80 bg-background/95 relative min-h-[3.25rem] w-full rounded-md border px-2 py-1 shadow-sm backdrop-blur sm:hidden">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 pr-20">
-              <p className="text-foreground truncate text-[10px] font-semibold tracking-[0.08em] uppercase">
-                {designName}
-              </p>
-              <p
-                className={`text-[8px] ${
-                  status === 'error'
-                    ? 'text-destructive'
-                    : hasUnsavedChanges
-                      ? 'text-amber-700'
-                      : 'text-muted-foreground'
-                }`}
-              >
-                {lastEditedLabel(status, hasUnsavedChanges, lastEditedAt)}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              aria-label="Design actions"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((open) => !open)}
-              className="text-foreground hover:text-muted-foreground relative z-10 -mt-0.5 shrink-0 px-1 py-0.5"
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
-          </div>
-
+        <div className="relative sm:hidden">
           <button
             type="button"
-            onClick={() => void save()}
-            disabled={status === 'saving' || (Boolean(designId) && !hasUnsavedChanges)}
-            className="bg-foreground text-background hover:bg-foreground/85 absolute right-2 bottom-1 min-w-16 rounded px-3 py-0.5 text-[9px] font-semibold tracking-[0.14em] uppercase disabled:cursor-default disabled:opacity-45"
+            aria-label="Design actions"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+            className="text-foreground hover:text-muted-foreground p-1"
           >
-            {status === 'saving' ? 'Saving…' : 'Save'}
+            <MoreHorizontal className="h-6 w-6" />
           </button>
 
           {menuOpen ? (
             <div className="border-border bg-background absolute top-full right-0 z-50 mt-1 w-48 rounded border p-1 shadow-xl">
+              <button
+                type="button"
+                disabled={status === 'saving' || (Boolean(designId) && !hasUnsavedChanges)}
+                onClick={() => {
+                  setMenuOpen(false);
+                  void save();
+                }}
+                className="hover:bg-muted w-full rounded px-3 py-2 text-left text-xs disabled:opacity-45"
+              >
+                {status === 'saving' ? 'Saving…' : 'Save design'}
+              </button>
               <button
                 type="button"
                 onClick={() => openNameDialog('saveAs')}
