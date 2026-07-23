@@ -27,10 +27,21 @@ function LockerIcon() {
   );
 }
 
-/** The Locker URL, on the same origin the configurator/Locker app is served from. */
+/** The customer-facing Locker lives on the Shopify storefront. */
 export function lockerUrl(): string {
-  if (typeof window === 'undefined') return '/locker';
-  return `${window.location.origin}/locker`;
+  if (typeof window === 'undefined') return '/pages/locker';
+  try {
+    const referrer = document.referrer ? new URL(document.referrer) : null;
+    if (referrer && referrer.origin !== window.location.origin) {
+      return new URL('/pages/locker', referrer.origin).toString();
+    }
+  } catch {
+    // Fall back to the store encoded in the configurator query.
+  }
+  const shop = new URLSearchParams(window.location.search).get('shop');
+  return shop
+    ? `https://${shop.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}/pages/locker`
+    : 'https://dspln.com/pages/locker';
 }
 
 /** Navigate the TOP window (break out of the storefront iframe) to the Locker. */

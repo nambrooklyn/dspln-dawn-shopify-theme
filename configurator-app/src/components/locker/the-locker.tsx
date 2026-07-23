@@ -1,41 +1,38 @@
 /**
- * The Locker — DSPLN's customer dashboard (platform-owned "my account").
+ * The Locker — DSPLN's customer dashboard.
  *
- * Identity: Shopify Customer Account API OAuth (passwordless email code).
- * Orders: queried live from the Customer Account GraphQL API.
- * Designs: the platform's own /api/customer-designs store.
- *
- * Layout mirrors the DSPLN account shell: black icon rail, gray profile
- * panel, white content with horizontal tabs.
+ * The customer-facing Locker is embedded by the Shopify storefront at
+ * /pages/locker. Shopify owns authentication and passes the signed-in
+ * customer identity to this app. The app then joins that identity to DSPLN's
+ * saved designs, uploaded artwork, fit profile, and Shopify order history.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import {
-  beginLogin,
-  completeLogin,
-  isConfigured,
-  isLoggedIn,
-  designsOwnerKey,
-  lockerStorefrontOrigin,
-  logout,
-  shopId,
-} from '../../lib/customer-auth';
-import {
-  fetchOrders,
-  fetchAvatar,
-  fetchProfile,
-  deleteAvatar,
-  saveAvatar,
-  updateProfile,
-  type CustomerOrder,
-  type CustomerProfile,
-} from '../../lib/customer-api';
+type LockerPage = 'designs' | 'uploads' | 'fit' | 'orders';
 
-type Tab = 'overview' | 'orders' | 'designs';
+interface LockerCustomer {
+  customerId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  shopDomain: string;
+  storefrontOrigin: string;
+}
 
-interface PortalDesign {
+interface LockerOrder {
+  id: string;
+  name: string;
+  processedAt: string;
+  financialStatus: string;
+  fulfillmentStatus: string;
+  totalAmount: string;
+  totalCurrency: string;
+  statusPageUrl: string;
+}
+
+interface LockerDesign {
   id: string;
   name?: string;
   productHandle?: string;
@@ -43,538 +40,530 @@ interface PortalDesign {
   updatedAt?: string;
 }
 
+interface LockerUpload {
+  url: string;
+  filename?: string;
+  designId?: string;
+  designName?: string;
+  updatedAt?: string;
+  part?: string;
+  slot?: string;
+}
+
+interface FitProfile {
+  units: 'imperial' | 'metric';
+  height: string;
+  weight: string;
+  chest: string;
+  waist: string;
+  hips: string;
+  inseam: string;
+  shoulder: string;
+  sleeve: string;
+  preferredGiSize: string;
+  fitPreference: 'slim' | 'regular' | 'relaxed';
+  notes: string;
+  updatedAt?: string;
+}
+
+const emptyFit: FitProfile = {
+  units: 'imperial',
+  height: '',
+  weight: '',
+  chest: '',
+  waist: '',
+  hips: '',
+  inseam: '',
+  shoulder: '',
+  sleeve: '',
+  preferredGiSize: '',
+  fitPreference: 'regular',
+  notes: '',
+};
+
 const label = 'text-[11px] uppercase tracking-[0.16em]';
 
-function formatDate(value: string | undefined): string {
+function queryCustomer(): LockerCustomer | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const customerId = params.get('customerId')?.trim() ?? '';
+  const email = params.get('customerEmail')?.trim() ?? '';
+  const shopDomain = params.get('shop')?.trim() ?? '';
+  if (!customerId || !shopDomain) return null;
+  return {
+    customerId,
+    email,
+    shopDomain,
+    firstName: params.get('firstName')?.trim() ?? '',
+    lastName: params.get('lastName')?.trim() ?? '',
+    storefrontOrigin:
+      params.get('storefrontOrigin')?.trim() ||
+      (document.referrer ? new URL(document.referrer).origin : 'https://dspln.com'),
+  };
+}
+
+function ownerKey(customer: LockerCustomer): string {
+  return `shopify:${customer.shopDomain}:${customer.customerId}`;
+}
+
+function formatDate(value?: string): string {
   if (!value) return '';
-  try {
-    return new Date(value).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return value;
-  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatMoney(amount: string, currency: string): string {
-  if (!amount) return '';
   const numeric = Number(amount);
-  if (Number.isNaN(numeric)) return `${amount} ${currency}`;
-  return `$${numeric.toFixed(2)} ${currency}`;
+  if (Number.isNaN(numeric)) return `${amount} ${currency}`.trim();
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD',
+  }).format(numeric);
 }
 
-function StatusBadge({ value }: { value: string | null }) {
-  const good = value === 'PAID' || value === 'FULFILLED';
-  const alert = value === 'REFUNDED' || value === 'VOIDED';
+async function fetchDesigns(customer: LockerCustomer): Promise<LockerDesign[]> {
+  const url = new URL('/api/customer-designs', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Could not load saved designs.');
+  const payload = await response.json();
+  return payload?.data?.designs ?? [];
+}
+
+async function fetchUploads(customer: LockerCustomer): Promise<LockerUpload[]> {
+  const url = new URL('/api/customer-designs', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  url.searchParams.set('logos', '1');
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Could not load uploaded artwork.');
+  const payload = await response.json();
+  const uploads: LockerUpload[] = payload?.data?.logos ?? [];
+  const seen = new Set<string>();
+  return uploads.filter((upload) => {
+    const key = `${upload.url}|${upload.filename ?? ''}`;
+    if (!upload.url || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function fetchFit(customer: LockerCustomer): Promise<FitProfile> {
+  const url = new URL('/api/customer-fit', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  const response = await fetch(url);
+  if (response.status === 404) return emptyFit;
+  if (!response.ok) throw new Error('Could not load your sizing profile.');
+  const payload = await response.json();
+  return { ...emptyFit, ...(payload?.data?.profile ?? {}) };
+}
+
+function StatusBadge({ value }: { value: string }) {
   return (
-    <span
-      className={`inline-flex items-center gap-2 whitespace-nowrap border border-[#dddddd] px-3 py-0.5 ${label} text-[#1c1b1b]`}
-    >
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          good ? 'bg-[#1c1b1b]' : alert ? 'bg-[#5c0000]' : 'bg-[#6a6a6a]'
-        }`}
-      />
-      {(value ?? 'PENDING').replace(/_/g, ' ')}
+    <span className={`inline-flex border border-[#d7d7d7] px-3 py-1 ${label}`}>
+      {(value || 'Pending').replaceAll('_', ' ')}
     </span>
   );
 }
 
-async function fetchDesigns(customerId: string): Promise<PortalDesign[]> {
-  if (!customerId) return [];
-  try {
-    // Query by the exact ownerKey the configurator saves under
-    // (shopify:{shopDomain}:{customerId}); the designs endpoint requires
-    // ownerKey and a broad email scan is unreliable on Netlify Blobs.
-    const url = new URL('/api/customer-designs', window.location.origin);
-    url.searchParams.set('ownerKey', designsOwnerKey(customerId));
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const payload = await response.json();
-    const designs = payload?.data?.designs ?? payload?.designs ?? [];
-    return Array.isArray(designs) ? designs : [];
-  } catch {
-    return [];
-  }
-}
-
 export function TheLocker() {
-  const [phase, setPhase] = useState<'boot' | 'login' | 'loading' | 'ready' | 'error'>('boot');
+  const customer = useMemo(queryCustomer, []);
+  const [page, setPage] = useState<LockerPage>('designs');
+  const [designs, setDesigns] = useState<LockerDesign[]>([]);
+  const [uploads, setUploads] = useState<LockerUpload[]>([]);
+  const [orders, setOrders] = useState<LockerOrder[]>([]);
+  const [fit, setFit] = useState<FitProfile>(emptyFit);
+  const [loading, setLoading] = useState(Boolean(customer));
+  const [savingFit, setSavingFit] = useState(false);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<Tab>('overview');
-  const [profile, setProfile] = useState<CustomerProfile | null>(null);
-  const [orders, setOrders] = useState<CustomerOrder[]>([]);
-  const [designs, setDesigns] = useState<PortalDesign[]>([]);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [savingAvatar, setSavingAvatar] = useState(false);
 
-  const shopOrigin = useMemo(() => lockerStorefrontOrigin(), []);
-  const shopifyProfileUrl = useMemo(
-    () => `https://shopify.com/${shopId()}/account/profile`,
-    [],
-  );
-
-  const loadPortal = useCallback(async () => {
-    setPhase('loading');
-    try {
-      const nextProfile = await fetchProfile();
-      setProfile(nextProfile);
-      setFirstName(nextProfile.firstName);
-      setLastName(nextProfile.lastName);
-      const [nextOrders, nextDesigns] = await Promise.all([
-        fetchOrders().catch(() => [] as CustomerOrder[]),
-        nextProfile.customerId ? fetchDesigns(nextProfile.customerId) : Promise.resolve([]),
-      ]);
-      setOrders(nextOrders);
-      setDesigns(nextDesigns);
-      void fetchAvatar().then(setAvatarUrl).catch(() => setAvatarUrl(null));
-      setPhase('ready');
-    } catch (cause) {
-      if ((cause as Error).message === 'not-authenticated') {
-        setPhase('login');
-        return;
-      }
-      setError((cause as Error).message);
-      setPhase('error');
+  const loadLocker = useCallback(async () => {
+    if (!customer) return;
+    setLoading(true);
+    setError('');
+    const results = await Promise.allSettled([
+      fetchDesigns(customer),
+      fetchUploads(customer),
+      fetchFit(customer),
+    ]);
+    if (results[0].status === 'fulfilled') setDesigns(results[0].value);
+    if (results[1].status === 'fulfilled') setUploads(results[1].value);
+    if (results[2].status === 'fulfilled') setFit(results[2].value);
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') {
+      setError(failure.reason instanceof Error ? failure.reason.message : 'Could not load the Locker.');
     }
-  }, []);
-
-  const saveProfile = async () => {
-    setSavingProfile(true);
-    try {
-      const nextProfile = await updateProfile({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-      });
-      setProfile(nextProfile);
-      setFirstName(nextProfile.firstName);
-      setLastName(nextProfile.lastName);
-      setEditingProfile(false);
-      toast.success('Profile updated');
-    } catch (cause) {
-      toast.error((cause as Error).message || 'Could not update your profile.');
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  const chooseAvatar = (file: File | undefined) => {
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error('Choose a JPG, PNG, or WebP image.');
-      return;
-    }
-    if (file.size > 1_500_000) {
-      toast.error('Profile photo must be smaller than 1.5 MB.');
-      return;
-    }
-    setSavingAvatar(true);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const nextUrl = await saveAvatar(String(reader.result));
-        if (avatarUrl) URL.revokeObjectURL(avatarUrl);
-        setAvatarUrl(nextUrl);
-        toast.success('Profile photo updated');
-      } catch (cause) {
-        toast.error((cause as Error).message || 'Could not save your profile photo.');
-      } finally {
-        setSavingAvatar(false);
-      }
-    };
-    reader.onerror = () => {
-      setSavingAvatar(false);
-      toast.error('Could not read that image.');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeAvatar = async () => {
-    setSavingAvatar(true);
-    try {
-      await deleteAvatar();
-      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
-      setAvatarUrl(null);
-      toast.success('Profile photo removed');
-    } catch (cause) {
-      toast.error((cause as Error).message || 'Could not remove your profile photo.');
-    } finally {
-      setSavingAvatar(false);
-    }
-  };
+    setLoading(false);
+  }, [customer]);
 
   useEffect(() => {
-    (async () => {
-      if (window.location.pathname.startsWith('/locker/callback')) {
-        try {
-          await completeLogin();
-          window.history.replaceState(null, '', '/locker');
-        } catch (cause) {
-          setError((cause as Error).message);
-          setPhase('error');
-          return;
-        }
-      }
-      if (!isLoggedIn()) {
-        setPhase('login');
-        return;
-      }
-      await loadPortal();
-    })();
-  }, [loadPortal]);
+    void loadLocker();
+  }, [loadLocker]);
 
-  const initials = profile
-    ? `${profile.firstName.slice(0, 1)}${profile.lastName.slice(0, 1)}`.toUpperCase() || 'D'
-    : 'D';
-  const totalSpent = orders.reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0);
-  const currency = orders[0]?.totalCurrency ?? 'USD';
+  useEffect(() => {
+    const receiveStorefrontContext = (event: MessageEvent) => {
+      if (!customer || event.origin !== customer.storefrontOrigin) return;
+      const data = event.data;
+      if (data?.type !== 'dspln:locker:context') return;
+      if (String(data.customerId) !== customer.customerId) return;
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
+    };
+    window.addEventListener('message', receiveStorefrontContext);
+    window.parent?.postMessage({ type: 'dspln:locker:ready' }, customer?.storefrontOrigin ?? '*');
+    return () => window.removeEventListener('message', receiveStorefrontContext);
+  }, [customer]);
 
-  if (phase === 'boot' || phase === 'loading') {
+  const saveFit = async () => {
+    if (!customer) return;
+    setSavingFit(true);
+    try {
+      const response = await fetch('/api/customer-fit', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerKey: ownerKey(customer), profile: fit }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Could not save your sizing profile.');
+      setFit({ ...fit, updatedAt: payload?.data?.profile?.updatedAt });
+      toast.success('Sizing and fit profile saved');
+    } catch (cause) {
+      toast.error((cause as Error).message);
+    } finally {
+      setSavingFit(false);
+    }
+  };
+
+  if (!customer) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white font-sans text-[#1c1b1b]">
-        <p className={`${label} text-[#6a6a6a]`}>Loading your account…</p>
-      </div>
-    );
-  }
-
-  if (phase === 'error') {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-6 font-sans text-[#1c1b1b]">
-        <h1 className="text-xl uppercase tracking-[0.2em]">The Locker</h1>
-        <p className="max-w-md text-center text-sm text-[#6a6a6a]">{error}</p>
-        <button
-          type="button"
-          onClick={() => beginLogin()}
-          className={`border border-[#1c1b1b] bg-[#1c1b1b] px-8 py-3 text-white ${label} hover:bg-white hover:text-[#1c1b1b]`}
-        >
-          Try signing in again
-        </button>
-      </div>
-    );
-  }
-
-  if (phase === 'login') {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-white px-6 font-sans text-[#1c1b1b]">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-7 bg-white px-6 text-center font-sans text-[#1c1b1b]">
         <div className="flex h-14 w-14 items-center justify-center bg-[#1c1b1b] text-2xl text-white">D</div>
-        <div className="text-center">
+        <div>
           <h1 className="text-2xl uppercase tracking-[0.24em]">The Locker</h1>
-          <p className="mt-3 max-w-sm text-sm leading-relaxed text-[#6a6a6a]">
-            Sign in with your email — we’ll send you a one-time code. Your designs and orders
-            are waiting in your Locker.
+          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-[#666]">
+            Open The Locker from the DSPLN store to sign in and access your designs, uploads,
+            sizing profile, and orders.
           </p>
         </div>
-        {isConfigured() ? (
-          <button
-            type="button"
-            onClick={() => beginLogin()}
-            className={`min-w-64 border border-[#1c1b1b] bg-[#1c1b1b] px-10 py-4 text-white ${label} transition-colors hover:bg-white hover:text-[#1c1b1b]`}
-          >
-            Sign in
-          </button>
-        ) : (
-          <p className="max-w-md border border-[#dddddd] bg-[#f7f7f7] p-4 text-center text-xs leading-relaxed text-[#6a6a6a]">
-            Portal not configured yet: set VITE_SHOPIFY_CUSTOMER_CLIENT_ID (and
-            VITE_SHOPIFY_SHOP_ID) from the Headless channel’s Customer Account API settings,
-            or for a quick test set localStorage “dspln:locker:client-id”.
-          </p>
-        )}
-        <a href={shopOrigin} className={`${label} text-[#6a6a6a] underline underline-offset-4 hover:text-[#1c1b1b]`}>
-          Back to store
+        <a
+          href="https://dspln.com/pages/locker"
+          className={`border border-[#1c1b1b] bg-[#1c1b1b] px-9 py-4 text-white ${label}`}
+        >
+          Open DSPLN Locker
         </a>
-      </div>
+      </main>
     );
   }
 
-  const tabs: Array<{ id: Tab; text: string }> = [
-    { id: 'overview', text: 'Overview' },
+  const initials =
+    `${customer.firstName.slice(0, 1)}${customer.lastName.slice(0, 1)}`.toUpperCase() || 'D';
+  const displayName =
+    [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email;
+  const nav: Array<{ id: LockerPage; text: string }> = [
+    { id: 'designs', text: 'Designs' },
+    { id: 'uploads', text: 'Uploads' },
+    { id: 'fit', text: 'Sizing / Fit' },
     { id: 'orders', text: 'Orders' },
-    { id: 'designs', text: 'My Designs' },
   ];
-
-  const railItem = `flex w-full flex-col items-center gap-1 px-1 py-3 ${label} text-[#b1b1b1] transition-colors hover:text-white`;
 
   return (
     <div className="min-h-screen bg-white font-sans text-[#1c1b1b]">
-      <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-[84px_320px_minmax(0,1fr)]">
-        {/* Black icon rail */}
-        <nav className="flex items-center justify-around bg-[#1c1b1b] px-2 py-2 lg:min-h-screen lg:flex-col lg:justify-start lg:py-6" aria-label="DSPLN">
-          <a href={shopOrigin} className="mb-0 flex h-9 w-9 items-center justify-center border border-white/40 text-white lg:mb-6" aria-label="DSPLN home">
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[84px_300px_minmax(0,1fr)]">
+        <nav className="flex items-center justify-around bg-[#1c1b1b] px-2 py-2 lg:min-h-screen lg:flex-col lg:justify-start lg:py-6">
+          <a
+            href={customer.storefrontOrigin}
+            target="_top"
+            className="flex h-9 w-9 items-center justify-center border border-white/40 text-white lg:mb-6"
+          >
             D
           </a>
-          <a href={shopOrigin} className={railItem}>
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5"><path d="M3 9.5 10 3l7 6.5M5 8.5V17h10V8.5" /></svg>
-            Home
+          {nav.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => setPage(entry.id)}
+              className={`w-full px-2 py-3 text-center ${label} ${
+                page === entry.id ? 'text-white' : 'text-[#aaa] hover:text-white'
+              }`}
+            >
+              {entry.text}
+            </button>
+          ))}
+          <a
+            href={customer.storefrontOrigin}
+            target="_top"
+            className={`mt-auto hidden w-full px-2 py-3 text-center text-[#aaa] hover:text-white lg:block ${label}`}
+          >
+            Back to store
           </a>
-          <a href={`${shopOrigin}/collections/all`} className={railItem}>
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5"><path d="M4 6h12l-1 11H5L4 6ZM7 6a3 3 0 0 1 6 0" /></svg>
-            Shop
-          </a>
-          <span className={`${railItem} cursor-default text-white`}>
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5"><circle cx="10" cy="6.5" r="3" /><path d="M4 17c.8-3.2 3.1-4.8 6-4.8s5.2 1.6 6 4.8" /></svg>
-            Account
-          </span>
-          <button type="button" onClick={logout} className={`${railItem} lg:mt-auto`}>
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5"><path d="M12 4H5v12h7M9 10h8m0 0-3-3m3 3-3 3" /></svg>
-            Log out
-          </button>
         </nav>
 
-        {/* Gray profile panel */}
-        <aside className="bg-[#f7f7f7] px-7 py-8 text-center lg:min-h-screen">
-          <div className="relative mx-auto mb-5 h-[88px] w-[88px]">
-            <div className="h-full w-full overflow-hidden rounded-full bg-[#1c1b1b] text-white">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Your profile" className="h-full w-full object-cover" />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center text-2xl uppercase tracking-[0.12em]">{initials}</span>
-              )}
-            </div>
-            <label
-              className="absolute -right-1 -bottom-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-[#f7f7f7] bg-[#1c1b1b] text-white shadow-sm transition-transform hover:scale-105"
-              title={avatarUrl ? 'Change profile photo' : 'Upload profile photo'}
-            >
-              <span className="sr-only">{avatarUrl ? 'Change profile photo' : 'Upload profile photo'}</span>
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden="true">
-                <path d="m4 13.5-.7 3.2 3.2-.7 8.7-8.7-2.5-2.5L4 13.5Z" />
-                <path d="m11.8 5.7 2.5 2.5" />
-              </svg>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                disabled={savingAvatar}
-                onChange={(event) => {
-                  chooseAvatar(event.target.files?.[0]);
-                  event.currentTarget.value = '';
-                }}
-              />
-            </label>
+        <aside className="bg-[#f5f5f5] px-7 py-8 text-center lg:min-h-screen">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#1c1b1b] text-xl tracking-[0.12em] text-white">
+            {initials}
           </div>
-          <p className="text-[15px] uppercase tracking-[0.08em]">
-            {profile?.firstName} {profile?.lastName}
-          </p>
-          <p className="mt-1 break-all text-[13px] text-[#6a6a6a]">{profile?.email}</p>
-          <button
-            type="button"
-            onClick={() => setEditingProfile((current) => !current)}
-            className={`mt-4 border border-[#1c1b1b] px-5 py-2 ${label} hover:bg-[#1c1b1b] hover:text-white`}
-          >
-            {editingProfile ? 'Cancel' : 'Edit profile'}
-          </button>
-          {editingProfile ? (
-            <form
-              className="mt-5 space-y-4 border-t border-[#dddddd] pt-5 text-left"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void saveProfile();
-              }}
-            >
-              <label className={`block ${label}`}>
-                First name
-                <input
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  className="mt-2 h-11 w-full border border-[#cfcfcf] bg-white px-3 text-sm normal-case tracking-normal outline-none focus:border-[#1c1b1b]"
-                  autoComplete="given-name"
-                />
-              </label>
-              <label className={`block ${label}`}>
-                Last name
-                <input
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
-                  className="mt-2 h-11 w-full border border-[#cfcfcf] bg-white px-3 text-sm normal-case tracking-normal outline-none focus:border-[#1c1b1b]"
-                  autoComplete="family-name"
-                />
-              </label>
-              <label className={`block ${label} text-[#6a6a6a]`}>
-                Email
-                <input
-                  value={profile?.email ?? ''}
-                  readOnly
-                  className="mt-2 h-11 w-full border border-[#dddddd] bg-[#eeeeee] px-3 text-sm normal-case tracking-normal"
-                />
-                <span className="mt-2 block normal-case tracking-normal">Your email is your secure Shopify sign-in.</span>
-              </label>
-              <a
-                href={shopifyProfileUrl}
-                className={`block text-center underline underline-offset-4 ${label} hover:text-[#6a6a6a]`}
-              >
-                Change email securely
-              </a>
-              {avatarUrl ? (
-                <button
-                  type="button"
-                  onClick={() => void removeAvatar()}
-                  disabled={savingAvatar}
-                  className={`block w-full text-center text-[#6a6a6a] underline underline-offset-4 ${label} hover:text-[#1c1b1b] disabled:opacity-50`}
-                >
-                  {savingAvatar ? 'Removing photo…' : 'Remove profile photo'}
-                </button>
-              ) : null}
-              <button
-                type="submit"
-                disabled={savingProfile}
-                className={`w-full border border-[#1c1b1b] bg-[#1c1b1b] px-5 py-3 text-white ${label} hover:bg-white hover:text-[#1c1b1b] disabled:opacity-50`}
-              >
-                {savingProfile ? 'Saving…' : 'Save changes'}
-              </button>
-            </form>
-          ) : null}
-          <div className="mt-7 border-t border-[#dddddd] pt-5">
-            <p className={`${label} mb-1`}>Member of DSPLN</p>
-            <p className="text-[13px] leading-relaxed text-[#6a6a6a]">
-              {orders.length} order{orders.length === 1 ? '' : 's'} · {designs.length} saved design
-              {designs.length === 1 ? '' : 's'}
+          <p className="mt-5 text-[15px] uppercase tracking-[0.08em]">{displayName}</p>
+          <p className="mt-1 break-all text-[13px] text-[#666]">{customer.email}</p>
+          <div className="mt-7 border-t border-[#d8d8d8] pt-6">
+            <p className={`${label} mb-2`}>Member of DSPLN</p>
+            <p className="text-[13px] leading-relaxed text-[#666]">
+              {designs.length} design{designs.length === 1 ? '' : 's'} · {uploads.length} upload
+              {uploads.length === 1 ? '' : 's'} · {orders.length} order
+              {orders.length === 1 ? '' : 's'}
             </p>
           </div>
         </aside>
 
-        {/* White content + tabs */}
-        <main className="px-6 py-8 lg:px-12">
-          <h1 className="mb-6 text-xl uppercase tracking-[0.2em]">The Locker</h1>
-
-          <div className="mb-8 flex gap-8 overflow-x-auto border-b border-[#dddddd]">
-            {tabs.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                onClick={() => setTab(entry.id)}
-                className={`-mb-px whitespace-nowrap border-b-2 pb-3 ${label} transition-colors ${
-                  tab === entry.id
-                    ? 'border-[#1c1b1b] text-[#1c1b1b]'
-                    : 'border-transparent text-[#6a6a6a] hover:text-[#1c1b1b]'
-                }`}
-                aria-current={tab === entry.id ? 'page' : undefined}
-              >
-                {entry.text}
-              </button>
-            ))}
+        <main className="min-w-0 px-5 py-8 lg:px-12">
+          <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[#ddd] pb-5">
+            <div>
+              <p className={`${label} text-[#777]`}>The Locker</p>
+              <h1 className="mt-2 text-xl uppercase tracking-[0.2em]">
+                {nav.find((entry) => entry.id === page)?.text}
+              </h1>
+            </div>
+            {error ? <p className="text-sm text-[#842323]">{error}</p> : null}
           </div>
 
-          {tab === 'overview' && (
+          {loading ? <p className={`${label} py-12 text-center text-[#777]`}>Loading Locker…</p> : null}
+
+          {!loading && page === 'designs' ? (
             <section>
-              <div className="mb-10 grid grid-cols-1 border border-[#dddddd] sm:grid-cols-3">
-                {[
-                  [String(orders.length), 'Orders'],
-                  [formatMoney(String(totalSpent), currency), 'Total spent'],
-                  [String(designs.length), 'Saved designs'],
-                ].map(([value, text]) => (
-                  <div key={text} className="border-b border-[#dddddd] px-6 py-5 text-center last:border-b-0 sm:border-b-0 sm:border-l sm:first:border-l-0">
-                    <span className="block text-[22px] tracking-[0.08em]">{value}</span>
-                    <span className={`mt-1 block ${label} text-[#6a6a6a]`}>{text}</span>
-                  </div>
+              {designs.length ? (
+                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {designs.map((design) => {
+                    const designUrl = new URL(
+                      `/products/${design.productHandle || 'customgi'}`,
+                      customer.storefrontOrigin,
+                    );
+                    designUrl.searchParams.set('design', design.id);
+                    return (
+                      <article key={design.id} className="border border-[#ddd] bg-white">
+                        <div className="aspect-square bg-[#f7f7f7]">
+                          {design.thumbnailUrl ? (
+                            <img
+                              src={design.thumbnailUrl}
+                              alt={design.name || 'Saved design'}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            <div className={`flex h-full items-center justify-center text-[#999] ${label}`}>
+                              Preview pending
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-5">
+                          <h2 className="text-sm uppercase tracking-[0.12em]">
+                            {design.name || 'Saved Design'}
+                          </h2>
+                          <p className="mt-2 text-xs text-[#777]">
+                            Last edited {formatDate(design.updatedAt)}
+                          </p>
+                          <a
+                            href={designUrl.toString()}
+                            target="_top"
+                            className={`mt-5 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-5 py-3 text-white ${label}`}
+                          >
+                            Open in 3D
+                          </a>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="border border-[#ddd] px-6 py-14 text-center">
+                  <p className="text-sm text-[#666]">You haven’t saved a design yet.</p>
+                  <a
+                    href={`${customer.storefrontOrigin}/products/customgi`}
+                    target="_top"
+                    className={`mt-6 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-7 py-3 text-white ${label}`}
+                  >
+                    Design a Gi
+                  </a>
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {!loading && page === 'uploads' ? (
+            <section>
+              <p className="mb-6 max-w-2xl text-sm leading-relaxed text-[#666]">
+                Artwork uploaded with your saved configurator designs is kept here for reuse and
+                production reference.
+              </p>
+              {uploads.length ? (
+                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                  {uploads.map((upload, index) => (
+                    <article key={`${upload.url}-${index}`} className="border border-[#ddd] p-4">
+                      <div className="aspect-square bg-[#f7f7f7]">
+                        <img
+                          src={upload.url}
+                          alt={upload.filename || 'Uploaded artwork'}
+                          className="h-full w-full object-contain p-3"
+                        />
+                      </div>
+                      <h2 className="mt-4 truncate text-sm">{upload.filename || 'Uploaded artwork'}</h2>
+                      <p className="mt-1 text-xs text-[#777]">
+                        {upload.designName || 'Saved design'}
+                        {upload.slot ? ` · ${upload.slot.replaceAll('-', ' ')}` : ''}
+                      </p>
+                      <a
+                        href={upload.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`mt-4 inline-flex underline underline-offset-4 ${label}`}
+                      >
+                        Open artwork
+                      </a>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="border border-[#ddd] px-6 py-14 text-center text-sm text-[#666]">
+                  Uploaded logos from saved designs will appear here.
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {!loading && page === 'fit' ? (
+            <form
+              className="max-w-4xl"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveFit();
+              }}
+            >
+              <p className="mb-7 max-w-2xl text-sm leading-relaxed text-[#666]">
+                Save your measurements once so future sizing recommendations and custom orders can
+                use the same fit profile.
+              </p>
+              <div className="mb-6 flex gap-2">
+                {(['imperial', 'metric'] as const).map((units) => (
+                  <button
+                    key={units}
+                    type="button"
+                    onClick={() => setFit({ ...fit, units })}
+                    className={`border px-5 py-2 ${label} ${
+                      fit.units === units
+                        ? 'border-[#1c1b1b] bg-[#1c1b1b] text-white'
+                        : 'border-[#ccc]'
+                    }`}
+                  >
+                    {units === 'imperial' ? 'Inches / Pounds' : 'Centimeters / Kilograms'}
+                  </button>
                 ))}
               </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  ['height', 'Height'],
+                  ['weight', 'Weight'],
+                  ['chest', 'Chest'],
+                  ['waist', 'Waist'],
+                  ['hips', 'Hips'],
+                  ['inseam', 'Inseam'],
+                  ['shoulder', 'Shoulder width'],
+                  ['sleeve', 'Sleeve length'],
+                  ['preferredGiSize', 'Preferred Gi size'],
+                ].map(([key, text]) => (
+                  <label key={key} className={label}>
+                    {text}
+                    <input
+                      value={String(fit[key as keyof FitProfile] ?? '')}
+                      onChange={(event) => setFit({ ...fit, [key]: event.target.value })}
+                      className="mt-2 h-11 w-full border border-[#ccc] px-3 text-sm normal-case tracking-normal outline-none focus:border-[#1c1b1b]"
+                    />
+                  </label>
+                ))}
+                <label className={label}>
+                  Fit preference
+                  <select
+                    value={fit.fitPreference}
+                    onChange={(event) =>
+                      setFit({ ...fit, fitPreference: event.target.value as FitProfile['fitPreference'] })
+                    }
+                    className="mt-2 h-11 w-full border border-[#ccc] bg-white px-3 text-sm normal-case tracking-normal"
+                  >
+                    <option value="slim">Slim</option>
+                    <option value="regular">Regular</option>
+                    <option value="relaxed">Relaxed</option>
+                  </select>
+                </label>
+              </div>
+              <label className={`mt-5 block ${label}`}>
+                Fit notes
+                <textarea
+                  value={fit.notes}
+                  onChange={(event) => setFit({ ...fit, notes: event.target.value })}
+                  rows={4}
+                  className="mt-2 w-full border border-[#ccc] p-3 text-sm normal-case tracking-normal outline-none focus:border-[#1c1b1b]"
+                  placeholder="Examples: longer sleeves, room through shoulders, competition fit…"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={savingFit}
+                className={`mt-6 border border-[#1c1b1b] bg-[#1c1b1b] px-8 py-3 text-white ${label} disabled:opacity-50`}
+              >
+                {savingFit ? 'Saving…' : 'Save sizing profile'}
+              </button>
+              {fit.updatedAt ? (
+                <p className="mt-3 text-xs text-[#777]">Last updated {formatDate(fit.updatedAt)}</p>
+              ) : null}
+            </form>
+          ) : null}
 
-              <h2 className={`mb-4 border-b border-[#dddddd] pb-3 text-[14px] uppercase tracking-[0.2em]`}>
-                Recent orders
-              </h2>
-              {orders.length === 0 ? (
-                <div className="border border-[#dddddd] px-6 py-10 text-center">
-                  <p className="mb-5 text-sm text-[#6a6a6a]">You haven’t placed any orders yet.</p>
+          {!loading && page === 'orders' ? (
+            <section>
+              {orders.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className={`border-b border-[#1c1b1b] ${label}`}>
+                        <th className="py-3 pr-4 font-normal">Order</th>
+                        <th className="py-3 pr-4 font-normal">Date</th>
+                        <th className="py-3 pr-4 font-normal">Payment</th>
+                        <th className="py-3 pr-4 font-normal">Fulfillment</th>
+                        <th className="py-3 font-normal">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((order) => (
+                        <tr key={order.id} className="border-b border-[#ddd]">
+                          <td className="py-4 pr-4">
+                            <a href={order.statusPageUrl} target="_top" className="underline">
+                              {order.name}
+                            </a>
+                          </td>
+                          <td className="py-4 pr-4">{formatDate(order.processedAt)}</td>
+                          <td className="py-4 pr-4"><StatusBadge value={order.financialStatus} /></td>
+                          <td className="py-4 pr-4"><StatusBadge value={order.fulfillmentStatus} /></td>
+                          <td className="py-4">
+                            {formatMoney(order.totalAmount, order.totalCurrency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="border border-[#ddd] px-6 py-14 text-center">
+                  <p className="text-sm text-[#666]">You haven’t placed any orders yet.</p>
                   <a
-                    href={`${shopOrigin}/collections/all`}
-                    className={`inline-block border border-[#1c1b1b] bg-[#1c1b1b] px-8 py-3 text-white ${label} hover:bg-white hover:text-[#1c1b1b]`}
+                    href={`${customer.storefrontOrigin}/collections/all`}
+                    target="_top"
+                    className={`mt-6 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-7 py-3 text-white ${label}`}
                   >
                     Start shopping
                   </a>
                 </div>
-              ) : (
-                <ul>
-                  {orders.slice(0, 3).map((order) => (
-                    <li key={order.id} className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-[#dddddd] py-3.5 text-sm first:border-t first:border-t-[#1c1b1b] sm:grid-cols-[90px_1fr_auto_auto]">
-                      <span>{order.name}</span>
-                      <span className="hidden text-[#6a6a6a] sm:block">{formatDate(order.processedAt)}</span>
-                      <StatusBadge value={order.financialStatus} />
-                      <span className="text-right">{formatMoney(order.totalAmount, order.totalCurrency)}</span>
-                    </li>
-                  ))}
-                </ul>
               )}
             </section>
-          )}
-
-          {tab === 'orders' && (
-            <section>
-              <h2 className="mb-4 border-b border-[#dddddd] pb-3 text-[14px] uppercase tracking-[0.2em]">
-                Order history
-              </h2>
-              {orders.length === 0 ? (
-                <p className="text-sm text-[#6a6a6a]">No orders yet.</p>
-              ) : (
-                <ul>
-                  {orders.map((order) => (
-                    <li key={order.id} className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-[#dddddd] py-3.5 text-sm first:border-t first:border-t-[#1c1b1b] sm:grid-cols-[90px_1fr_auto_auto]">
-                      {order.statusPageUrl ? (
-                        <a href={order.statusPageUrl} className="underline underline-offset-4 hover:text-[#6a6a6a]">
-                          {order.name}
-                        </a>
-                      ) : (
-                        <span>{order.name}</span>
-                      )}
-                      <span className="hidden text-[#6a6a6a] sm:block">{formatDate(order.processedAt)}</span>
-                      <StatusBadge value={order.financialStatus} />
-                      <span className="text-right">{formatMoney(order.totalAmount, order.totalCurrency)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-
-          {tab === 'designs' && (
-            <section>
-              <h2 className="mb-4 border-b border-[#dddddd] pb-3 text-[14px] uppercase tracking-[0.2em]">
-                My Designs
-              </h2>
-              {designs.length === 0 ? (
-                <div className="bg-[#f7f7f7] px-6 py-12 text-center">
-                  <p className="mx-auto mb-6 max-w-md text-sm leading-relaxed text-[#6a6a6a]">
-                    Your saved gi designs will live here. Create a custom gi in the configurator
-                    and it will follow you home.
-                  </p>
-                  <a
-                    href={`${shopOrigin}/collections/all`}
-                    className={`inline-block border border-[#1c1b1b] bg-white px-8 py-3 text-[#1c1b1b] ${label} hover:bg-[#1c1b1b] hover:text-white`}
-                  >
-                    Design your gi
-                  </a>
-                </div>
-              ) : (
-                <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                  {designs.map((design) => (
-                    <li key={design.id} className="group border border-[#dddddd] transition-colors hover:border-[#1c1b1b]">
-                      {/* The theme's configurator product page reads ?design=<id>
-                          and loads it into the configurator iframe. */}
-                      <a
-                        href={`${shopOrigin}/products/${design.productHandle || 'customgi'}?design=${encodeURIComponent(design.id)}`}
-                        className="block p-3 no-underline"
-                      >
-                        {design.thumbnailUrl ? (
-                          <img src={design.thumbnailUrl} alt={design.name ?? 'Saved design'} className="mb-3 aspect-square w-full object-contain" />
-                        ) : (
-                          <div className="mb-3 flex aspect-square w-full items-center justify-center bg-[#f7f7f7] text-2xl text-[#dddddd]">D</div>
-                        )}
-                        <p className="truncate text-sm text-[#1c1b1b]">{design.name ?? 'Untitled design'}</p>
-                        <p className={`mt-0.5 ${label} text-[#6a6a6a]`}>{design.productHandle ?? ''}</p>
-                        <p className={`mt-2 ${label} text-[#6a6a6a] underline underline-offset-4 group-hover:text-[#1c1b1b]`}>
-                          Open in configurator
-                        </p>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
+          ) : null}
         </main>
       </div>
     </div>

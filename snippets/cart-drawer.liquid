@@ -49,13 +49,7 @@
               </a>
 
               {%- if shop.customer_accounts_enabled and customer == null -%}
-                {%- liquid
-                  assign locker_base = 'https://dspln-dawn-shopify-theme.netlify.app'
-                  if shop.permanent_domain contains 'dspln-dev-2'
-                    assign locker_base = 'https://dev--dspln-dawn-shopify-theme.netlify.app'
-                  endif
-                  assign locker_url = locker_base | append: '/locker'
-                -%}
+                {%- assign locker_url = '/pages/locker' -%}
                 <p class="cart__login-title h3">{{ 'sections.cart.login.title' | t }}</p>
                 <p class="cart__login-paragraph">
                   {{ 'sections.cart.login.paragraph_html' | t: link: locker_url }}
