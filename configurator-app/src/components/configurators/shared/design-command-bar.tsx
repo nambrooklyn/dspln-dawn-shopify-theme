@@ -1,5 +1,6 @@
 import { memo, useState } from 'react';
 import { MoreHorizontal, Share2 } from 'lucide-react';
+import { lockerUrl } from './dspln-rail-links';
 
 type SaveStatus = 'loading' | 'saving' | 'saved' | 'error';
 
@@ -137,7 +138,7 @@ export const DesignCommandBar = memo(
                 Share design
               </button>
               <a
-                href="/locker"
+                href={lockerUrl()}
                 target="_top"
                 className="hover:bg-muted block w-full rounded px-3 py-2 text-left text-xs"
               >
@@ -205,7 +206,7 @@ export const DesignCommandBar = memo(
               {menuOpen ? (
                 <div className="border-border bg-background absolute top-full right-0 z-50 mt-2 w-44 rounded border p-1 shadow-xl">
                   <a
-                    href="/locker"
+                    href={lockerUrl()}
                     target="_top"
                     className="hover:bg-muted block w-full rounded px-3 py-2 text-left text-xs"
                   >
