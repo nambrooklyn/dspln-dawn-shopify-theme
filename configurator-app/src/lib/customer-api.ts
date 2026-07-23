@@ -48,6 +48,7 @@ export async function updateProfile(input: {
   interface Result {
     customerUpdate: {
       customer: {
+        id: string | null;
         firstName: string | null;
         lastName: string | null;
         emailAddress: { emailAddress: string } | null;
@@ -58,7 +59,7 @@ export async function updateProfile(input: {
   const data = await query<Result>(
     `mutation LockerProfileUpdate($input: CustomerUpdateInput!) {
       customerUpdate(input: $input) {
-        customer { firstName lastName emailAddress { emailAddress } }
+        customer { id firstName lastName emailAddress { emailAddress } }
         userErrors { message }
       }
     }`,
@@ -72,6 +73,7 @@ export async function updateProfile(input: {
     firstName: result.customer.firstName ?? '',
     lastName: result.customer.lastName ?? '',
     email: result.customer.emailAddress?.emailAddress ?? '',
+    customerId: (result.customer.id ?? '').split('/').pop() ?? '',
   };
 }
 

@@ -4,11 +4,11 @@ import {
   HelpCircle,
   ImageIcon,
   LogIn,
-  UserRound,
 } from 'lucide-react';
 import { isStudioMode } from '../shared/studio-mode';
 
 import { openStorefrontPage } from '../shared/storefront-links';
+import { LockerRailButton } from '../shared/dspln-rail-links';
 
 function openSavedDesigns() {
   if (typeof window === 'undefined') return;
@@ -20,10 +20,6 @@ function openUploadedLogos() {
   window.dispatchEvent(new CustomEvent('dspln:configurator-rail:uploads'));
 }
 
-function openShopifyAccount() {
-  openStorefrontPage('/account');
-}
-
 function openGuide() {
   openStorefrontPage('/pages/how-to-use-customizer');
 }
@@ -33,7 +29,6 @@ const railButtonClass =
 
 export const ConfiguratorActionRail = memo(
   ({
-    isCustomer,
     onLoginToSave,
   }: {
     isCustomer?: boolean;
@@ -41,22 +36,8 @@ export const ConfiguratorActionRail = memo(
   }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
-        {/* The logged-out Login button is hidden until the account flow
-            ships — the theme doesn't pass customer identity yet, so the
-            login round-trip appears broken to customers. */}
-        {isCustomer ? (
-          <button
-            type="button"
-            className={railButtonClass}
-            onClick={openShopifyAccount}
-            title="Account"
-          >
-            <UserRound className="h-6 w-6 stroke-[1.7]" />
-            <span className="text-[11px] font-medium leading-none">
-              Account
-            </span>
-          </button>
-        ) : null}
+        {/* The Locker is the single account destination for every customer. */}
+        <LockerRailButton className={railButtonClass} />
 
         {/* Save/uploads UI is owner-only (?studio=1) until the
             account experience ships for customers. */}
