@@ -65,26 +65,11 @@
       "settings": {
         "heading": "THE PROCESS"
       }
-    },
-    "dspln_prestige_product_carousel_PQVPVp": {
-      "type": "dspln-prestige-product-carousel",
-      "name": "DSPLN product carousel",
-      "settings": {
-        "collection": "frontpage",
-        "products_to_show": 12,
-        "title": "CUSTOM BJJ GEAR",
-        "heading_size": "h2",
-        "show_view_all": true,
-        "color_scheme": "",
-        "padding_top": 36,
-        "padding_bottom": 36
-      }
     }
   },
   "order": [
     "main",
     "size_recommender",
-    "process",
-    "dspln_prestige_product_carousel_PQVPVp"
+    "process"
   ]
 }
