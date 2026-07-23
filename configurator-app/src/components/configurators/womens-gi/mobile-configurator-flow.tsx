@@ -221,6 +221,11 @@ export const MobileConfiguratorFlow = memo(
       setPantLogo,
       removePantLogo,
     } = useGiState();
+    const [stepKey, setStepKey] = useState(() => {
+      if (selectedPart === 'belt') return 'belt-size';
+      if (selectedPart === 'pants') return 'pant-add';
+      return 'kimono-add';
+    });
 
     const steps = useMemo<MobileStep[]>(() => {
       const kimonoSteps: MobileStep[] = [
@@ -234,8 +239,14 @@ export const MobileConfiguratorFlow = memo(
               addLabel="Add Kimono (+$55)"
               removeLabel="Remove Kimono"
               included={partVisibility.jacket}
-              onAdd={() => setPartVisible('jacket', true)}
-              onRemove={() => setPartVisible('jacket', false)}
+              onAdd={() => {
+                setPartVisible('jacket', true);
+                setStepKey('kimono-size');
+              }}
+              onRemove={() => {
+                setPartVisible('jacket', false);
+                setStepKey('belt-add');
+              }}
             />
           ),
         },
@@ -298,8 +309,14 @@ export const MobileConfiguratorFlow = memo(
               addLabel="Add Belt (+$15)"
               removeLabel="Remove Belt"
               included={partVisibility.belt}
-              onAdd={() => setPartVisible('belt', true)}
-              onRemove={() => setPartVisible('belt', false)}
+              onAdd={() => {
+                setPartVisible('belt', true);
+                setStepKey('belt-size');
+              }}
+              onRemove={() => {
+                setPartVisible('belt', false);
+                setStepKey('pant-add');
+              }}
             />
           ),
         },
@@ -377,8 +394,14 @@ export const MobileConfiguratorFlow = memo(
               addLabel="Add Pant (+$45)"
               removeLabel="Remove Pant"
               included={partVisibility.pants}
-              onAdd={() => setPartVisible('pants', true)}
-              onRemove={() => setPartVisible('pants', false)}
+              onAdd={() => {
+                setPartVisible('pants', true);
+                setStepKey('pant-size');
+              }}
+              onRemove={() => {
+                setPartVisible('pants', false);
+                setStepKey('pant-add');
+              }}
             />
           ),
         },
@@ -438,7 +461,14 @@ export const MobileConfiguratorFlow = memo(
         }),
       ];
 
-      return [...kimonoSteps, ...beltSteps, ...pantSteps];
+      return [
+        kimonoSteps[0],
+        ...(partVisibility.jacket ? kimonoSteps.slice(1) : []),
+        beltSteps[0],
+        ...(partVisibility.belt ? beltSteps.slice(1) : []),
+        pantSteps[0],
+        ...(partVisibility.pants ? pantSteps.slice(1) : []),
+      ];
     }, [
       beltEmbroidery.leftEnd,
       beltEmbroidery.leftFont,
@@ -469,11 +499,17 @@ export const MobileConfiguratorFlow = memo(
       setPartVisible,
     ]);
 
-    const [stepIndex, setStepIndex] = useState(() =>
-      indexForPart(steps, selectedPart),
+    const requestedStepIndex = steps.findIndex(
+      (candidate) => candidate.key === stepKey,
     );
+    const stepIndex = requestedStepIndex >= 0 ? requestedStepIndex : 0;
     const step = steps[stepIndex] ?? steps[0];
     const mobileStepPartRef = useRef(selectedPart);
+
+    useEffect(() => {
+      if (selectedPart === mobileStepPartRef.current) return;
+      setStepKey(steps[indexForPart(steps, selectedPart)].key);
+    }, [selectedPart, steps]);
 
     useEffect(() => {
       if (!step) return;
@@ -482,11 +518,6 @@ export const MobileConfiguratorFlow = memo(
       // Scrolling to a step frames what that step customizes.
       setCameraView(step.view ?? PART_CAMERA_VIEW[step.part]);
     }, [setCameraView, setSelectedPart, step]);
-
-    useEffect(() => {
-      if (selectedPart === mobileStepPartRef.current) return;
-      setStepIndex(indexForPart(steps, selectedPart));
-    }, [selectedPart, steps]);
 
     const addOnTotal =
       Object.entries(kimonoLogos).reduce((sum, [slot, logo]) => {
@@ -516,12 +547,10 @@ export const MobileConfiguratorFlow = memo(
           current={stepIndex + 1}
           total={steps.length}
           onPrevious={() =>
-            setStepIndex((current) => Math.max(0, current - 1))
+            setStepKey(steps[Math.max(0, stepIndex - 1)].key)
           }
           onNext={() =>
-            setStepIndex((current) =>
-              Math.min(steps.length - 1, current + 1),
-            )
+            setStepKey(steps[Math.min(steps.length - 1, stepIndex + 1)].key)
           }
           description={step.description}
         >
