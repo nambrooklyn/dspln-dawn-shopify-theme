@@ -66,11 +66,11 @@ export const ConfiguratorShell = memo(
           <LeftSidebar3D />
           <div className="dspln-configurator-scene">
             {sceneTopContent ? (
-              <div className="pointer-events-auto absolute top-3 right-4 left-4 z-20">
+              <div className="dspln-configurator-scene-top pointer-events-auto z-20">
                 {sceneTopContent}
               </div>
             ) : null}
-            {children}
+            <div className="dspln-configurator-scene-content">{children}</div>
           </div>
           <PriceSidebar
             onAddToCart={onAddToCart}

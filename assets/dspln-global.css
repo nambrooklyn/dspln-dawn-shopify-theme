@@ -619,13 +619,13 @@ details[open] > summary.header__icon--menu .icon-hamburger {
   }
 
   .header {
-    min-height: 7.2rem;
+    min-height: 5rem;
     padding-left: 2.4rem !important;
     padding-right: 2.4rem !important;
   }
 
   .dspln-header-logo {
-    width: 16.8rem;
+    width: 14rem;
     max-width: 48vw;
   }
 

@@ -109,9 +109,23 @@ textarea {
 
 .dspln-configurator-scene {
   position: relative;
+  display: flex;
   height: 27rem;
   min-width: 0;
   flex-shrink: 0;
+  flex-direction: column;
+}
+
+.dspln-configurator-scene-top {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0.35rem 0.5rem 0;
+}
+
+.dspln-configurator-scene-content {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 0%;
 }
 
 .dspln-configurator-login-save {
@@ -149,6 +163,19 @@ textarea {
     height: auto;
     min-height: 0;
     flex: 1 1 0%;
+    display: block;
+  }
+
+  .dspln-configurator-scene-top {
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+    left: 1rem;
+    padding: 0;
+  }
+
+  .dspln-configurator-scene-content {
+    height: 100%;
   }
 
   .dspln-configurator-login-save {
