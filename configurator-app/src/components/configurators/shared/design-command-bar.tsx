@@ -98,13 +98,79 @@ export const DesignCommandBar = memo(
 
     return (
       <>
-        <div className="border-border/80 bg-background/95 flex w-full max-w-[54rem] items-center justify-between gap-2 rounded-md border px-2 py-1.5 shadow-sm backdrop-blur sm:gap-3 sm:rounded-lg sm:px-3 sm:py-2">
+        <div className="border-border/80 bg-background/95 relative min-h-[3.25rem] w-full rounded-md border px-2 py-1 shadow-sm backdrop-blur sm:hidden">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 pr-20">
+              <p className="text-foreground truncate text-[10px] font-semibold tracking-[0.08em] uppercase">
+                {designName}
+              </p>
+              <p
+                className={`text-[8px] ${
+                  status === 'error'
+                    ? 'text-destructive'
+                    : hasUnsavedChanges
+                      ? 'text-amber-700'
+                      : 'text-muted-foreground'
+                }`}
+              >
+                {lastEditedLabel(status, hasUnsavedChanges, lastEditedAt)}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Design actions"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+              className="text-foreground hover:text-muted-foreground relative z-10 -mt-0.5 shrink-0 px-1 py-0.5"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={status === 'saving' || (Boolean(designId) && !hasUnsavedChanges)}
+            className="bg-foreground text-background hover:bg-foreground/85 absolute right-2 bottom-1 min-w-16 rounded px-3 py-0.5 text-[9px] font-semibold tracking-[0.14em] uppercase disabled:cursor-default disabled:opacity-45"
+          >
+            {status === 'saving' ? 'Saving…' : 'Save'}
+          </button>
+
+          {menuOpen ? (
+            <div className="border-border bg-background absolute top-full right-0 z-50 mt-1 w-48 rounded border p-1 shadow-xl">
+              <button
+                type="button"
+                onClick={() => openNameDialog('saveAs')}
+                className="hover:bg-muted w-full rounded px-3 py-2 text-left text-xs"
+              >
+                Save as a new design
+              </button>
+              <button
+                type="button"
+                onClick={() => void share()}
+                className="hover:bg-muted w-full rounded px-3 py-2 text-left text-xs"
+              >
+                Share design
+              </button>
+              <a
+                href="/locker"
+                target="_top"
+                className="hover:bg-muted block w-full rounded px-3 py-2 text-left text-xs"
+              >
+                Open The Locker
+              </a>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="border-border/80 bg-background/95 hidden w-full max-w-[54rem] items-center justify-between gap-3 rounded-lg border px-3 py-2 shadow-sm backdrop-blur sm:flex">
           <div className="min-w-0">
-            <p className="text-foreground truncate text-[11px] font-semibold tracking-[0.08em] uppercase sm:text-xs">
+            <p className="text-foreground truncate text-xs font-semibold tracking-[0.08em] uppercase">
               {designName}
             </p>
             <p
-              className={`text-[9px] sm:mt-0.5 sm:text-[10px] ${
+              className={`mt-0.5 text-[10px] ${
                 status === 'error'
                   ? 'text-destructive'
                   : hasUnsavedChanges
@@ -116,12 +182,12 @@ export const DesignCommandBar = memo(
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               onClick={() => void save()}
               disabled={status === 'saving' || (Boolean(designId) && !hasUnsavedChanges)}
-              className="bg-foreground text-background hover:bg-foreground/85 min-w-16 rounded px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase disabled:cursor-default disabled:opacity-45 sm:min-w-20 sm:px-4 sm:py-2"
+              className="bg-foreground text-background hover:bg-foreground/85 min-w-20 rounded px-4 py-2 text-[10px] font-semibold tracking-[0.14em] uppercase disabled:cursor-default disabled:opacity-45"
             >
               {status === 'saving' ? 'Saving…' : 'Save'}
             </button>
@@ -149,26 +215,12 @@ export const DesignCommandBar = memo(
                 aria-label="Design actions"
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((open) => !open)}
-                className="border-border text-foreground hover:bg-muted rounded border p-1.5 sm:p-2"
+                className="border-border text-foreground hover:bg-muted rounded border p-2"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </button>
               {menuOpen ? (
                 <div className="border-border bg-background absolute top-full right-0 z-50 mt-2 w-44 rounded border p-1 shadow-xl">
-                  <button
-                    type="button"
-                    onClick={() => openNameDialog('saveAs')}
-                    className="hover:bg-muted w-full rounded px-3 py-2 text-left text-xs sm:hidden"
-                  >
-                    Save as a new design
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void share()}
-                    className="hover:bg-muted w-full rounded px-3 py-2 text-left text-xs md:hidden"
-                  >
-                    Share design
-                  </button>
                   <a
                     href="/locker"
                     target="_top"
