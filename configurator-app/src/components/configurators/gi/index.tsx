@@ -58,6 +58,7 @@ import {
   readActiveDesignLink,
   writeActiveDesignLink,
 } from '../shared/active-design-link';
+import { DesignCommandBar } from '../shared/design-command-bar';
 
 const PRODUCT_CONFIG = currentGiProductConfig();
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
@@ -282,6 +283,7 @@ const GiConfiguratorInner = memo(() => {
         : (readActiveDesignLink(ACTIVE_DESIGN_LINK_KEY)?.signature ?? null),
   );
   const [isSavingDesign, setIsSavingDesign] = useState(false);
+  const [lastEditedAt, setLastEditedAt] = useState<string | null>(null);
   const [cloudOwnerContext] = useState(() => getGiCloudOwnerContext());
   const [isStudio] = useState(isStudioMode);
   const draftReadyRef = useRef(false);
@@ -340,6 +342,7 @@ const GiConfiguratorInner = memo(() => {
         // content is by definition saved.
         setCurrentDesignId(draft.id);
         setCurrentDesignName(draft.name);
+        setLastEditedAt(draft.updatedAt);
         markCleanRef.current = true;
       }
       // The autosave draft keeps whatever active-design link was restored
@@ -467,7 +470,10 @@ const GiConfiguratorInner = memo(() => {
     return () => window.clearTimeout(timeout);
   }, [kimonoLogos, pantLogos, serialize]);
 
-  const handleSaveDesign = useCallback(async (name: string) => {
+  const handleSaveDesign = useCallback(async (
+    name: string,
+    options?: { saveAsNew?: boolean },
+  ) => {
     // A save can take a few seconds (thumbnail + uploads); a second press in
     // that window must not mint a second design record.
     if (savingDesignRef.current) return null;
@@ -481,10 +487,11 @@ const GiConfiguratorInner = memo(() => {
         (design) =>
           design.name.trim().toLowerCase() === cleanName.trim().toLowerCase(),
       );
-      const id =
-        currentDesignId ??
-        matchingSavedDesign?.id ??
-        createLineDesignId(PRODUCT_CONFIG.savedDesignIdPrefix);
+      const id = options?.saveAsNew
+        ? createLineDesignId(PRODUCT_CONFIG.savedDesignIdPrefix)
+        : currentDesignId ??
+          matchingSavedDesign?.id ??
+          createLineDesignId(PRODUCT_CONFIG.savedDesignIdPrefix);
       const existing = await readGiDraftDocument(id);
       const draft = await createGiDraftDocument({
         id,
@@ -516,6 +523,7 @@ const GiConfiguratorInner = memo(() => {
 
       const savedId = cloudDraft?.id ?? draft.id;
       const savedName = cloudDraft?.name ?? draft.name;
+      setLastEditedAt(cloudDraft?.updatedAt ?? draft.updatedAt);
 
       setLastSavedSignature(signatureAtSave);
       writeActiveDesignLink(ACTIVE_DESIGN_LINK_KEY, {
@@ -555,6 +563,45 @@ const GiConfiguratorInner = memo(() => {
     savedDesigns,
     serialize,
   ]);
+
+  const handleSaveAsDesign = useCallback(
+    (name: string) => handleSaveDesign(name, { saveAsNew: true }),
+    [handleSaveDesign],
+  );
+
+  const handleShareDesign = useCallback(
+    async (providedDesignId?: string) => {
+      const savedId =
+        providedDesignId ??
+        (await handleSaveDesign(currentDesignName || formatDesignName())) ??
+        currentDesignId;
+      if (!savedId) {
+        toast.error('Save the design before sharing');
+        return;
+      }
+      const url = buildGiCloudDesignUrls(savedId)?.designUrl;
+      if (!url) {
+        toast.error('Could not build the share link');
+        return;
+      }
+      if (navigator.share) {
+        await navigator
+          .share({ title: currentDesignName, url })
+          .catch(() => undefined);
+        return;
+      }
+      const copied = await copyTextToClipboard(url);
+      if (copied) {
+        toast.success('Share link copied');
+      } else {
+        toast.info('Copy this share link', {
+          description: url,
+          duration: 15000,
+        });
+      }
+    },
+    [currentDesignId, currentDesignName, handleSaveDesign],
+  );
 
   const handleLoginToSave = useCallback(async () => {
     const savedId = await handleSaveDesign(currentDesignName || formatDesignName());
@@ -827,28 +874,16 @@ const GiConfiguratorInner = memo(() => {
           )
         }
         sceneTopContent={
-          cloudOwnerContext?.isCustomer ? (
-            <div
-              className="flex max-w-[32rem] items-center gap-4 text-[9px] font-semibold tracking-[0.14em] uppercase"
-              title={cloudOwnerContext.customerEmail ?? undefined}
-            >
-              <span className="text-muted-foreground truncate">
-                {cloudOwnerContext.customerEmail}
-              </span>
-              <a
-                href={storefrontUrl('/account/logout')}
-                target="_top"
-                className="text-foreground hover:text-muted-foreground shrink-0"
-              >
-                Sign Out
-              </a>
-            </div>
-          ) : (
-            // Login entry points are hidden until the account flow ships:
-            // the theme doesn't pass customer identity yet, so the login
-            // round-trip appears broken to customers.
-            null
-          )
+          <DesignCommandBar
+            designId={currentDesignId}
+            designName={currentDesignName}
+            hasUnsavedChanges={hasUnsavedChanges}
+            lastEditedAt={lastEditedAt}
+            status={draftStatus}
+            onSave={handleSaveDesign}
+            onSaveAs={handleSaveAsDesign}
+            onShare={handleShareDesign}
+          />
         }
       >
         <GiCanvas />
