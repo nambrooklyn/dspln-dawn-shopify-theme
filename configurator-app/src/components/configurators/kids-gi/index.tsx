@@ -680,9 +680,9 @@ const GiConfiguratorInner = memo(() => {
           // the theme doesn't pass customer identity yet, so the login
           // round-trip appears broken to customers.
         }
-        railContent={!isStudioMode() && !cloudOwnerContext?.isCustomer ? undefined :
+        railContent={!isStudioMode() ? undefined :
           <>
-          {isStudioMode() ? <CameraTuner /> : null}
+          <CameraTuner />
           <SavedDesignsRail
             status={draftStatus}
             savedDesigns={savedDesigns}

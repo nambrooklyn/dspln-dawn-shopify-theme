@@ -60,9 +60,8 @@ export const ConfiguratorActionRail = memo(
           </button>
         ) : null}
 
-        {/* Saved designs: signed-in customers (account flow shipped with
-            The Locker) and studio. Uploads stay owner-only. */}
-        {isCustomer || isStudioMode() ? (
+        {/* Saved designs are studio-only; customer save is being rebuilt Locker-first. */}
+        {isStudioMode() ? (
           <button
             type="button"
             className={railButtonClass}

@@ -820,26 +820,11 @@ const GiConfiguratorInner = memo(() => {
               currentPantLogos={pantLogos}
             />
             </>
-          ) : cloudOwnerContext?.isCustomer ? (
-            // Signed-in customers get the saved-designs rail only — the
-            // studio tools (camera tuner, text tool) stay owner-only.
-            <SavedDesignsRail
-              status={draftStatus}
-              savedDesigns={savedDesigns}
-              defaultDesignName={currentDesignName || formatDesignName()}
-              storageLabel="Saved to your account"
-              onSaveDesign={handleSaveDesign}
-              activeDesignId={currentDesignId}
-              activeDesignName={currentDesignName}
-              onLoadDesign={handleLoadDesign}
-              onDeleteDesign={handleDeleteDesign}
-              onCopyCustomerLink={handleCopyCustomerLink}
-              onApplyKimonoLogo={setKimonoLogo}
-              onApplyPantLogo={setPantLogo}
-              currentKimonoLogos={kimonoLogos}
-              currentPantLogos={pantLogos}
-            />
-          ) : null
+          ) : (
+            // Customer-facing save is being rebuilt Locker-first; the
+            // configurator's own saved-designs rail is studio-only.
+            null
+          )
         }
         sceneTopContent={
           cloudOwnerContext?.isCustomer ? (
