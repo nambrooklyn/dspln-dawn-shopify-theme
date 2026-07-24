@@ -275,13 +275,13 @@ export function TheLocker() {
   ];
 
   return (
-    <div className="min-h-screen bg-white font-sans text-[#1c1b1b]">
-      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[84px_300px_minmax(0,1fr)]">
-        <nav className="flex items-center justify-around bg-[#1c1b1b] px-2 py-2 lg:min-h-screen lg:flex-col lg:justify-start lg:py-6">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
+      <div className="grid min-h-screen w-full min-w-0 grid-cols-1 lg:grid-cols-[84px_300px_minmax(0,1fr)]">
+        <nav className="grid min-w-0 grid-cols-4 items-stretch bg-[#1c1b1b] px-1 py-1 lg:flex lg:min-h-screen lg:flex-col lg:justify-start lg:px-2 lg:py-6">
           <a
             href={customer.storefrontOrigin}
             target="_top"
-            className="flex h-9 w-9 items-center justify-center border border-white/40 text-white lg:mb-6"
+            className="hidden h-9 w-9 items-center justify-center border border-white/40 text-white lg:mb-6 lg:flex"
           >
             D
           </a>
@@ -293,7 +293,7 @@ export function TheLocker() {
                   setPage(entry.id);
                   setSelectedDesign(null);
                 }}
-              className={`w-full px-2 py-3 text-center ${label} ${
+              className={`min-w-0 px-1 py-3 text-center text-[9px] uppercase tracking-[0.1em] lg:w-full lg:px-2 lg:text-[11px] lg:tracking-[0.16em] ${
                 page === entry.id ? 'text-white' : 'text-[#aaa] hover:text-white'
               }`}
             >
@@ -309,15 +309,17 @@ export function TheLocker() {
           </a>
         </nav>
 
-        <aside className="bg-[#f5f5f5] px-7 py-8 text-center lg:min-h-screen">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#1c1b1b] text-xl tracking-[0.12em] text-white">
+        <aside className="flex min-w-0 items-center gap-4 bg-[#f5f5f5] px-4 py-4 text-left lg:block lg:min-h-screen lg:px-7 lg:py-8 lg:text-center">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#1c1b1b] text-base tracking-[0.12em] text-white lg:mx-auto lg:h-20 lg:w-20 lg:text-xl">
             {initials}
           </div>
-          <p className="mt-5 text-[15px] uppercase tracking-[0.08em]">{displayName}</p>
-          <p className="mt-1 break-all text-[13px] text-[#666]">{customer.email}</p>
-          <div className="mt-7 border-t border-[#d8d8d8] pt-6">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] uppercase tracking-[0.08em] lg:mt-5 lg:text-[15px]">{displayName}</p>
+            <p className="mt-1 truncate text-[11px] text-[#666] lg:break-all lg:text-[13px]">{customer.email}</p>
+          </div>
+          <div className="shrink-0 border-l border-[#d8d8d8] pl-4 lg:mt-7 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-6">
             <p className={`${label} mb-2`}>Member of DSPLN</p>
-            <p className="text-[13px] leading-relaxed text-[#666]">
+            <p className="text-[11px] leading-relaxed text-[#666] lg:text-[13px]">
               {designs.length} design{designs.length === 1 ? '' : 's'} · {uploads.length} upload
               {uploads.length === 1 ? '' : 's'} · {orders.length} order
               {orders.length === 1 ? '' : 's'}
@@ -325,7 +327,7 @@ export function TheLocker() {
           </div>
         </aside>
 
-        <main className="min-w-0 px-5 py-8 lg:px-12">
+        <main className="min-w-0 max-w-full overflow-x-hidden px-4 py-6 lg:px-12 lg:py-8">
           <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[#ddd] pb-5">
             <div>
               <p className={`${label} text-[#777]`}>The Locker</p>
