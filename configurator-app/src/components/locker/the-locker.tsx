@@ -277,35 +277,45 @@ export function TheLocker() {
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
       <div className="grid min-h-screen w-full min-w-0 grid-cols-1 lg:grid-cols-[84px_300px_minmax(0,1fr)]">
-        <nav className="grid min-w-0 grid-cols-4 items-stretch bg-[#1c1b1b] px-1 py-1 lg:flex lg:min-h-screen lg:flex-col lg:justify-start lg:px-2 lg:py-6">
+        <nav className="hidden min-h-screen flex-col items-center bg-[#1c1b1b] px-2 py-6 lg:flex">
           <a
             href={customer.storefrontOrigin}
             target="_top"
-            className="hidden h-9 w-9 items-center justify-center border border-white/40 text-white lg:mb-6 lg:flex"
+            aria-label="DSPLN home"
+            className="mb-8 flex h-9 w-9 items-center justify-center border border-white/40 text-white"
           >
             D
           </a>
-            {nav.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                onClick={() => {
-                  setPage(entry.id);
-                  setSelectedDesign(null);
-                }}
-              className={`min-w-0 px-1 py-3 text-center text-[9px] uppercase tracking-[0.1em] lg:w-full lg:px-2 lg:text-[11px] lg:tracking-[0.16em] ${
-                page === entry.id ? 'text-white' : 'text-[#aaa] hover:text-white'
-              }`}
-            >
-              {entry.text}
-            </button>
-          ))}
           <a
             href={customer.storefrontOrigin}
             target="_top"
-            className={`mt-auto hidden w-full px-2 py-3 text-center text-[#aaa] hover:text-white lg:block ${label}`}
+            className={`w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
           >
-            Back to store
+            Home
+          </a>
+          <a
+            href={`${customer.storefrontOrigin}/collections/all`}
+            target="_top"
+            className={`w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
+          >
+            Shop
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setPage('designs');
+              setSelectedDesign(null);
+            }}
+            className={`w-full px-1 py-3 text-center text-white ${label}`}
+          >
+            Locker
+          </button>
+          <a
+            href={`${customer.storefrontOrigin}/account/logout`}
+            target="_top"
+            className={`mt-auto w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
+          >
+            Log out
           </a>
         </nav>
 
@@ -337,6 +347,29 @@ export function TheLocker() {
             </div>
             {error ? <p className="text-sm text-[#842323]">{error}</p> : null}
           </div>
+
+          <nav
+            aria-label="Locker pages"
+            className="mb-7 flex w-full min-w-0 overflow-x-auto border-b border-[#ddd]"
+          >
+            {nav.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => {
+                  setPage(entry.id);
+                  setSelectedDesign(null);
+                }}
+                className={`shrink-0 border-b-2 px-4 py-3 text-[10px] uppercase tracking-[0.13em] sm:px-6 sm:text-[11px] ${
+                  page === entry.id
+                    ? 'border-[#1c1b1b] text-[#1c1b1b]'
+                    : 'border-transparent text-[#777] hover:text-[#1c1b1b]'
+                }`}
+              >
+                {entry.text}
+              </button>
+            ))}
+          </nav>
 
           {loading ? <p className={`${label} py-12 text-center text-[#777]`}>Loading Locker…</p> : null}
 
