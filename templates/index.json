@@ -169,6 +169,7 @@
     },
     "dspln_academy_banner": {
       "type": "dspln-philosophy-banner",
+      "disabled": true,
       "settings": {
         "eyebrow": "OUTFIT THE WHOLE TEAM",
         "heading": "ACADEMY & TEAM GIS",
