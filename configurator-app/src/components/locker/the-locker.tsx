@@ -360,7 +360,7 @@ export function TheLocker() {
                   setPage(entry.id);
                   setSelectedDesign(null);
                 }}
-                className={`shrink-0 border-b-2 px-4 py-3 text-[10px] uppercase tracking-[0.13em] sm:px-6 sm:text-[11px] ${
+                className={`min-w-0 flex-1 border-b-2 px-1 py-3 text-[9px] uppercase tracking-[0.08em] sm:flex-none sm:px-6 sm:text-[11px] sm:tracking-[0.13em] ${
                   page === entry.id
                     ? 'border-[#1c1b1b] text-[#1c1b1b]'
                     : 'border-transparent text-[#777] hover:text-[#1c1b1b]'
