@@ -1,0 +1,49 @@
+{{ 'dspln-brooklyn-banner.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-brooklyn-banner" aria-label="Locally based 20 years in Brooklyn New York">
+  <img
+    class="dspln-brooklyn-banner__image"
+    src="{{ 'dspln-brooklyn-banner.webp' | asset_url }}"
+    alt=""
+    width="1600"
+    height="350"
+    loading="lazy"
+  >
+
+  <div class="dspln-brooklyn-banner__content">
+    <p class="dspln-brooklyn-banner__eyebrow">{{ section.settings.eyebrow }}</p>
+    <h2 class="dspln-brooklyn-banner__heading">{{ section.settings.heading }}</h2>
+    <p class="dspln-brooklyn-banner__text">{{ section.settings.text }}</p>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN Brooklyn banner",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "LOCALLY BASED 20 YEARS IN"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "BROOKLYN NEW YORK"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "For us, crafting a gi is more than just a business—it's a calling, a labor of love that resonates with every practitioner who steps onto the mat. It's the artistry, the passion, and the unwavering dedication that define our Brooklyn-based atelier. We believe that a custom-made gi is not merely a piece of fabric; it is a manifestation of one's journey, a tangible expression of individuality on the canvas of combat."
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN Brooklyn banner"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,66 @@
+{{ 'dspln-philosophy-banner.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-philosophy-banner" aria-label="Blood sweat and tears philosophy">
+  <img
+    class="dspln-philosophy-banner__image"
+    src="{{ 'dspln-blood-sweat-tears.webp' | asset_url }}"
+    alt=""
+    width="1600"
+    height="450"
+    loading="lazy"
+  >
+
+  <div class="dspln-philosophy-banner__inner">
+    <div class="dspln-philosophy-banner__content">
+      <p class="dspln-philosophy-banner__eyebrow">{{ section.settings.eyebrow }}</p>
+      <h2 class="dspln-philosophy-banner__heading">{{ section.settings.heading }}</h2>
+      <p class="dspln-philosophy-banner__text">{{ section.settings.text }}</p>
+      <a href="{{ section.settings.button_link }}" class="dspln-philosophy-banner__button">
+        {{ section.settings.button_label }}
+        <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN philosophy banner",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "BLOOD SWEAT & TEARS"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "OUR PHILOSOPHY"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "Discipline is the cornerstone upon which mastery is built, both in craft and in life. It is the unwavering commitment to the pursuit of excellence, the relentless drive to push beyond perceived limits, and the steadfast dedication to honing one's skills day in and day out."
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button label",
+      "default": "ABOUT US"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN philosophy banner"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,255 @@
+{% comment %}
+  Renders customer-facing DSPLN line item customization properties.
+
+  Usage:
+  {% render 'dspln-line-item-properties', item: item %}
+{% endcomment %}
+
+{%- liquid
+  assign item_title_key = item.product.title | downcase
+  assign is_rashguard_line_item = false
+  assign is_grappling_short_line_item = false
+
+  if item_title_key contains 'rashguard'
+    assign is_rashguard_line_item = true
+  endif
+
+  if item_title_key contains 'grappling short'
+    assign is_grappling_short_line_item = true
+  endif
+
+  for property in item.properties
+    assign property_name_key = property.first | strip | downcase
+    assign property_value_key = property.last | strip | downcase
+
+    if property_name_key contains 'grappling short' or property_value_key contains 'adult_grappling_short' or property_value_key contains 'adult-grappling-short'
+      assign is_grappling_short_line_item = true
+    endif
+
+    if property_name_key contains 'rashguard' or property_value_key contains 'rashguard'
+      assign is_rashguard_line_item = true
+    endif
+  endfor
+-%}
+
+<div class="dspln-line-item-properties" data-dspln-line-item-properties>
+  <div class="dspln-line-item-properties__details">
+    {%- liquid
+      # Single-item products (Kimono / Belt / Pant, mens or kids) render only
+      # their own group with no heading. Also shields against stale
+      # configurator bundles that still ship "Belt: NO" / "Pant: NO"
+      # properties for absent parts. Full gi suits never match: their titles
+      # ("Mens Custom Gi Suit") contain none of these words.
+      assign single_item_group = ''
+      if item_title_key contains 'kimono'
+        assign single_item_group = 'Kimono'
+      elsif item_title_key contains 'belt'
+        assign single_item_group = 'Belt'
+      elsif item_title_key contains 'pant'
+        assign single_item_group = 'Pant'
+      endif
+      assign group_names = 'Kimono|Belt|Pant|Rashguard|Grappling Short' | split: '|'
+      if single_item_group != ''
+        assign group_names = single_item_group | split: '|'
+      endif
+    -%}
+    {%- for group_name in group_names -%}
+      {%- liquid
+        assign group_key = group_name | downcase
+        assign group_prefix = group_key | append: ' '
+        assign group_body = ''
+      -%}
+
+      {%- capture group_body -%}
+        {%- for property in item.properties -%}
+          {%- liquid
+            assign property_name = property.first | strip
+            assign property_value = property.last | strip
+            # Some property values arrive HTML-escaped (e.g. belt text typed
+            # with quotes becomes &quot; / &amp;quot;). Decode those once here
+            # so the single | escape at each output point renders real quotes
+            # instead of a literal &QUOT;. Mirrors the artwork-layer handling.
+            assign property_value = property_value | replace: '&amp;quot;', '"' | replace: '&quot;', '"' | replace: '&amp;#39;', "'" | replace: '&#39;', "'" | replace: '&amp;amp;', '&'
+            assign property_key = property_name | downcase
+            assign property_first_char = property_name | slice: 0
+            comment
+              Customization details ship `_`-prefixed so Shopify checkout hides
+              them. The cart still displays them: strip the leading underscore
+              for matching/labels. Non-prefixed properties from older carts and
+              orders render exactly as before.
+            endcomment
+            assign property_display_name = property_name
+            if property_first_char == '_'
+              assign property_display_name = property_name | remove_first: '_'
+            endif
+            assign property_key = property_display_name | downcase
+            assign is_internal = false
+            assign is_flat_group_property = false
+            assign logo_link_url = ''
+            assign artwork_layer_link_url = ''
+
+            if property_key contains 'production' or property_key contains 'tech pack' or property_key contains 'json' or property_key contains 'dspln_' or property_key contains 'configurator_id' or property_key contains 'preview_image' or property_key contains 'mczr' or property_key == 'custom design saved'
+              assign is_internal = true
+            endif
+
+            if property_key == group_key or property_key contains group_prefix
+              assign is_flat_group_property = true
+            endif
+
+            if group_key == 'rashguard' and is_rashguard_line_item and is_grappling_short_line_item == false
+              if property_key == 'front body color' or property_key == 'back body color' or property_key == 'left sleeve color' or property_key == 'right sleeve color' or property_key == 'neck band color' or property_key == 'stitching color' or property_key == 'artwork layers' or property_key contains 'artwork layer'
+                assign is_flat_group_property = true
+              endif
+            endif
+
+            if group_key == 'grappling short' and is_grappling_short_line_item
+              if property_key == 'grappling short size' or property_key == 'waistband color' or property_key == 'right front leg color' or property_key == 'left front leg color' or property_key == 'right back leg color' or property_key == 'left back leg color' or property_key == 'stitching color' or property_key == 'artwork layers' or property_key contains 'artwork layer'
+                assign is_flat_group_property = true
+              endif
+            endif
+
+            if property_key contains 'logo' and property_value == 'YES'
+              assign artwork_key = property_key | replace: 'kimono ', '' | replace: 'pant ', '' | replace: ' logo', ' artwork'
+              for artwork_property in item.properties
+                assign artwork_name = artwork_property.first | strip
+                assign artwork_value = artwork_property.last | strip
+                assign artwork_name_key = artwork_name | downcase
+                if artwork_value contains 'http'
+                  if artwork_name_key == artwork_key or artwork_name_key contains artwork_key
+                    assign logo_link_url = artwork_value
+                    break
+                  endif
+                endif
+              endfor
+            endif
+          -%}
+
+          {%- if property_value != blank and is_internal == false and is_flat_group_property -%}
+            {%- if property_key == group_key -%}
+              {%- assign segments = property_value | split: '|' -%}
+              {%- for segment in segments -%}
+                {%- liquid
+                  assign segment_text = segment | strip
+                  assign label = 'Detail'
+                  assign value = segment_text
+
+                  if segment_text contains ':'
+                    assign label = segment_text | split: ':' | first | strip
+                    assign value = segment_text | remove_first: label | remove_first: ':' | strip
+                  elsif forloop.first and group_key != 'logos'
+                    assign label = 'Size'
+                  elsif group_key == 'logos'
+                    assign label = 'Logo'
+                  endif
+                -%}
+                {%- if value != blank -%}
+                  <div class="dspln-line-item-properties__row">
+                    <dt>{{ label | escape }}:</dt>
+                    <dd>{{ value | escape }}</dd>
+                  </div>
+                {%- endif -%}
+              {%- endfor -%}
+            {%- else -%}
+              {%- liquid
+                assign label = property_display_name
+                if property_key contains group_prefix
+                  assign label = property_display_name | remove_first: group_name | strip
+                endif
+                assign display_value = property_value
+
+                if property_key contains 'artwork layer'
+                  assign artwork_layer_number = property_key | remove: 'artwork layer' | strip
+                  assign artwork_layer_url_key = '_dspln_artwork_layer_' | append: artwork_layer_number | append: '_url'
+                  for artwork_property in item.properties
+                    assign artwork_name = artwork_property.first | strip
+                    assign artwork_value = artwork_property.last | strip
+                    assign artwork_name_key = artwork_name | downcase
+                    if artwork_name_key == artwork_layer_url_key and artwork_value contains 'http'
+                      assign artwork_layer_link_url = artwork_value
+                      break
+                    elsif artwork_name_key == artwork_layer_url_key and artwork_value contains 'data:image/'
+                      assign artwork_layer_link_url = artwork_value
+                      break
+                    elsif artwork_name_key == artwork_layer_url_key and artwork_value contains 'blob:'
+                      assign artwork_layer_link_url = artwork_value
+                      break
+                    endif
+                  endfor
+
+                  assign label = label | replace: 'Artwork Layer', 'Artwork'
+                  assign display_value = display_value | replace: '&amp;quot;', '"' | replace: '&quot;', '"'
+                  assign display_value = display_value | replace: '.png', '' | replace: '.PNG', ''
+                  assign display_value = display_value | replace: '.jpg', '' | replace: '.JPG', ''
+                  assign display_value = display_value | replace: '.jpeg', '' | replace: '.JPEG', ''
+                  assign display_value = display_value | replace: '.webp', '' | replace: '.WEBP', ''
+                  assign display_value = display_value | replace: '.svg', '' | replace: '.SVG', ''
+                  assign display_value = display_value | replace: ' on ', ' - ' | replace: ' ON ', ' - '
+                endif
+              -%}
+              {%- liquid
+                # A removed part (belt/kimono/pant taken off the gi) ships a
+                # single "<Part> Size: NO" property. "SIZE: NO" reads oddly —
+                # render a bare NO under the part heading instead.
+                assign is_removed_part_row = false
+                if display_value == 'NO' and label == 'Size'
+                  assign is_removed_part_row = true
+                endif
+              -%}
+              <div class="dspln-line-item-properties__row">
+                {%- unless is_removed_part_row -%}
+                  <dt>{{ label | escape }}:</dt>
+                {%- endunless -%}
+                <dd>
+                  {%- if artwork_layer_link_url != blank -%}
+                    <a
+                      href="{{ artwork_layer_link_url }}"
+                      class="link dspln-line-item-properties__logo-link"
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      {{ display_value | escape }}
+                    </a>
+                  {%- elsif logo_link_url != blank -%}
+                    <a
+                      href="{{ logo_link_url }}"
+                      class="link dspln-line-item-properties__logo-link"
+                      target="_blank"
+                      rel="noopener"
+                      data-dspln-logo-link
+                    >
+                      {{ display_value | escape }}
+                    </a>
+                  {%- elsif property_key contains 'logo' and property_value == 'YES' -%}
+                    <span data-dspln-logo-placeholder data-dspln-logo-label="{{ property_display_name | escape }}">
+                      {{ display_value | escape }}
+                    </span>
+                  {%- elsif property_value contains '/uploads/' -%}
+                    <a href="{{ property_value }}" class="link" target="_blank" rel="noopener">
+                      {{ property_value | split: '/' | last | escape }}
+                    </a>
+                  {%- else -%}
+                    {{ display_value | escape }}
+                  {%- endif -%}
+                </dd>
+              </div>
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endcapture -%}
+
+      {%- assign group_body_clean = group_body | strip -%}
+      {%- if group_body_clean != blank -%}
+        <section class="dspln-line-item-properties__group">
+          {%- comment -%}
+            Single-item products (Kimono / Belt / Pant) already show their
+            name as the line title — repeating it as a group heading is noise.
+          {%- endcomment -%}
+          {%- unless single_item_group != '' -%}
+            <h3 class="dspln-line-item-properties__heading">{{ group_name }}</h3>
+          {%- endunless -%}
+          <dl>{{ group_body }}</dl>
+        </section>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+</div>
