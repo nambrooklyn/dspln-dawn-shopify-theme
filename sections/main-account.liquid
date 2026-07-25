@@ -1,3 +1,11 @@
+{%- comment -%}
+  The Locker (/pages/locker) is the canonical account surface. Shopify's
+  own login and checkout flows still land customers on /account, so this
+  legacy page forwards them there.
+{%- endcomment -%}
+<script>window.location.replace('/pages/locker');</script>
+<noscript><meta http-equiv="refresh" content="0;url=/pages/locker"></noscript>
+
 {{ 'customer.css' | asset_url | stylesheet_tag }}
 {{ 'dspln-account.css' | asset_url | stylesheet_tag }}
 
