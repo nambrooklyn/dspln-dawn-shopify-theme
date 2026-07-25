@@ -51,7 +51,7 @@
         id="dspln-configurator-frame"
         src="{{ embed_src }}?shopifyTest=1&productId={{ product.id }}&productHandle={{ product.handle | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&customerId={{ customer.id | default: '' }}&customerEmail={{ customer.email | default: '' | url_encode }}&shopifyProductHandle={{ product.handle | url_encode }}&shopifyProductId={{ product.id }}&variantId={{ selected_variant.id }}&themeProductTemplate=dspln-configurator&productFamily={{ product_family | url_encode }}&customizationMode={{ customization_mode | url_encode }}&productGroup={{ product_group_label | url_encode }}{% if dspln_design_id != blank %}&design={{ dspln_design_id | url_encode }}{% endif %}"
         loading="eager"
-        allow="clipboard-write; fullscreen"
+        allow="clipboard-write; fullscreen; web-share"
         data-dspln-configurator-frame
       ></iframe>
     </div>
