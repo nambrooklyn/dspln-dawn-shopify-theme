@@ -47,8 +47,11 @@ import {
   type ShopifyCartLine,
   waitForShopifyCartParentResult,
 } from './shopify-cart-simulator';
-import type { CameraView } from './gi-config';
+import type { CameraView, KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { GI_CAMERA_TWEEN_MS } from './gi-config';
+import type { KimonoLogo } from './gi-state';
+import { APPLY_TARGETS, useUploadedLogos } from './use-uploaded-logos';
+import { UploadedLogosProvider } from './uploaded-logos-context';
 import { CameraTuner } from './camera-tuner';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
@@ -58,6 +61,7 @@ import {
   writeActiveDesignLink,
 } from '../shared/active-design-link';
 import { isStudioMode } from '../shared/studio-mode';
+import { DesignCommandBar } from '../shared/design-command-bar';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS['mens-belt'];
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
@@ -219,6 +223,7 @@ const GiConfiguratorInner = memo(() => {
         : (readActiveDesignLink(ACTIVE_DESIGN_LINK_KEY)?.signature ?? null),
   );
   const [isSavingDesign, setIsSavingDesign] = useState(false);
+  const [lastEditedAt, setLastEditedAt] = useState<string | null>(null);
   const [cloudOwnerContext] = useState(() => getGiCloudOwnerContext());
   const draftReadyRef = useRef(false);
   const savingDesignRef = useRef(false);
@@ -234,6 +239,37 @@ const GiConfiguratorInner = memo(() => {
     [kimonoLogos, pantLogos, serialize],
   );
   const hasUnsavedChanges = designSignature !== lastSavedSignature;
+
+  const uploadedLogos = useUploadedLogos({
+    savedDesigns,
+    currentKimonoLogos: kimonoLogos,
+    currentPantLogos: pantLogos,
+    activeDesignName: currentDesignName,
+    defaultDesignName: currentDesignName || formatDesignName(),
+  });
+  const commandBarUploads = useMemo(
+    () => uploadedLogos.map(({ key, url }) => ({ key, url })),
+    [uploadedLogos],
+  );
+  const handleApplyUpload = useCallback(
+    (uploadKey: string, target: string) => {
+      const logo = uploadedLogos.find((item) => item.key === uploadKey);
+      if (!logo) return;
+      const [part, slot] = target.split(':') as [
+        'kimono' | 'pant',
+        KimonoLogoSlot | PantLogoSlot,
+      ];
+      const nextLogo: KimonoLogo = {
+        imageUrl: logo.url,
+        imageWidth: logo.imageWidth,
+        imageHeight: logo.imageHeight,
+        filename: logo.filename,
+      };
+      if (part === 'kimono') setKimonoLogo(slot as KimonoLogoSlot, nextLogo);
+      else setPantLogo(slot as PantLogoSlot, nextLogo);
+    },
+    [uploadedLogos, setKimonoLogo, setPantLogo],
+  );
 
   // Loading a saved design changes state asynchronously; the loader flips
   // this ref so the freshly hydrated content is recorded as "saved" once the
@@ -276,6 +312,7 @@ const GiConfiguratorInner = memo(() => {
         // content is by definition saved.
         setCurrentDesignId(draft.id);
         setCurrentDesignName(draft.name);
+        setLastEditedAt(draft.updatedAt);
         markCleanRef.current = true;
       }
       // The autosave draft keeps whatever active-design link was restored
@@ -376,7 +413,10 @@ const GiConfiguratorInner = memo(() => {
     return () => window.clearTimeout(timeout);
   }, [kimonoLogos, pantLogos, serialize]);
 
-  const handleSaveDesign = useCallback(async (name: string) => {
+  const handleSaveDesign = useCallback(async (
+    name: string,
+    options?: { saveAsNew?: boolean },
+  ) => {
     // A save can take a few seconds (thumbnail + uploads); a second press in
     // that window must not mint a second design record.
     if (savingDesignRef.current) return null;
@@ -390,10 +430,11 @@ const GiConfiguratorInner = memo(() => {
         (design) =>
           design.name.trim().toLowerCase() === cleanName.trim().toLowerCase(),
       );
-      const id =
-        currentDesignId ??
-        matchingSavedDesign?.id ??
-        createLineDesignId(PRODUCT_CONFIG.savedDesignIdPrefix);
+      const id = options?.saveAsNew
+        ? createLineDesignId(PRODUCT_CONFIG.savedDesignIdPrefix)
+        : currentDesignId ??
+          matchingSavedDesign?.id ??
+          createLineDesignId(PRODUCT_CONFIG.savedDesignIdPrefix);
       const existing = await readGiDraftDocument(id);
       const draft = await createGiDraftDocument({
         id,
@@ -421,6 +462,7 @@ const GiConfiguratorInner = memo(() => {
 
       const savedId = cloudDraft?.id ?? draft.id;
       const savedName = cloudDraft?.name ?? draft.name;
+      setLastEditedAt(cloudDraft?.updatedAt ?? draft.updatedAt);
 
       setLastSavedSignature(signatureAtSave);
       writeActiveDesignLink(ACTIVE_DESIGN_LINK_KEY, {
@@ -460,6 +502,44 @@ const GiConfiguratorInner = memo(() => {
     savedDesigns,
     serialize,
   ]);
+
+  const handleSaveAsDesign = useCallback(
+    (name: string) => handleSaveDesign(name, { saveAsNew: true }),
+    [handleSaveDesign],
+  );
+
+  const handleShareDesign = useCallback(
+    async (providedDesignId?: string) => {
+      // The link only needs the design id, so an already-saved design
+      // shares instantly; pending edits upload in the background.
+      const knownId = providedDesignId ?? currentDesignId;
+      if (knownId) {
+        const url = buildGiCloudDesignUrls(knownId)?.designUrl;
+        if (url) {
+          if (hasUnsavedChanges) {
+            void handleSaveDesign(currentDesignName || formatDesignName());
+          }
+          return url;
+        }
+      }
+
+      // Never saved before — a save has to mint the id first.
+      const savedId = await handleSaveDesign(
+        currentDesignName || formatDesignName(),
+      );
+      if (!savedId) {
+        toast.error('Save the design before sharing');
+        return null;
+      }
+      const url = buildGiCloudDesignUrls(savedId)?.designUrl;
+      if (!url) {
+        toast.error('Could not build the share link');
+        return null;
+      }
+      return url;
+    },
+    [currentDesignId, currentDesignName, handleSaveDesign, hasUnsavedChanges],
+  );
 
   const handleLoginToSave = useCallback(async () => {
     const savedId = await handleSaveDesign(currentDesignName || formatDesignName());
@@ -651,7 +731,7 @@ const GiConfiguratorInner = memo(() => {
   ]);
 
   return (
-    <>
+    <UploadedLogosProvider value={uploadedLogos}>
       <ConfiguratorShell
         onAddToCart={handleAddToCart}
         onExport={handleExport}
@@ -666,26 +746,19 @@ const GiConfiguratorInner = memo(() => {
           />
         }
         sceneTopContent={
-          cloudOwnerContext?.isCustomer ? (
-            <div
-              className="flex max-w-[32rem] items-center gap-4 text-[9px] font-semibold tracking-[0.14em] uppercase"
-              title={cloudOwnerContext.customerEmail ?? undefined}
-            >
-              <span className="text-muted-foreground truncate">
-                {cloudOwnerContext.customerEmail}
-              </span>
-              <a
-                href={storefrontUrl('/account/logout')}
-                target="_top"
-                className="text-foreground hover:text-muted-foreground shrink-0"
-              >
-                Sign Out
-              </a>
-            </div>
-          ) : null
-          // Login entry points are hidden until the account flow ships:
-          // the theme doesn't pass customer identity yet, so the login
-          // round-trip appears broken to customers.
+          <DesignCommandBar
+            designId={currentDesignId}
+            designName={currentDesignName}
+            hasUnsavedChanges={hasUnsavedChanges}
+            lastEditedAt={lastEditedAt}
+            status={draftStatus}
+            onSave={handleSaveDesign}
+            onSaveAs={handleSaveAsDesign}
+            onShare={handleShareDesign}
+            uploads={commandBarUploads}
+            uploadTargets={APPLY_TARGETS}
+            onApplyUpload={handleApplyUpload}
+          />
         }
         railContent={!isStudioMode() ? undefined :
           <>
@@ -729,7 +802,7 @@ const GiConfiguratorInner = memo(() => {
           setCartLines([]);
         }}
       />
-    </>
+    </UploadedLogosProvider>
   );
 });
 GiConfiguratorInner.displayName = 'GiConfiguratorInner';

@@ -2,9 +2,11 @@ import {
   memo,
   useCallback,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import {
   ArrowDown,
@@ -24,6 +26,7 @@ import {
   RotateCw,
   Trash2,
   Type,
+  UploadCloud,
 } from 'lucide-react';
 
 import { RashguardColorField } from './rashguard-color-picker';
@@ -39,6 +42,11 @@ import {
   type RashguardPart,
 } from './rashguard-config';
 import { useRashguardState, type RashguardArtworkLayer } from './rashguard-state';
+import { useSavedUploads } from './uploaded-artwork-context';
+import {
+  uploadedArtworkToFile,
+  type UploadedArtworkItem,
+} from './use-uploaded-artwork';
 
 function RashguardPartColorSection({
   part,
@@ -852,6 +860,10 @@ export const RashguardArtworkSections = memo(() => {
     cameraView,
   } = useRashguardState();
   const [isDragActive, setIsDragActive] = useState(false);
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const chooserFileRef = useRef<HTMLInputElement>(null);
+  const savedUploads = useSavedUploads();
+  const chooserEnabled = savedUploads.length > 0;
 
   const defaultTarget = cameraView === 'back' ? 'rightBackLeg' : 'rightFrontLeg';
 
@@ -865,6 +877,31 @@ export const RashguardArtworkSections = memo(() => {
       addArtworkLayer({
         file: result.file,
         dimensions: result.dimensions,
+        target: defaultTarget,
+      });
+    },
+    [addArtworkLayer, defaultTarget],
+  );
+
+  // With uploads available, a click opens the chooser instead of the
+  // native picker; drag-and-drop still uploads directly.
+  const handleUploadClick = useCallback(
+    (event: ReactMouseEvent<HTMLInputElement>) => {
+      if (!chooserEnabled) return;
+      event.preventDefault();
+      setChooserOpen((open) => !open);
+    },
+    [chooserEnabled],
+  );
+
+  const applyExisting = useCallback(
+    async (item: UploadedArtworkItem) => {
+      setChooserOpen(false);
+      const file = await uploadedArtworkToFile(item);
+      if (!file) return;
+      addArtworkLayer({
+        file,
+        dimensions: { width: item.imageWidth, height: item.imageHeight },
         target: defaultTarget,
       });
     },
@@ -934,6 +971,7 @@ export const RashguardArtworkSections = memo(() => {
                 type="file"
                 accept="image/png,image/jpeg"
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onClick={handleUploadClick}
                 onChange={handleInputChange}
                 aria-label="Upload image"
               />
@@ -944,6 +982,46 @@ export const RashguardArtworkSections = memo(() => {
                 Upload Image
               </span>
             </label>
+            {chooserOpen && chooserEnabled ? (
+              <div className="border-border bg-background mt-2 rounded-lg border p-2 shadow-sm">
+                <div className="grid max-h-40 grid-cols-3 gap-1.5 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => chooserFileRef.current?.click()}
+                    className="border-foreground/30 text-muted-foreground hover:border-foreground/60 hover:text-foreground flex aspect-square w-full flex-col items-center justify-center gap-1 rounded border border-dashed"
+                  >
+                    <UploadCloud className="h-4 w-4" />
+                    <span className="text-[10px]">Device</span>
+                  </button>
+                  {savedUploads.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      aria-label="Apply this artwork"
+                      onClick={() => void applyExisting(item)}
+                      className="border-border bg-muted/60 hover:ring-foreground/40 flex aspect-square w-full items-center justify-center overflow-hidden rounded border p-1 hover:ring-2"
+                    >
+                      <img
+                        src={item.url}
+                        alt=""
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </button>
+                  ))}
+                </div>
+                <input
+                  ref={chooserFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  onChange={async (event) => {
+                    if (event.target.files) await handleFiles(event.target.files);
+                    event.target.value = '';
+                    setChooserOpen(false);
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div>

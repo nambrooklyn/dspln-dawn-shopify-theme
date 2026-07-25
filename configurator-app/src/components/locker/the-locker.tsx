@@ -267,10 +267,13 @@ export function TheLocker() {
     `${customer.firstName.slice(0, 1)}${customer.lastName.slice(0, 1)}`.toUpperCase() || 'D';
   const displayName =
     [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email;
+  // Sizing / Fit is still being designed — dev store only until approved
+  // for live.
+  const showFit = customer.shopDomain === 'dspln-dev-2.myshopify.com';
   const nav: Array<{ id: LockerPage; text: string }> = [
     { id: 'designs', text: 'Designs' },
     { id: 'uploads', text: 'Uploads' },
-    { id: 'fit', text: 'Sizing / Fit' },
+    ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit' }] : []),
     { id: 'orders', text: 'Orders' },
   ];
 
