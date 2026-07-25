@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { ImageIcon, MoreHorizontal, Share2, X } from 'lucide-react';
+import { ImageIcon, MoreHorizontal, X } from 'lucide-react';
 import { lockerUrl } from './dspln-rail-links';
 
 type SaveStatus = 'loading' | 'saving' | 'saved' | 'error';
@@ -23,42 +23,11 @@ interface DesignCommandBarProps {
   onApplyUpload?: (uploadKey: string, target: string) => void;
 }
 
-function lastEditedLabel(
-  status: SaveStatus,
-  hasUnsavedChanges: boolean,
-  lastEditedAt: string | null,
-) {
-  if (status === 'saving') return 'Saving…';
-  if (status === 'error') return 'Save failed — try again';
-  if (hasUnsavedChanges) return 'Unsaved changes';
-  if (!lastEditedAt) return 'Not saved yet';
-
-  const edited = new Date(lastEditedAt);
-  const now = new Date();
-  const sameDay = edited.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const time = edited.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-  if (sameDay) return `Last edited today at ${time}`;
-  if (edited.toDateString() === yesterday.toDateString()) {
-    return `Last edited yesterday at ${time}`;
-  }
-  return `Last edited ${edited.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: edited.getFullYear() === now.getFullYear() ? undefined : 'numeric',
-  })} at ${time}`;
-}
-
 export const DesignCommandBar = memo(
   ({
     designId,
     designName,
     hasUnsavedChanges,
-    lastEditedAt,
     status,
     onSave,
     onSaveAs,
@@ -127,7 +96,7 @@ export const DesignCommandBar = memo(
 
     return (
       <>
-        <div className="relative sm:hidden">
+        <div className="relative">
           <button
             type="button"
             aria-label="Design actions"
@@ -175,77 +144,6 @@ export const DesignCommandBar = memo(
               </a>
             </div>
           ) : null}
-        </div>
-
-        <div className="border-border/80 bg-background/95 hidden w-full max-w-[54rem] items-center justify-between gap-3 rounded-lg border px-3 py-2 shadow-sm backdrop-blur sm:flex">
-          <div className="min-w-0">
-            <p className="text-foreground truncate text-xs font-semibold tracking-[0.08em] uppercase">
-              {designName}
-            </p>
-            <p
-              className={`mt-0.5 text-[10px] ${
-                status === 'error'
-                  ? 'text-destructive'
-                  : hasUnsavedChanges
-                    ? 'text-amber-700'
-                    : 'text-muted-foreground'
-              }`}
-            >
-              {lastEditedLabel(status, hasUnsavedChanges, lastEditedAt)}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={status === 'saving' || (Boolean(designId) && !hasUnsavedChanges)}
-              className="bg-foreground text-background hover:bg-foreground/85 min-w-20 rounded px-4 py-2 text-[10px] font-semibold tracking-[0.14em] uppercase disabled:cursor-default disabled:opacity-45"
-            >
-              {status === 'saving' ? 'Saving…' : 'Save'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openNameDialog('saveAs')}
-              className="border-border text-foreground hover:bg-muted hidden rounded border px-3 py-2 text-[10px] font-semibold tracking-[0.12em] uppercase sm:block"
-            >
-              Save As
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void share()}
-              className="border-border text-foreground hover:bg-muted hidden items-center gap-1.5 rounded border px-3 py-2 text-[10px] font-semibold tracking-[0.12em] uppercase md:flex"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              Share
-            </button>
-
-            <div className="relative">
-              <button
-                type="button"
-                aria-label="Design actions"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
-                className="border-border text-foreground hover:bg-muted rounded border p-2"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-              {menuOpen ? (
-                <div className="border-border bg-background absolute top-full right-0 z-50 mt-2 w-44 rounded border p-1 shadow-xl">
-                  {uploadsMenuItem}
-                  <a
-                    href={lockerUrl()}
-                    target="_top"
-                    className="hover:bg-muted block w-full rounded px-3 py-2 text-left text-xs"
-                  >
-                    Open The Locker
-                  </a>
-                </div>
-              ) : null}
-            </div>
-          </div>
         </div>
 
         {uploadsOpen ? (
