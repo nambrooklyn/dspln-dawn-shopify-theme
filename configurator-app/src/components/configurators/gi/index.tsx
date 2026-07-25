@@ -613,10 +613,16 @@ const GiConfiguratorInner = memo(() => {
         return;
       }
       if (navigator.share) {
-        await navigator
-          .share({ title: currentDesignName, url })
-          .catch(() => undefined);
-        return;
+        try {
+          await navigator.share({ title: currentDesignName, url });
+          return;
+        } catch (error) {
+          // User closed the share sheet — done. Anything else (e.g. the
+          // iframe blocking web-share) falls through to the clipboard.
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            return;
+          }
+        }
       }
       const copied = await copyTextToClipboard(url);
       if (copied) {
