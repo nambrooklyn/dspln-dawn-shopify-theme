@@ -577,13 +577,18 @@ export function TheLocker() {
                     key={units}
                     type="button"
                     onClick={() => setFit({ ...fit, units })}
-                    className={`border px-5 py-2 ${label} ${
+                    className={`whitespace-nowrap border px-4 py-2 text-[10px] uppercase tracking-[0.12em] sm:px-5 sm:text-[11px] sm:tracking-[0.16em] ${
                       fit.units === units
                         ? 'border-[#1c1b1b] bg-[#1c1b1b] text-white'
                         : 'border-[#ccc]'
                     }`}
                   >
-                    {units === 'imperial' ? 'Inches / Pounds' : 'Centimeters / Kilograms'}
+                    <span className="sm:hidden">
+                      {units === 'imperial' ? 'In / Lb' : 'Cm / Kg'}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {units === 'imperial' ? 'Inches / Pounds' : 'Centimeters / Kilograms'}
+                    </span>
                   </button>
                 ))}
               </div>
