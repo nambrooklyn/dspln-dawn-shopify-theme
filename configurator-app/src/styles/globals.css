@@ -184,3 +184,21 @@ textarea {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/*
+ * Locker tab labels. Tailwind does not emit a rule for arbitrary font sizes
+ * like text-[9px] in this build, so those classes silently fell back to the
+ * 16px default — which is why the four tabs collided on a phone. Setting the
+ * size here keeps it deterministic.
+ */
+.dspln-locker-tab {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+@media (min-width: 640px) {
+  .dspln-locker-tab {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+}

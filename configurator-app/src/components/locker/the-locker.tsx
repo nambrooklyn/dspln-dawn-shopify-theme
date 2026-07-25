@@ -348,22 +348,30 @@ export function TheLocker() {
             {error ? <p className="text-sm text-[#842323]">{error}</p> : null}
           </div>
 
+          {/*
+            Segmented control rather than underlined tabs: at phone width the
+            four labels were squeezed to the point that "Sizing / Fit" wrapped
+            onto two lines and the row looked broken. A pill track keeps every
+            label on one line, and the raised white pill reads as "selected"
+            far more clearly than a 2px underline on a small screen.
+          */}
           <nav
             aria-label="Locker pages"
-            className="mb-7 flex w-full min-w-0 overflow-x-auto border-b border-[#ddd]"
+            className="mb-7 flex w-full min-w-0 gap-0.5 rounded-full bg-[#f1f1ee] p-1 sm:gap-1 sm:p-1.5"
           >
             {nav.map((entry) => (
               <button
                 key={entry.id}
                 type="button"
+                aria-current={page === entry.id ? 'page' : undefined}
                 onClick={() => {
                   setPage(entry.id);
                   setSelectedDesign(null);
                 }}
-                className={`min-w-0 flex-1 border-b-2 px-1 py-3 text-[9px] uppercase tracking-[0.08em] sm:flex-none sm:px-6 sm:text-[11px] sm:tracking-[0.13em] ${
+                className={`dspln-locker-tab min-w-0 flex-1 whitespace-nowrap rounded-full px-1.5 py-2 font-semibold uppercase transition-colors duration-150 sm:px-4 sm:py-2.5 ${
                   page === entry.id
-                    ? 'border-[#1c1b1b] text-[#1c1b1b]'
-                    : 'border-transparent text-[#777] hover:text-[#1c1b1b]'
+                    ? 'bg-white text-[#1c1b1b] shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
+                    : 'text-[#75756e] hover:text-[#1c1b1b]'
                 }`}
               >
                 {entry.text}
