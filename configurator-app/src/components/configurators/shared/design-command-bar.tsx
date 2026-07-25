@@ -1,8 +1,77 @@
 import { memo, useState } from 'react';
-import { ImageIcon, MoreHorizontal, X } from 'lucide-react';
+import {
+  Facebook,
+  ImageIcon,
+  Linkedin,
+  Mail,
+  MessageCircle,
+  MoreHorizontal,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { lockerUrl } from './dspln-rail-links';
+import { copyTextToClipboard } from './studio-mode';
 
 type SaveStatus = 'loading' | 'saving' | 'saved' | 'error';
+
+const SHARE_TARGETS: Array<{
+  name: string;
+  color: string;
+  Icon?: LucideIcon;
+  glyph?: string;
+  href: (url: string, title: string) => string;
+}> = [
+  {
+    name: 'WhatsApp',
+    color: '#25D366',
+    Icon: MessageCircle,
+    href: (url, title) =>
+      `https://wa.me/?text=${encodeURIComponent(`${title} ${url}`)}`,
+  },
+  {
+    name: 'X',
+    color: '#000000',
+    glyph: 'X',
+    href: (url, title) =>
+      `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
+  },
+  {
+    name: 'Facebook',
+    color: '#1877F2',
+    Icon: Facebook,
+    href: (url) =>
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+  },
+  {
+    name: 'Reddit',
+    color: '#FF4500',
+    glyph: 'r/',
+    href: (url, title) =>
+      `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`,
+  },
+  {
+    name: 'Pinterest',
+    color: '#E60023',
+    glyph: 'P',
+    href: (url, title) =>
+      `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&description=${encodeURIComponent(title)}`,
+  },
+  {
+    name: 'LinkedIn',
+    color: '#0A66C2',
+    Icon: Linkedin,
+    href: (url) =>
+      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+  },
+  {
+    name: 'Email',
+    color: '#64748B',
+    Icon: Mail,
+    href: (url, title) =>
+      `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`,
+  },
+];
 
 export interface CommandBarUpload {
   key: string;
@@ -17,7 +86,8 @@ interface DesignCommandBarProps {
   status: SaveStatus;
   onSave: (name: string) => Promise<string | null>;
   onSaveAs: (name: string) => Promise<string | null>;
-  onShare: (designId?: string) => Promise<void>;
+  /** Save if needed and return the design's share URL (null on failure). */
+  onShare: (designId?: string) => Promise<string | null>;
   uploads?: CommandBarUpload[];
   uploadTargets?: Array<{ value: string; label: string }>;
   onApplyUpload?: (uploadKey: string, target: string) => void;
@@ -44,6 +114,14 @@ export const DesignCommandBar = memo(
     const [uploadTarget, setUploadTarget] = useState(
       uploadTargets?.[0]?.value ?? '',
     );
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+    const copyShareUrl = async () => {
+      if (!shareUrl) return;
+      const copied = await copyTextToClipboard(shareUrl);
+      if (copied) toast.success('Share link copied');
+      else toast.error('Could not copy — select the link and copy it manually');
+    };
 
     const uploadsMenuItem = onApplyUpload ? (
       <button
@@ -73,7 +151,10 @@ export const DesignCommandBar = memo(
           ? await onSave(cleanName)
           : await onSaveAs(cleanName);
       setDialogMode(null);
-      if (savedId && shareAfterSave) await onShare(savedId);
+      if (savedId && shareAfterSave) {
+        const url = await onShare(savedId);
+        if (url) setShareUrl(url);
+      }
       setShareAfterSave(false);
     };
 
@@ -91,7 +172,8 @@ export const DesignCommandBar = memo(
         openNameDialog('save', true);
         return;
       }
-      await onShare();
+      const url = await onShare();
+      if (url) setShareUrl(url);
     };
 
     return (
@@ -210,6 +292,74 @@ export const DesignCommandBar = memo(
                   <ImageIcon className="h-6 w-6" />
                 </div>
               )}
+            </div>
+          </div>
+        ) : null}
+
+        {shareUrl ? (
+          <div
+            className="bg-foreground/30 fixed inset-0 z-[100] flex items-center justify-center p-4"
+            onClick={() => setShareUrl(null)}
+          >
+            <div
+              onClick={(event) => event.stopPropagation()}
+              className="border-border bg-background w-full max-w-sm rounded-lg border p-5 shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-foreground text-sm font-semibold tracking-[0.12em] uppercase">
+                  Share design
+                </p>
+                <button
+                  type="button"
+                  aria-label="Close share"
+                  onClick={() => setShareUrl(null)}
+                  className="hover:bg-muted rounded-full p-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+                {SHARE_TARGETS.map((target) => (
+                  <a
+                    key={target.name}
+                    href={target.href(shareUrl, designName)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex w-14 shrink-0 flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-white"
+                      style={{ backgroundColor: target.color }}
+                    >
+                      {target.Icon ? (
+                        <target.Icon className="h-5 w-5" />
+                      ) : (
+                        <span className="text-base font-bold">
+                          {target.glyph}
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-muted-foreground text-[10px]">
+                      {target.name}
+                    </span>
+                  </a>
+                ))}
+              </div>
+              <div className="border-border mt-4 flex items-center gap-2 rounded-lg border p-2">
+                <p
+                  className="text-muted-foreground min-w-0 flex-1 truncate text-xs"
+                  title={shareUrl}
+                >
+                  {shareUrl}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void copyShareUrl()}
+                  className="bg-foreground text-background hover:bg-foreground/85 shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold"
+                >
+                  Copy
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

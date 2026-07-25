@@ -605,34 +605,14 @@ const GiConfiguratorInner = memo(() => {
         currentDesignId;
       if (!savedId) {
         toast.error('Save the design before sharing');
-        return;
+        return null;
       }
       const url = buildGiCloudDesignUrls(savedId)?.designUrl;
       if (!url) {
         toast.error('Could not build the share link');
-        return;
+        return null;
       }
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: currentDesignName, url });
-          return;
-        } catch (error) {
-          // User closed the share sheet — done. Anything else (e.g. the
-          // iframe blocking web-share) falls through to the clipboard.
-          if (error instanceof DOMException && error.name === 'AbortError') {
-            return;
-          }
-        }
-      }
-      const copied = await copyTextToClipboard(url);
-      if (copied) {
-        toast.success('Share link copied');
-      } else {
-        toast.info('Copy this share link', {
-          description: url,
-          duration: 15000,
-        });
-      }
+      return url;
     },
     [currentDesignId, currentDesignName, handleSaveDesign],
   );
