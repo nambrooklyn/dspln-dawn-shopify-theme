@@ -276,7 +276,9 @@ export function TheLocker() {
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
-      <div className="grid min-h-screen w-full min-w-0 grid-cols-1 lg:grid-cols-[84px_300px_minmax(0,1fr)]">
+      {/* Stacked (mobile) rows must not stretch: the profile band stays
+          content-height and the main area absorbs the leftover screen. */}
+      <div className="grid min-h-screen w-full min-w-0 grid-cols-1 grid-rows-[auto_1fr] lg:grid-cols-[84px_300px_minmax(0,1fr)] lg:grid-rows-1">
         <nav className="hidden min-h-screen flex-col items-center bg-[#1c1b1b] px-2 py-6 lg:flex">
           <a
             href={customer.storefrontOrigin}
