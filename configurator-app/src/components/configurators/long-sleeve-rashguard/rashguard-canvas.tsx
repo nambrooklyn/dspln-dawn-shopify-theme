@@ -1,6 +1,7 @@
 import { memo, Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { ContactShadows, Html, OrbitControls, useProgress } from '@react-three/drei';
+import { ContactShadows, Html, OrbitControls } from '@react-three/drei';
+import { ModelLoadingOverlay } from '../shared/model-loading-overlay';
 import {
   Box3,
   Color,
@@ -27,19 +28,12 @@ const DESKTOP_CAMERA_MAX_DISTANCE = 5.8;
 const MOBILE_CAMERA_MAX_DISTANCE = 4.85;
 const MOBILE_CAMERA_QUERY = '(max-width: 1023px)';
 
-const RashguardModelLoading = memo(() => {
-  const { progress } = useProgress();
-  const displayProgress = Math.max(1, Math.min(99, Math.round(progress || 1)));
-
-  return (
-    <Html center className="pointer-events-none select-none">
-      <div className="flex min-w-[230px] items-center gap-3 rounded-full border border-[#dedede] bg-white/90 px-4 py-3 text-[11px] font-semibold tracking-[0.16em] text-[#1c1b1b] uppercase shadow-sm backdrop-blur">
-        <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#d7d7d7] border-t-[#5d0909]" />
-        <span>Loading Rashguard {displayProgress}%</span>
-      </div>
-    </Html>
-  );
-});
+/**
+ * The visible loading state now lives in <ModelLoadingOverlay>, rendered as a
+ * DOM sibling of the Canvas so it is centred on the viewport rather than on the
+ * 3D origin. This in-scene fallback stays empty on purpose.
+ */
+const RashguardModelLoading = memo(() => null);
 RashguardModelLoading.displayName = 'RashguardModelLoading';
 
 const RashguardModelClient = memo(() => {
@@ -362,6 +356,7 @@ export const RashguardCanvas = memo(({ className }: { className?: string }) => {
       >
         <Scene useMobileCamera={useMobileCamera} />
       </Canvas>
+      <ModelLoadingOverlay />
     </div>
   );
 });

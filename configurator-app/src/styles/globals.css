@@ -178,3 +178,9 @@ textarea {
     font-size: 10px;
   }
 }
+
+/* Tip cross-fade for the 3D loading overlay (model-loading-overlay.tsx). */
+@keyframes dsplnLoaderFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
