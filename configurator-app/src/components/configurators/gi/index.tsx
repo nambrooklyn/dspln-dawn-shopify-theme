@@ -599,10 +599,23 @@ const GiConfiguratorInner = memo(() => {
 
   const handleShareDesign = useCallback(
     async (providedDesignId?: string) => {
-      const savedId =
-        providedDesignId ??
-        (await handleSaveDesign(currentDesignName || formatDesignName())) ??
-        currentDesignId;
+      // The link only needs the design id, so an already-saved design
+      // shares instantly; pending edits upload in the background.
+      const knownId = providedDesignId ?? currentDesignId;
+      if (knownId) {
+        const url = buildGiCloudDesignUrls(knownId)?.designUrl;
+        if (url) {
+          if (hasUnsavedChanges) {
+            void handleSaveDesign(currentDesignName || formatDesignName());
+          }
+          return url;
+        }
+      }
+
+      // Never saved before — a save has to mint the id first.
+      const savedId = await handleSaveDesign(
+        currentDesignName || formatDesignName(),
+      );
       if (!savedId) {
         toast.error('Save the design before sharing');
         return null;
@@ -614,7 +627,7 @@ const GiConfiguratorInner = memo(() => {
       }
       return url;
     },
-    [currentDesignId, currentDesignName, handleSaveDesign],
+    [currentDesignId, currentDesignName, handleSaveDesign, hasUnsavedChanges],
   );
 
   const handleLoginToSave = useCallback(async () => {
