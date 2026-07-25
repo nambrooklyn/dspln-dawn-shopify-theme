@@ -2,10 +2,13 @@ import { memo, useState } from 'react';
 import {
   Facebook,
   ImageIcon,
+  Instagram,
   Linkedin,
   Mail,
   MessageCircle,
+  MessageSquareText,
   MoreHorizontal,
+  Music2,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -21,7 +24,17 @@ const SHARE_TARGETS: Array<{
   Icon?: LucideIcon;
   glyph?: string;
   href: (url: string, title: string) => string;
+  /** Platforms with no web share intent: copy the link on click, then
+   *  open the platform so the customer can paste it. */
+  copyLink?: boolean;
 }> = [
+  {
+    name: 'Messages',
+    color: '#34C759',
+    Icon: MessageSquareText,
+    href: (url, title) =>
+      `sms:?&body=${encodeURIComponent(`${title} ${url}`)}`,
+  },
   {
     name: 'WhatsApp',
     color: '#25D366',
@@ -35,6 +48,20 @@ const SHARE_TARGETS: Array<{
     glyph: 'X',
     href: (url, title) =>
       `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
+  },
+  {
+    name: 'Instagram',
+    color: '#E1306C',
+    Icon: Instagram,
+    href: () => 'https://www.instagram.com',
+    copyLink: true,
+  },
+  {
+    name: 'TikTok',
+    color: '#010101',
+    Icon: Music2,
+    href: () => 'https://www.tiktok.com',
+    copyLink: true,
   },
   {
     name: 'Facebook',
@@ -325,6 +352,9 @@ export const DesignCommandBar = memo(
                     href={target.href(shareUrl, designName)}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => {
+                      if (target.copyLink) void copyShareUrl();
+                    }}
                     className="flex w-14 shrink-0 flex-col items-center gap-1.5"
                   >
                     <span
