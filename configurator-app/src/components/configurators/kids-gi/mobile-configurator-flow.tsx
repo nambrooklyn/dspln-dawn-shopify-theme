@@ -293,6 +293,14 @@ export const MobileConfiguratorFlow = memo(
                   })
                 }
                 onRemove={() => removeKimonoLogo(slot)}
+                onApplyExisting={(item) =>
+                  setKimonoLogo(slot, {
+                    imageUrl: item.url,
+                    imageWidth: item.imageWidth,
+                    imageHeight: item.imageHeight,
+                    filename: item.filename,
+                  })
+                }
               />
             ),
           };
@@ -490,6 +498,14 @@ export const MobileConfiguratorFlow = memo(
                   })
                 }
                 onRemove={() => removePantLogo(slot)}
+                onApplyExisting={(item) =>
+                  setPantLogo(slot, {
+                    imageUrl: item.url,
+                    imageWidth: item.imageWidth,
+                    imageHeight: item.imageHeight,
+                    filename: item.filename,
+                  })
+                }
               />
             ),
           };

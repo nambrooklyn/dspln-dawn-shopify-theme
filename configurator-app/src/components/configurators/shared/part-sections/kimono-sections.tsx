@@ -110,6 +110,15 @@ export const KimonoSections = memo(() => {
             }}
             onRemove={() => removeKimonoLogo(slot)}
             onActivate={() => setCameraView(KIMONO_LOGO_SLOT_CAMERA_VIEW[slot])}
+            onApplyExisting={(item) => {
+              setKimonoLogo(slot, {
+                imageUrl: item.url,
+                imageWidth: item.imageWidth,
+                imageHeight: item.imageHeight,
+                filename: item.filename,
+              });
+              setCameraView(KIMONO_LOGO_SLOT_CAMERA_VIEW[slot]);
+            }}
           />
         );
       })}

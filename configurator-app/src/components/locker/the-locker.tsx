@@ -1,0 +1,708 @@
+/**
+ * The Locker — DSPLN's customer dashboard.
+ *
+ * The customer-facing Locker is embedded by the Shopify storefront at
+ * /pages/locker. Shopify owns authentication and passes the signed-in
+ * customer identity to this app. The app then joins that identity to DSPLN's
+ * saved designs, uploaded artwork, fit profile, and Shopify order history.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+
+type LockerPage = 'designs' | 'uploads' | 'fit' | 'orders';
+
+interface LockerCustomer {
+  customerId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  shopDomain: string;
+  storefrontOrigin: string;
+}
+
+interface LockerOrder {
+  id: string;
+  name: string;
+  processedAt: string;
+  financialStatus: string;
+  fulfillmentStatus: string;
+  totalAmount: string;
+  totalCurrency: string;
+  statusPageUrl: string;
+}
+
+interface LockerDesign {
+  id: string;
+  name?: string;
+  productHandle?: string;
+  thumbnailUrl?: string | null;
+  updatedAt?: string;
+}
+
+interface LockerUpload {
+  url: string;
+  filename?: string;
+  designId?: string;
+  designName?: string;
+  updatedAt?: string;
+  part?: string;
+  slot?: string;
+}
+
+interface FitProfile {
+  units: 'imperial' | 'metric';
+  height: string;
+  weight: string;
+  chest: string;
+  waist: string;
+  hips: string;
+  inseam: string;
+  shoulder: string;
+  sleeve: string;
+  preferredGiSize: string;
+  fitPreference: 'slim' | 'regular' | 'relaxed';
+  notes: string;
+  updatedAt?: string;
+}
+
+const emptyFit: FitProfile = {
+  units: 'imperial',
+  height: '',
+  weight: '',
+  chest: '',
+  waist: '',
+  hips: '',
+  inseam: '',
+  shoulder: '',
+  sleeve: '',
+  preferredGiSize: '',
+  fitPreference: 'regular',
+  notes: '',
+};
+
+const label = 'text-[11px] uppercase tracking-[0.16em]';
+
+function queryCustomer(): LockerCustomer | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const customerId = params.get('customerId')?.trim() ?? '';
+  const email = params.get('customerEmail')?.trim() ?? '';
+  const shopDomain = params.get('shop')?.trim() ?? '';
+  if (!customerId || !shopDomain) return null;
+  return {
+    customerId,
+    email,
+    shopDomain,
+    firstName: params.get('firstName')?.trim() ?? '',
+    lastName: params.get('lastName')?.trim() ?? '',
+    storefrontOrigin:
+      params.get('storefrontOrigin')?.trim() ||
+      (document.referrer ? new URL(document.referrer).origin : 'https://dspln.com'),
+  };
+}
+
+function ownerKey(customer: LockerCustomer): string {
+  return `shopify:${customer.shopDomain}:${customer.customerId}`;
+}
+
+function formatDate(value?: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatMoney(amount: string, currency: string): string {
+  const numeric = Number(amount);
+  if (Number.isNaN(numeric)) return `${amount} ${currency}`.trim();
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD',
+  }).format(numeric);
+}
+
+async function fetchDesigns(customer: LockerCustomer): Promise<LockerDesign[]> {
+  const url = new URL('/api/customer-designs', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Could not load saved designs.');
+  const payload = await response.json();
+  return payload?.data?.designs ?? [];
+}
+
+async function fetchUploads(customer: LockerCustomer): Promise<LockerUpload[]> {
+  const url = new URL('/api/customer-designs', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  url.searchParams.set('logos', '1');
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Could not load uploaded artwork.');
+  const payload = await response.json();
+  const uploads: LockerUpload[] = payload?.data?.logos ?? [];
+  const seen = new Set<string>();
+  return uploads.filter((upload) => {
+    const key = `${upload.url}|${upload.filename ?? ''}`;
+    if (!upload.url || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function fetchFit(customer: LockerCustomer): Promise<FitProfile> {
+  const url = new URL('/api/customer-fit', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  const response = await fetch(url);
+  if (response.status === 404) return emptyFit;
+  if (!response.ok) throw new Error('Could not load your sizing profile.');
+  const payload = await response.json();
+  return { ...emptyFit, ...(payload?.data?.profile ?? {}) };
+}
+
+function StatusBadge({ value }: { value: string }) {
+  return (
+    <span className={`inline-flex border border-[#d7d7d7] px-3 py-1 ${label}`}>
+      {(value || 'Pending').replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+export function TheLocker() {
+  const customer = useMemo(queryCustomer, []);
+  const storefrontLockerUrl =
+    typeof window !== 'undefined' && window.location.hostname.startsWith('dev--')
+      ? 'https://dspln-dev-2.myshopify.com/pages/locker'
+      : 'https://dspln.com/pages/locker';
+  const [page, setPage] = useState<LockerPage>('designs');
+  const [designs, setDesigns] = useState<LockerDesign[]>([]);
+  const [uploads, setUploads] = useState<LockerUpload[]>([]);
+  const [orders, setOrders] = useState<LockerOrder[]>([]);
+  const [fit, setFit] = useState<FitProfile>(emptyFit);
+  const [selectedDesign, setSelectedDesign] = useState<LockerDesign | null>(null);
+  const [loading, setLoading] = useState(Boolean(customer));
+  const [savingFit, setSavingFit] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadLocker = useCallback(async () => {
+    if (!customer) return;
+    setLoading(true);
+    setError('');
+    const results = await Promise.allSettled([
+      fetchDesigns(customer),
+      fetchUploads(customer),
+      fetchFit(customer),
+    ]);
+    if (results[0].status === 'fulfilled') setDesigns(results[0].value);
+    if (results[1].status === 'fulfilled') setUploads(results[1].value);
+    if (results[2].status === 'fulfilled') setFit(results[2].value);
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') {
+      setError(failure.reason instanceof Error ? failure.reason.message : 'Could not load the Locker.');
+    }
+    setLoading(false);
+  }, [customer]);
+
+  useEffect(() => {
+    void loadLocker();
+  }, [loadLocker]);
+
+  useEffect(() => {
+    const receiveStorefrontContext = (event: MessageEvent) => {
+      if (!customer || event.origin !== customer.storefrontOrigin) return;
+      const data = event.data;
+      if (data?.type !== 'dspln:locker:context') return;
+      if (String(data.customerId) !== customer.customerId) return;
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
+    };
+    window.addEventListener('message', receiveStorefrontContext);
+    window.parent?.postMessage({ type: 'dspln:locker:ready' }, customer?.storefrontOrigin ?? '*');
+    return () => window.removeEventListener('message', receiveStorefrontContext);
+  }, [customer]);
+
+  const saveFit = async () => {
+    if (!customer) return;
+    setSavingFit(true);
+    try {
+      const response = await fetch('/api/customer-fit', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerKey: ownerKey(customer), profile: fit }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Could not save your sizing profile.');
+      setFit({ ...fit, updatedAt: payload?.data?.profile?.updatedAt });
+      toast.success('Sizing and fit profile saved');
+    } catch (cause) {
+      toast.error((cause as Error).message);
+    } finally {
+      setSavingFit(false);
+    }
+  };
+
+  if (!customer) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-7 bg-white px-6 text-center font-sans text-[#1c1b1b]">
+        <div className="flex h-14 w-14 items-center justify-center bg-[#1c1b1b] text-2xl text-white">D</div>
+        <div>
+          <h1 className="text-2xl uppercase tracking-[0.24em]">The Locker</h1>
+          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-[#666]">
+            Open The Locker from the DSPLN store to sign in and access your designs, uploads,
+            sizing profile, and orders.
+          </p>
+        </div>
+        <a
+          href={storefrontLockerUrl}
+          className={`border border-[#1c1b1b] bg-[#1c1b1b] px-9 py-4 text-white ${label}`}
+        >
+          Open DSPLN Locker
+        </a>
+      </main>
+    );
+  }
+
+  const initials =
+    `${customer.firstName.slice(0, 1)}${customer.lastName.slice(0, 1)}`.toUpperCase() || 'D';
+  const displayName =
+    [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email;
+  // Sizing / Fit is still being designed — dev store only until approved
+  // for live.
+  const showFit = customer.shopDomain === 'dspln-dev-2.myshopify.com';
+  const nav: Array<{ id: LockerPage; text: string }> = [
+    { id: 'designs', text: 'Designs' },
+    { id: 'uploads', text: 'Uploads' },
+    ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit' }] : []),
+    { id: 'orders', text: 'Orders' },
+  ];
+
+  return (
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
+      {/* Stacked (mobile) rows must not stretch: the profile band stays
+          content-height and the main area absorbs the leftover screen. */}
+      <div className="grid min-h-screen w-full min-w-0 grid-cols-1 grid-rows-[auto_1fr] lg:grid-cols-[84px_300px_minmax(0,1fr)] lg:grid-rows-1">
+        <nav className="hidden min-h-screen flex-col items-center bg-[#1c1b1b] px-2 py-6 lg:flex">
+          <a
+            href={customer.storefrontOrigin}
+            target="_top"
+            aria-label="DSPLN home"
+            className="mb-8 flex h-9 w-9 items-center justify-center border border-white/40 text-white"
+          >
+            D
+          </a>
+          <a
+            href={customer.storefrontOrigin}
+            target="_top"
+            className={`w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
+          >
+            Home
+          </a>
+          <a
+            href={`${customer.storefrontOrigin}/collections/all`}
+            target="_top"
+            className={`w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
+          >
+            Shop
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setPage('designs');
+              setSelectedDesign(null);
+            }}
+            className={`w-full px-1 py-3 text-center text-white ${label}`}
+          >
+            Locker
+          </button>
+          <a
+            href={`${customer.storefrontOrigin}/account/logout`}
+            target="_top"
+            className={`mt-auto w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
+          >
+            Log out
+          </a>
+        </nav>
+
+        <aside className="flex min-w-0 items-center gap-4 bg-[#f5f5f5] px-4 py-4 text-left lg:block lg:min-h-screen lg:px-7 lg:py-8 lg:text-center">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#1c1b1b] text-base tracking-[0.12em] text-white lg:mx-auto lg:h-20 lg:w-20 lg:text-xl">
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] uppercase tracking-[0.08em] lg:mt-5 lg:text-[15px]">{displayName}</p>
+            <p className="mt-1 truncate text-[11px] text-[#666] lg:break-all lg:text-[13px]">{customer.email}</p>
+          </div>
+          <div className="shrink-0 border-l border-[#d8d8d8] pl-4 lg:mt-7 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-6">
+            <p className={`${label} mb-2`}>Member of DSPLN</p>
+            <p className="text-[11px] leading-relaxed text-[#666] lg:text-[13px]">
+              {designs.length} design{designs.length === 1 ? '' : 's'} · {uploads.length} upload
+              {uploads.length === 1 ? '' : 's'} · {orders.length} order
+              {orders.length === 1 ? '' : 's'}
+            </p>
+          </div>
+        </aside>
+
+        <main className="min-w-0 max-w-full overflow-x-hidden px-4 py-6 lg:px-12 lg:py-8">
+          <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-[#ddd] pb-5">
+            <div>
+              <p className={`${label} text-[#777]`}>The Locker</p>
+              <h1 className="mt-2 text-xl uppercase tracking-[0.2em]">
+                {selectedDesign ? selectedDesign.name || 'Saved Design' : nav.find((entry) => entry.id === page)?.text}
+              </h1>
+            </div>
+            {error ? <p className="text-sm text-[#842323]">{error}</p> : null}
+          </div>
+
+          {/*
+            Segmented control rather than underlined tabs: at phone width the
+            four labels were squeezed to the point that "Sizing / Fit" wrapped
+            onto two lines and the row looked broken. A pill track keeps every
+            label on one line, and the raised white pill reads as "selected"
+            far more clearly than a 2px underline on a small screen.
+          */}
+          <nav
+            aria-label="Locker pages"
+            className="mb-7 flex w-full min-w-0 gap-0.5 rounded-full bg-[#f1f1ee] p-1 sm:gap-1 sm:p-1.5"
+          >
+            {nav.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                aria-current={page === entry.id ? 'page' : undefined}
+                onClick={() => {
+                  setPage(entry.id);
+                  setSelectedDesign(null);
+                }}
+                className={`dspln-locker-tab min-w-0 flex-1 whitespace-nowrap rounded-full px-1.5 py-2 font-semibold uppercase transition-colors duration-150 sm:px-4 sm:py-2.5 ${
+                  page === entry.id
+                    ? 'bg-white text-[#1c1b1b] shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
+                    : 'text-[#75756e] hover:text-[#1c1b1b]'
+                }`}
+              >
+                {entry.text}
+              </button>
+            ))}
+          </nav>
+
+          {loading ? <p className={`${label} py-12 text-center text-[#777]`}>Loading Locker…</p> : null}
+
+          {!loading && page === 'designs' ? (
+            <section>
+              {selectedDesign ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDesign(null)}
+                    className={`${label} mb-6 underline underline-offset-4`}
+                  >
+                    ← All designs
+                  </button>
+                  <div className="grid gap-8 lg:grid-cols-[minmax(0,560px)_minmax(280px,1fr)]">
+                    <div className="aspect-square border border-[#ddd] bg-[#f7f7f7]">
+                      {selectedDesign.thumbnailUrl ? (
+                        <img
+                          src={selectedDesign.thumbnailUrl}
+                          alt={selectedDesign.name || 'Saved design'}
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <div className={`flex h-full items-center justify-center text-[#999] ${label}`}>
+                          Preview pending
+                        </div>
+                      )}
+                    </div>
+                    <div className="self-start border-t border-[#ddd] pt-6">
+                      <p className={label}>Saved design</p>
+                      <h2 className="mt-3 text-xl uppercase tracking-[0.12em]">
+                        {selectedDesign.name || 'Saved Design'}
+                      </h2>
+                      <p className="mt-3 text-sm text-[#777]">
+                        Last edited {formatDate(selectedDesign.updatedAt)}
+                      </p>
+                      <p className="mt-7 text-sm leading-relaxed text-[#666]">
+                        Open this design in the configurator to inspect it in 3D, continue editing,
+                        save a new version, or share it.
+                      </p>
+                      <a
+                        href={`${customer.storefrontOrigin}/products/${selectedDesign.productHandle || 'customgi'}?design=${encodeURIComponent(selectedDesign.id)}`}
+                        target="_top"
+                        className={`mt-7 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-7 py-4 text-white ${label}`}
+                      >
+                        Open in 3D
+                      </a>
+                      {uploads.some((upload) => upload.designId === selectedDesign.id) ? (
+                        <div className="mt-9 border-t border-[#ddd] pt-6">
+                          <h3 className={label}>Artwork in this design</h3>
+                          <div className="mt-4 grid grid-cols-3 gap-3">
+                            {uploads
+                              .filter((upload) => upload.designId === selectedDesign.id)
+                              .map((upload, index) => (
+                                <a
+                                  key={`${upload.url}-${index}`}
+                                  href={upload.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="aspect-square border border-[#ddd] bg-[#f7f7f7]"
+                                >
+                                  <img
+                                    src={upload.url}
+                                    alt={upload.filename || 'Uploaded artwork'}
+                                    className="h-full w-full object-contain p-2"
+                                  />
+                                </a>
+                              ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : designs.length ? (
+                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {designs.map((design) => {
+                    const designUrl = new URL(
+                      `/products/${design.productHandle || 'customgi'}`,
+                      customer.storefrontOrigin,
+                    );
+                    designUrl.searchParams.set('design', design.id);
+                    return (
+                      <article key={design.id} className="border border-[#ddd] bg-white">
+                        <div className="aspect-square bg-[#f7f7f7]">
+                          {design.thumbnailUrl ? (
+                            <img
+                              src={design.thumbnailUrl}
+                              alt={design.name || 'Saved design'}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            <div className={`flex h-full items-center justify-center text-[#999] ${label}`}>
+                              Preview pending
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-5">
+                          <h2 className="text-sm uppercase tracking-[0.12em]">
+                            {design.name || 'Saved Design'}
+                          </h2>
+                          <p className="mt-2 text-xs text-[#777]">
+                            Last edited {formatDate(design.updatedAt)}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDesign(design)}
+                            className={`mt-5 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-5 py-3 text-white ${label}`}
+                          >
+                            View design
+                          </button>
+                          <a
+                            href={designUrl.toString()}
+                            target="_top"
+                            className={`ml-4 mt-5 inline-flex underline underline-offset-4 ${label}`}
+                          >
+                            Open in 3D
+                          </a>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="border border-[#ddd] px-6 py-14 text-center">
+                  <p className="text-sm text-[#666]">You haven’t saved a design yet.</p>
+                  <a
+                    href={`${customer.storefrontOrigin}/products/customgi`}
+                    target="_top"
+                    className={`mt-6 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-7 py-3 text-white ${label}`}
+                  >
+                    Design a Gi
+                  </a>
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {!loading && page === 'uploads' ? (
+            <section>
+              <p className="mb-6 max-w-2xl text-sm leading-relaxed text-[#666]">
+                Artwork uploaded with your saved configurator designs is kept here for reuse and
+                production reference.
+              </p>
+              {uploads.length ? (
+                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                  {uploads.map((upload, index) => (
+                    <article key={`${upload.url}-${index}`} className="border border-[#ddd] p-4">
+                      <div className="aspect-square bg-[#f7f7f7]">
+                        <img
+                          src={upload.url}
+                          alt={upload.filename || 'Uploaded artwork'}
+                          className="h-full w-full object-contain p-3"
+                        />
+                      </div>
+                      <h2 className="mt-4 truncate text-sm">{upload.filename || 'Uploaded artwork'}</h2>
+                      <p className="mt-1 text-xs text-[#777]">
+                        {upload.designName || 'Saved design'}
+                        {upload.slot ? ` · ${upload.slot.replaceAll('-', ' ')}` : ''}
+                      </p>
+                      <a
+                        href={upload.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`mt-4 inline-flex underline underline-offset-4 ${label}`}
+                      >
+                        Open artwork
+                      </a>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="border border-[#ddd] px-6 py-14 text-center text-sm text-[#666]">
+                  Uploaded logos from saved designs will appear here.
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {!loading && page === 'fit' ? (
+            <form
+              className="max-w-4xl"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveFit();
+              }}
+            >
+              <p className="mb-7 max-w-2xl text-sm leading-relaxed text-[#666]">
+                Save your measurements once so future sizing recommendations and custom orders can
+                use the same fit profile.
+              </p>
+              <div className="mb-6 flex gap-2">
+                {(['imperial', 'metric'] as const).map((units) => (
+                  <button
+                    key={units}
+                    type="button"
+                    onClick={() => setFit({ ...fit, units })}
+                    className={`whitespace-nowrap border px-4 py-2 text-[10px] uppercase tracking-[0.12em] sm:px-5 sm:text-[11px] sm:tracking-[0.16em] ${
+                      fit.units === units
+                        ? 'border-[#1c1b1b] bg-[#1c1b1b] text-white'
+                        : 'border-[#ccc]'
+                    }`}
+                  >
+                    <span className="sm:hidden">
+                      {units === 'imperial' ? 'In / Lb' : 'Cm / Kg'}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {units === 'imperial' ? 'Inches / Pounds' : 'Centimeters / Kilograms'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  ['height', 'Height'],
+                  ['weight', 'Weight'],
+                  ['chest', 'Chest'],
+                  ['waist', 'Waist'],
+                  ['hips', 'Hips'],
+                  ['inseam', 'Inseam'],
+                  ['shoulder', 'Shoulder width'],
+                  ['sleeve', 'Sleeve length'],
+                  ['preferredGiSize', 'Preferred Gi size'],
+                ].map(([key, text]) => (
+                  <label key={key} className={label}>
+                    {text}
+                    <input
+                      value={String(fit[key as keyof FitProfile] ?? '')}
+                      onChange={(event) => setFit({ ...fit, [key]: event.target.value })}
+                      className="mt-2 h-11 w-full border border-[#ccc] px-3 text-sm normal-case tracking-normal outline-none focus:border-[#1c1b1b]"
+                    />
+                  </label>
+                ))}
+                <label className={label}>
+                  Fit preference
+                  <select
+                    value={fit.fitPreference}
+                    onChange={(event) =>
+                      setFit({ ...fit, fitPreference: event.target.value as FitProfile['fitPreference'] })
+                    }
+                    className="mt-2 h-11 w-full border border-[#ccc] bg-white px-3 text-sm normal-case tracking-normal"
+                  >
+                    <option value="slim">Slim</option>
+                    <option value="regular">Regular</option>
+                    <option value="relaxed">Relaxed</option>
+                  </select>
+                </label>
+              </div>
+              <label className={`mt-5 block ${label}`}>
+                Fit notes
+                <textarea
+                  value={fit.notes}
+                  onChange={(event) => setFit({ ...fit, notes: event.target.value })}
+                  rows={4}
+                  className="mt-2 w-full border border-[#ccc] p-3 text-sm normal-case tracking-normal outline-none focus:border-[#1c1b1b]"
+                  placeholder="Examples: longer sleeves, room through shoulders, competition fit…"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={savingFit}
+                className={`mt-6 border border-[#1c1b1b] bg-[#1c1b1b] px-8 py-3 text-white ${label} disabled:opacity-50`}
+              >
+                {savingFit ? 'Saving…' : 'Save sizing profile'}
+              </button>
+              {fit.updatedAt ? (
+                <p className="mt-3 text-xs text-[#777]">Last updated {formatDate(fit.updatedAt)}</p>
+              ) : null}
+            </form>
+          ) : null}
+
+          {!loading && page === 'orders' ? (
+            <section>
+              {orders.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className={`border-b border-[#1c1b1b] ${label}`}>
+                        <th className="py-3 pr-4 font-normal">Order</th>
+                        <th className="py-3 pr-4 font-normal">Date</th>
+                        <th className="py-3 pr-4 font-normal">Payment</th>
+                        <th className="py-3 pr-4 font-normal">Fulfillment</th>
+                        <th className="py-3 font-normal">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((order) => (
+                        <tr key={order.id} className="border-b border-[#ddd]">
+                          <td className="py-4 pr-4">
+                            <a href={order.statusPageUrl} target="_top" className="underline">
+                              {order.name}
+                            </a>
+                          </td>
+                          <td className="py-4 pr-4">{formatDate(order.processedAt)}</td>
+                          <td className="py-4 pr-4"><StatusBadge value={order.financialStatus} /></td>
+                          <td className="py-4 pr-4"><StatusBadge value={order.fulfillmentStatus} /></td>
+                          <td className="py-4">
+                            {formatMoney(order.totalAmount, order.totalCurrency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="border border-[#ddd] px-6 py-14 text-center">
+                  <p className="text-sm text-[#666]">You haven’t placed any orders yet.</p>
+                  <a
+                    href={`${customer.storefrontOrigin}/collections/all`}
+                    target="_top"
+                    className={`mt-6 inline-flex border border-[#1c1b1b] bg-[#1c1b1b] px-7 py-3 text-white ${label}`}
+                  >
+                    Start shopping
+                  </a>
+                </div>
+              )}
+            </section>
+          ) : null}
+        </main>
+      </div>
+    </div>
+  );
+}

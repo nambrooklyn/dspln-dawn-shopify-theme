@@ -1,9 +1,11 @@
 import {
   memo,
   useCallback,
+  useRef,
   useState,
   type ChangeEvent,
   type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import {
   Copy,
@@ -18,6 +20,9 @@ import {
   Trash2,
   UploadCloud,
 } from 'lucide-react';
+
+import { useSavedUploads } from '../../gi/uploaded-logos-context';
+import type { UploadedLogoItem } from '../../gi/use-uploaded-logos';
 
 interface LogoTransformControls {
   offsetXIn: number;
@@ -43,6 +48,10 @@ interface SectionLogoUploadProps {
   /** Called when the merchant starts interacting with this slot (opens
    *  the file picker) — used to frame the slot's area on the model. */
   onActivate?: () => void;
+  /** Apply an already-uploaded artwork to this slot. When provided and
+   *  the customer has uploads, clicking the slot opens a chooser
+   *  (device tile + upload thumbnails) instead of the bare file picker. */
+  onApplyExisting?: (item: UploadedLogoItem) => void;
 }
 
 async function trimTransparentPadding(file: File): Promise<{
@@ -154,9 +163,34 @@ export const SectionLogoUpload = memo(
     onDuplicate,
     onTransformChange,
     onActivate,
+    onApplyExisting,
   }: SectionLogoUploadProps) => {
     const [isHovering, setIsHovering] = useState(false);
     const [isDragActive, setIsDragActive] = useState(false);
+    const [chooserOpen, setChooserOpen] = useState(false);
+    const chooserFileRef = useRef<HTMLInputElement>(null);
+    const savedUploads = useSavedUploads();
+    const chooserEnabled = Boolean(onApplyExisting) && savedUploads.length > 0;
+
+    // With uploads available, a click opens the chooser instead of the
+    // native picker; drag-and-drop still uploads directly.
+    const handleSlotClick = useCallback(
+      (event: ReactMouseEvent<HTMLInputElement>) => {
+        onActivate?.();
+        if (!chooserEnabled) return;
+        event.preventDefault();
+        setChooserOpen((open) => !open);
+      },
+      [chooserEnabled, onActivate],
+    );
+
+    const applyExisting = useCallback(
+      (item: UploadedLogoItem) => {
+        onApplyExisting?.(item);
+        setChooserOpen(false);
+      },
+      [onApplyExisting],
+    );
 
     const handleFiles = useCallback(
       async (files: FileList | File[]) => {
@@ -272,7 +306,7 @@ export const SectionLogoUpload = memo(
               type="file"
               accept="image/png,image/jpeg"
               className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-              onClick={() => onActivate?.()}
+              onClick={handleSlotClick}
               onChange={handleInputChange}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
@@ -329,7 +363,7 @@ export const SectionLogoUpload = memo(
               type="file"
               accept="image/png,image/jpeg"
               className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-              onClick={() => onActivate?.()}
+              onClick={handleSlotClick}
               onChange={handleInputChange}
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
@@ -358,6 +392,49 @@ export const SectionLogoUpload = memo(
             </p>
           </div>
         )}
+
+        {chooserOpen && chooserEnabled ? (
+          <div className="border-border bg-background mt-2 rounded-lg border p-2 shadow-sm">
+            <div className="grid max-h-40 grid-cols-3 gap-1.5 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => chooserFileRef.current?.click()}
+                className="border-foreground/30 text-muted-foreground hover:border-foreground/60 hover:text-foreground flex aspect-square w-full flex-col items-center justify-center gap-1 rounded border border-dashed"
+              >
+                <UploadCloud className="h-4 w-4" />
+                <span className="text-[10px]">Device</span>
+              </button>
+              {savedUploads.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  aria-label="Apply this artwork"
+                  onClick={() => applyExisting(item)}
+                  className="border-border bg-muted/60 hover:ring-foreground/40 flex aspect-square w-full items-center justify-center overflow-hidden rounded border p-1 hover:ring-2"
+                >
+                  <img
+                    src={item.url}
+                    alt=""
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </button>
+              ))}
+            </div>
+            <input
+              ref={chooserFileRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              onChange={async (event) => {
+                if (event.target.files) {
+                  await handleFiles(event.target.files);
+                }
+                event.target.value = '';
+                setChooserOpen(false);
+              }}
+            />
+          </div>
+        ) : null}
 
         {filename && imageUrl ? (
           <>

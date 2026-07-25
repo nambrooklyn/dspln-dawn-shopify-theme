@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ShopifyCartDrawer, sendLinesToShopifyParent } from '../shared/shopify-cart-simulator';
@@ -45,9 +45,17 @@ import {
   type RashguardSerializedState,
 } from './rashguard-state';
 import { createLineDesignId } from '../shared/order-flow';
+import { DesignCommandBar } from '../shared/design-command-bar';
 import { RashguardShell } from './rashguard-shell';
 import { RashguardViewToggle } from './view-toggle';
 import { isStudioMode } from '../shared/studio-mode';
+import { UploadedArtworkProvider } from './uploaded-artwork-context';
+import {
+  APPLY_TARGETS,
+  uploadedArtworkToFile,
+  useUploadedArtwork,
+} from './use-uploaded-artwork';
+import type { RashguardArtworkTarget } from './rashguard-config';
 
 const SHOPIFY_CART_ADDED_MESSAGE = 'dspln:shopify-cart:added';
 const SHOPIFY_CART_ERROR_MESSAGE = 'dspln:shopify-cart:error';
@@ -117,13 +125,7 @@ async function imageUrlToDataUrl(url: string) {
 }
 
 function formatDesignName() {
-  return `${RASHGUARD_PRODUCT_CONFIG.designNamePrefix} ${new Date().toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })}`;
+  return RASHGUARD_PRODUCT_CONFIG.designNamePrefix;
 }
 
 function getLinkedDesignId() {
@@ -183,6 +185,7 @@ const RashguardConfiguratorInner = memo(() => {
     hydrate,
     partColors,
     artworkLayers,
+    addArtworkLayer,
     setSelectedPanel,
   } = useRashguardState();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -200,7 +203,69 @@ const RashguardConfiguratorInner = memo(() => {
     getRashguardCloudOwnerContext(RASHGUARD_PRODUCT_CONFIG),
   );
   const [isCartEditMode] = useState(getCartEditMode);
+  const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(
+    null,
+  );
+  const [lastEditedAt, setLastEditedAt] = useState<string | null>(null);
   const draftReadyRef = useRef(false);
+  const savingDesignRef = useRef(false);
+  const markCleanRef = useRef(false);
+  // design id → signature last pushed to the cloud. Share links only work
+  // for cloud records, and a plain local save doesn't create one.
+  const cloudSyncedRef = useRef(new Map<string, string>());
+
+  // serialize() carries the artwork layers' metadata but not their image
+  // content, so the signature appends each layer's imageUrl.
+  const designSignature = useMemo(
+    () =>
+      JSON.stringify({
+        spec: serialize(),
+        artwork: artworkLayers.map(
+          (layer) => `${layer.id}|${layer.imageUrl ?? ''}`,
+        ),
+      }),
+    [artworkLayers, serialize],
+  );
+  const hasUnsavedChanges = designSignature !== lastSavedSignature;
+
+  const uploadedArtwork = useUploadedArtwork({
+    savedDesigns,
+    currentArtworkLayers: artworkLayers,
+    activeDesignName: currentDesignName,
+    defaultDesignName: currentDesignName || formatDesignName(),
+  });
+  const commandBarUploads = useMemo(
+    () => uploadedArtwork.map(({ key, url }) => ({ key, url })),
+    [uploadedArtwork],
+  );
+  const handleApplyUpload = useCallback(
+    (uploadKey: string, target: string) => {
+      const item = uploadedArtwork.find((entry) => entry.key === uploadKey);
+      if (!item) return;
+      void uploadedArtworkToFile(item).then((file) => {
+        if (!file) return;
+        addArtworkLayer({
+          file,
+          dimensions: { width: item.imageWidth, height: item.imageHeight },
+          target: target ? (target as RashguardArtworkTarget) : undefined,
+        });
+      });
+    },
+    [addArtworkLayer, uploadedArtwork],
+  );
+
+  // Loading a saved design changes state asynchronously; the loader flips
+  // this ref so the freshly hydrated content is recorded as "saved" once the
+  // new signature lands. Any other signature change is a real edit.
+  useEffect(() => {
+    if (markCleanRef.current) {
+      markCleanRef.current = false;
+      setLastSavedSignature(designSignature);
+      return;
+    }
+    if (!draftReadyRef.current) return;
+    setLastEditedAt(new Date().toISOString());
+  }, [designSignature]);
 
   const refreshSavedDesigns = useCallback(() => {
     setSavedDesigns(listSavedRashguardDesigns());
@@ -213,6 +278,12 @@ const RashguardConfiguratorInner = memo(() => {
       setCurrentDesignName(
         draft.id === AUTO_RASHGUARD_DRAFT_ID ? formatDesignName() : draft.name,
       );
+      if (draft.id !== AUTO_RASHGUARD_DRAFT_ID) {
+        // A real saved design becomes the active one; its freshly hydrated
+        // content is by definition saved.
+        setLastEditedAt(draft.updatedAt);
+        markCleanRef.current = true;
+      }
       if (showToast) toast.success('Saved design loaded');
     },
     [hydrate],
@@ -366,6 +437,10 @@ const RashguardConfiguratorInner = memo(() => {
           const design = payload.data?.design;
           const spec = design?.configData?.spec;
           if (!design || !spec) return;
+          // This design demonstrably lives in the cloud, so a share link
+          // works right away; the empty signature makes the first share
+          // refresh the record in the background.
+          cloudSyncedRef.current.set(design.id, '');
           loadDraftDocument(
             {
               id: design.id,
@@ -414,7 +489,12 @@ const RashguardConfiguratorInner = memo(() => {
   }, [artworkLayers, serialize]);
 
   const handleSaveDesign = useCallback(
-    async (name: string) => {
+    async (name: string, options?: { saveAsNew?: boolean }) => {
+      // A save can take a moment (thumbnail snapshot); a second press in
+      // that window must not mint a second design record.
+      if (savingDesignRef.current) return null;
+      savingDesignRef.current = true;
+      const signatureAtSave = designSignature;
       setDraftStatus('saving');
       try {
         const cleanName = name.trim() || currentDesignName || formatDesignName();
@@ -422,10 +502,11 @@ const RashguardConfiguratorInner = memo(() => {
           (design) =>
             design.name.trim().toLowerCase() === cleanName.toLowerCase(),
         );
-        const id =
-          currentDesignId ??
-          matchingSavedDesign?.id ??
-          createLineDesignId(RASHGUARD_PRODUCT_CONFIG.savedDesignIdPrefix);
+        const id = options?.saveAsNew
+          ? createLineDesignId(RASHGUARD_PRODUCT_CONFIG.savedDesignIdPrefix)
+          : currentDesignId ??
+            matchingSavedDesign?.id ??
+            createLineDesignId(RASHGUARD_PRODUCT_CONFIG.savedDesignIdPrefix);
         const existing = readRashguardDraftDocument(id);
         const draft = await createRashguardDraftDocument({
           id,
@@ -438,22 +519,126 @@ const RashguardConfiguratorInner = memo(() => {
         saveRashguardDraftDocument(draft);
         setCurrentDesignId(draft.id);
         setCurrentDesignName(draft.name);
+        setLastEditedAt(draft.updatedAt);
+        setLastSavedSignature(signatureAtSave);
         refreshSavedDesigns();
         setDraftStatus('saved');
         toast.success('Design saved locally');
+        return draft.id;
       } catch {
         setDraftStatus('error');
         toast.error('Design could not be saved');
+        return null;
+      } finally {
+        savingDesignRef.current = false;
       }
     },
     [
       currentDesignId,
       currentDesignName,
+      designSignature,
       getCanvasEl,
       artworkLayers,
       refreshSavedDesigns,
       savedDesigns,
       serialize,
+    ],
+  );
+
+  const handleSaveAsDesign = useCallback(
+    (name: string) => handleSaveDesign(name, { saveAsNew: true }),
+    [handleSaveDesign],
+  );
+
+  // Create/update the cloud record share links point at — the same record
+  // shape the add-to-cart flow saves.
+  const saveDesignToCloud = useCallback(
+    async (designId: string, name: string) => {
+      const signatureAtSave = designSignature;
+      const existing = readRashguardDraftDocument(designId);
+      const draft = await createRashguardDraftDocument({
+        id: designId,
+        name: name.trim() || formatDesignName(),
+        spec: serialize(),
+        artworkLayers,
+        thumbnailUrl: snapshotCanvas(getCanvasEl()) ?? undefined,
+        existingCreatedAt: existing?.createdAt,
+      });
+      const cloudResult = await saveRashguardCloudDesignRecord(
+        draft,
+        cloudOwnerContext,
+        RASHGUARD_PRODUCT_CONFIG,
+      );
+      if (!cloudResult) return null;
+      cloudSyncedRef.current.set(cloudResult.draft.id, signatureAtSave);
+      if (cloudResult.draft.id !== designId) {
+        setCurrentDesignId(cloudResult.draft.id);
+      }
+      return cloudResult;
+    },
+    [artworkLayers, cloudOwnerContext, designSignature, getCanvasEl, serialize],
+  );
+
+  const handleShareDesign = useCallback(
+    async (providedDesignId?: string) => {
+      const shareName = currentDesignName || formatDesignName();
+
+      // The link only needs the design id, so a design already in the
+      // cloud shares instantly; pending edits upload in the background.
+      const knownId = providedDesignId ?? currentDesignId;
+      if (knownId && cloudSyncedRef.current.has(knownId)) {
+        const url = buildRashguardCloudDesignUrls(
+          knownId,
+          RASHGUARD_PRODUCT_CONFIG,
+        )?.designUrl;
+        if (url) {
+          if (cloudSyncedRef.current.get(knownId) !== designSignature) {
+            void saveDesignToCloud(knownId, shareName).catch((err) => {
+              console.error(
+                '[RashguardConfigurator] background cloud save failed',
+                err,
+              );
+            });
+          }
+          return url;
+        }
+      }
+
+      // No cloud record yet — the link would be dead until one exists, so
+      // create it first (a local save mints the id when never saved at all).
+      const designId = knownId ?? (await handleSaveDesign(shareName));
+      if (!designId) {
+        toast.error('Save the design before sharing');
+        return null;
+      }
+      try {
+        const cloudResult = await saveDesignToCloud(designId, shareName);
+        if (!cloudResult) {
+          throw new Error('Design record was not saved.');
+        }
+        const url =
+          cloudResult.designUrl ??
+          buildRashguardCloudDesignUrls(
+            cloudResult.draft.id,
+            RASHGUARD_PRODUCT_CONFIG,
+          )?.designUrl;
+        if (!url) {
+          toast.error('Could not build the share link');
+          return null;
+        }
+        return url;
+      } catch (err) {
+        console.error('[RashguardConfigurator] share cloud save failed', err);
+        toast.error('Could not create the share link');
+        return null;
+      }
+    },
+    [
+      currentDesignId,
+      currentDesignName,
+      designSignature,
+      handleSaveDesign,
+      saveDesignToCloud,
     ],
   );
 
@@ -468,7 +653,10 @@ const RashguardConfiguratorInner = memo(() => {
     (id: string) => {
       deleteRashguardDraftDocument(id);
       refreshSavedDesigns();
-      if (currentDesignId === id) setCurrentDesignId(null);
+      if (currentDesignId === id) {
+        setCurrentDesignId(null);
+        setLastSavedSignature(null);
+      }
       toast.success('Saved design removed');
     },
     [currentDesignId, refreshSavedDesigns],
@@ -559,6 +747,7 @@ const RashguardConfiguratorInner = memo(() => {
         }
         lineDesignId = cloudResult.draft.id;
         setCurrentDesignId(cloudResult.draft.id);
+        cloudSyncedRef.current.set(cloudResult.draft.id, designSignature);
         const urls = buildRashguardCloudDesignUrls(
           cloudResult.draft.id,
           RASHGUARD_PRODUCT_CONFIG,
@@ -602,6 +791,7 @@ const RashguardConfiguratorInner = memo(() => {
     artworkLayers,
     cloudOwnerContext,
     currentDesignName,
+    designSignature,
     getCanvasEl,
     serialize,
     setCameraView,
@@ -609,7 +799,7 @@ const RashguardConfiguratorInner = memo(() => {
   ]);
 
   return (
-    <>
+    <UploadedArtworkProvider value={uploadedArtwork}>
       <RashguardShell
         onAddToCart={handleAddToCart}
         isAddingToCart={isAddingToCart}
@@ -630,6 +820,21 @@ const RashguardConfiguratorInner = memo(() => {
             onDeleteDesign={handleDeleteDesign}
           />
         }
+        sceneTopContent={
+          <DesignCommandBar
+            designId={currentDesignId}
+            designName={currentDesignName}
+            hasUnsavedChanges={hasUnsavedChanges}
+            lastEditedAt={lastEditedAt}
+            status={draftStatus}
+            onSave={handleSaveDesign}
+            onSaveAs={handleSaveAsDesign}
+            onShare={handleShareDesign}
+            uploads={commandBarUploads}
+            uploadTargets={APPLY_TARGETS}
+            onApplyUpload={handleApplyUpload}
+          />
+        }
       >
         <RashguardCanvas />
         <RashguardViewToggle />
@@ -643,7 +848,7 @@ const RashguardConfiguratorInner = memo(() => {
           setCartLines([]);
         }}
       />
-    </>
+    </UploadedArtworkProvider>
   );
 });
 
