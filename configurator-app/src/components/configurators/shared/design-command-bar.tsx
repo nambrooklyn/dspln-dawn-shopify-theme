@@ -96,15 +96,16 @@ export const DesignCommandBar = memo(
 
     return (
       <>
-        <div className="relative">
+        <div className="flex w-full justify-end">
+          <div className="relative">
           <button
             type="button"
             aria-label="Design actions"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
-            className="text-foreground hover:text-muted-foreground p-1"
+            className="border-border bg-background/95 text-foreground hover:bg-muted rounded border p-2 shadow-sm"
           >
-            <MoreHorizontal className="h-6 w-6" />
+            <MoreHorizontal className="h-5 w-5" />
           </button>
 
           {menuOpen ? (
@@ -144,6 +145,7 @@ export const DesignCommandBar = memo(
               </a>
             </div>
           ) : null}
+          </div>
         </div>
 
         {uploadsOpen ? (

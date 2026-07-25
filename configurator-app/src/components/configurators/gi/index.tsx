@@ -53,6 +53,7 @@ import type { CameraView, KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { GI_CAMERA_TWEEN_MS } from './gi-config';
 import type { KimonoLogo } from './gi-state';
 import { APPLY_TARGETS, useUploadedLogos } from './use-uploaded-logos';
+import { UploadedLogosProvider } from './uploaded-logos-context';
 import { currentGiProductConfig } from '../shared/gi-product-config';
 import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
 import {
@@ -854,7 +855,7 @@ const GiConfiguratorInner = memo(() => {
   ]);
 
   return (
-    <>
+    <UploadedLogosProvider value={uploadedLogos}>
       <ConfiguratorShell
         onAddToCart={handleAddToCart}
         onExport={handleExport}
@@ -930,7 +931,7 @@ const GiConfiguratorInner = memo(() => {
           setCartLines([]);
         }}
       />
-    </>
+    </UploadedLogosProvider>
   );
 });
 GiConfiguratorInner.displayName = 'GiConfiguratorInner';
