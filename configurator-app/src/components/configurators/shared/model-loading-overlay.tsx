@@ -30,31 +30,8 @@ const TIP_INTERVAL_MS = 2800;
 /** Long enough for the cross-fade to finish before the overlay unmounts. */
 const FADE_MS = 450;
 
-/** A simple gi silhouette: shows the shape of the product before it renders. */
-function GarmentGhost({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 120 150"
-      className={className}
-      fill="none"
-      aria-hidden="true"
-    >
-      {/* jacket */}
-      <path
-        d="M40 26 L26 33 L14 48 L24 57 L32 48 L32 92 L88 92 L88 48 L96 57 L106 48 L94 33 L80 26 L60 44 Z"
-        fill="currentColor"
-      />
-      {/* lapel */}
-      <path d="M40 26 L60 44 L80 26 L60 34 Z" fill="currentColor" opacity="0.55" />
-      {/* pants */}
-      <path
-        d="M34 96 L86 96 L82 140 L64 140 L60 108 L56 140 L38 140 Z"
-        fill="currentColor"
-        opacity="0.85"
-      />
-    </svg>
-  );
-}
+/** The DSPLN wordmark (教 DSPLN 育), already shipped for the back-logo artwork. */
+const LOGO_SRC = '/logos/dspln-back-logo.png';
 
 export const ModelLoadingOverlay = memo(
   ({ tips = DEFAULT_TIPS, label = 'Building your 3D preview' }: {
@@ -100,9 +77,16 @@ export const ModelLoadingOverlay = memo(
         role="status"
         aria-live="polite"
       >
-        <GarmentGhost className="h-40 w-32 animate-pulse text-[#ececec] sm:h-48 sm:w-40" />
+        <img
+          src={LOGO_SRC}
+          alt="DSPLN"
+          // Wide wordmark: cap the width and let height follow, so it stays
+          // legible on a phone without dominating the desktop canvas.
+          className="w-[min(64%,320px)] animate-pulse select-none"
+          draggable={false}
+        />
 
-        <p className="mt-7 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#9a9a9a]">
+        <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#9a9a9a]">
           {label}
         </p>
 
