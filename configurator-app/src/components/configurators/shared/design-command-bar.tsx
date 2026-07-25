@@ -1,8 +1,13 @@
 import { memo, useState } from 'react';
-import { MoreHorizontal, Share2 } from 'lucide-react';
+import { ImageIcon, MoreHorizontal, Share2, X } from 'lucide-react';
 import { lockerUrl } from './dspln-rail-links';
 
 type SaveStatus = 'loading' | 'saving' | 'saved' | 'error';
+
+export interface CommandBarUpload {
+  key: string;
+  url: string;
+}
 
 interface DesignCommandBarProps {
   designId: string | null;
@@ -13,6 +18,9 @@ interface DesignCommandBarProps {
   onSave: (name: string) => Promise<string | null>;
   onSaveAs: (name: string) => Promise<string | null>;
   onShare: (designId?: string) => Promise<void>;
+  uploads?: CommandBarUpload[];
+  uploadTargets?: Array<{ value: string; label: string }>;
+  onApplyUpload?: (uploadKey: string, target: string) => void;
 }
 
 function lastEditedLabel(
@@ -55,11 +63,31 @@ export const DesignCommandBar = memo(
     onSave,
     onSaveAs,
     onShare,
+    uploads,
+    uploadTargets,
+    onApplyUpload,
   }: DesignCommandBarProps) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<'save' | 'saveAs' | null>(null);
     const [shareAfterSave, setShareAfterSave] = useState(false);
     const [nameDraft, setNameDraft] = useState(designName);
+    const [uploadsOpen, setUploadsOpen] = useState(false);
+    const [uploadTarget, setUploadTarget] = useState(
+      uploadTargets?.[0]?.value ?? '',
+    );
+
+    const uploadsMenuItem = onApplyUpload ? (
+      <button
+        type="button"
+        onClick={() => {
+          setMenuOpen(false);
+          setUploadsOpen(true);
+        }}
+        className="hover:bg-muted w-full rounded px-3 py-2 text-left text-xs"
+      >
+        Uploads
+      </button>
+    ) : null;
 
     const openNameDialog = (mode: 'save' | 'saveAs', thenShare = false) => {
       setNameDraft(mode === 'saveAs' ? `${designName} Copy` : designName);
@@ -137,6 +165,7 @@ export const DesignCommandBar = memo(
               >
                 Share design
               </button>
+              {uploadsMenuItem}
               <a
                 href={lockerUrl()}
                 target="_top"
@@ -205,6 +234,7 @@ export const DesignCommandBar = memo(
               </button>
               {menuOpen ? (
                 <div className="border-border bg-background absolute top-full right-0 z-50 mt-2 w-44 rounded border p-1 shadow-xl">
+                  {uploadsMenuItem}
                   <a
                     href={lockerUrl()}
                     target="_top"
@@ -217,6 +247,72 @@ export const DesignCommandBar = memo(
             </div>
           </div>
         </div>
+
+        {uploadsOpen ? (
+          <div
+            className="bg-foreground/20 fixed inset-0 z-[90]"
+            onClick={() => setUploadsOpen(false)}
+          >
+            <div
+              onClick={(event) => event.stopPropagation()}
+              className="border-border bg-background fixed top-24 right-4 z-[95] w-60 rounded-lg border p-2 shadow-2xl sm:right-8"
+            >
+              <div className="flex items-center justify-between gap-2 pb-2">
+                {uploadTargets?.length ? (
+                  <select
+                    value={uploadTarget}
+                    onChange={(event) => setUploadTarget(event.target.value)}
+                    aria-label="Apply artwork to"
+                    className="border-border bg-background text-foreground h-8 min-w-0 flex-1 rounded border px-2 text-xs"
+                  >
+                    {uploadTargets.map((target) => (
+                      <option key={target.value} value={target.value}>
+                        {target.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span />
+                )}
+                <button
+                  type="button"
+                  aria-label="Close uploads"
+                  onClick={() => setUploadsOpen(false)}
+                  className="hover:bg-muted rounded-full p-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {uploads?.length ? (
+                <ul className="grid max-h-64 grid-cols-3 gap-1.5 overflow-y-auto">
+                  {uploads.map((upload) => (
+                    <li key={upload.key}>
+                      <button
+                        type="button"
+                        aria-label="Apply this artwork"
+                        onClick={() => {
+                          onApplyUpload?.(upload.key, uploadTarget);
+                          setUploadsOpen(false);
+                        }}
+                        className="border-border bg-muted/60 hover:ring-foreground/40 flex aspect-square w-full items-center justify-center overflow-hidden rounded border p-1 hover:ring-2"
+                      >
+                        <img
+                          src={upload.url}
+                          alt=""
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-muted-foreground flex min-h-24 items-center justify-center">
+                  <ImageIcon className="h-6 w-6" />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         {dialogMode ? (
           <div className="bg-foreground/30 fixed inset-0 z-[100] flex items-center justify-center p-4">

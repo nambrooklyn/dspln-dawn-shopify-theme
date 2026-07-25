@@ -49,8 +49,10 @@ import {
   ShopifyCartDrawer,
   type ShopifyCartLine,
 } from '../shared/shopify-cart-simulator';
-import type { CameraView } from './gi-config';
+import type { CameraView, KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { GI_CAMERA_TWEEN_MS } from './gi-config';
+import type { KimonoLogo } from './gi-state';
+import { APPLY_TARGETS, useUploadedLogos } from './use-uploaded-logos';
 import { currentGiProductConfig } from '../shared/gi-product-config';
 import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
 import {
@@ -294,6 +296,37 @@ const GiConfiguratorInner = memo(() => {
     [kimonoLogos, pantLogos, serialize],
   );
   const hasUnsavedChanges = designSignature !== lastSavedSignature;
+
+  const uploadedLogos = useUploadedLogos({
+    savedDesigns,
+    currentKimonoLogos: kimonoLogos,
+    currentPantLogos: pantLogos,
+    activeDesignName: currentDesignName,
+    defaultDesignName: currentDesignName || formatDesignName(),
+  });
+  const commandBarUploads = useMemo(
+    () => uploadedLogos.map(({ key, url }) => ({ key, url })),
+    [uploadedLogos],
+  );
+  const handleApplyUpload = useCallback(
+    (uploadKey: string, target: string) => {
+      const logo = uploadedLogos.find((item) => item.key === uploadKey);
+      if (!logo) return;
+      const [part, slot] = target.split(':') as [
+        'kimono' | 'pant',
+        KimonoLogoSlot | PantLogoSlot,
+      ];
+      const nextLogo: KimonoLogo = {
+        imageUrl: logo.url,
+        imageWidth: logo.imageWidth,
+        imageHeight: logo.imageHeight,
+        filename: logo.filename,
+      };
+      if (part === 'kimono') setKimonoLogo(slot as KimonoLogoSlot, nextLogo);
+      else setPantLogo(slot as PantLogoSlot, nextLogo);
+    },
+    [uploadedLogos, setKimonoLogo, setPantLogo],
+  );
 
   // Loading a saved design changes state asynchronously; the loader flips
   // this ref so the freshly hydrated content is recorded as "saved" once the
@@ -877,6 +910,9 @@ const GiConfiguratorInner = memo(() => {
             onSave={handleSaveDesign}
             onSaveAs={handleSaveAsDesign}
             onShare={handleShareDesign}
+            uploads={commandBarUploads}
+            uploadTargets={APPLY_TARGETS}
+            onApplyUpload={handleApplyUpload}
           />
         }
       >
