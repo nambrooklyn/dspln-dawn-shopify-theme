@@ -135,6 +135,23 @@
       }
     },
     "content_for_index": [],
+    "blocks": {
+      "13768625480086291342": {
+        "type": "shopify://apps/forms/blocks/forms/8744a304-fcb1-4347-b211-bb6b4759a76a",
+        "disabled": false,
+        "settings": {}
+      },
+      "11082817785457682960": {
+        "type": "shopify://apps/chatra-live-chat-chatbot/blocks/widget/3617185a-5880-4550-b1d3-81cdb9d37290",
+        "disabled": false,
+        "settings": {}
+      },
+      "12264981854551093274": {
+        "type": "shopify://apps/zigpoll-customer-surveys/blocks/zigpoll-embed/019a552e-a887-7983-9977-f95313668ab3",
+        "disabled": true,
+        "settings": {}
+      }
+    },
     "color_schemes": {
       "scheme-1": {
         "settings": {
@@ -189,28 +206,6 @@
           "button_label": "#334fb4",
           "secondary_button_label": "#ffffff",
           "shadow": "#121212"
-        }
-      },
-      "scheme-cad35fe2-d1c7-4eb2-8b80-c58c004c7cfa": {
-        "settings": {
-          "background": "#ffffff",
-          "background_gradient": "",
-          "text": "#121212",
-          "button": "#121212",
-          "button_label": "#ffffff",
-          "secondary_button_label": "#121212",
-          "shadow": "#121212"
-        }
-      },
-      "scheme-ab4c42ec-0efe-4d36-bb64-0cee122b532e": {
-        "settings": {
-          "background": "#690101",
-          "background_gradient": "",
-          "text": "#FFFFFF",
-          "button": "#FFFFFF",
-          "button_label": "#ffffff",
-          "secondary_button_label": "#FFFFFF",
-          "shadow": "#FFFFFF"
         }
       }
     }
