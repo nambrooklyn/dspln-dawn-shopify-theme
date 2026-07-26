@@ -17,7 +17,7 @@
         "announcement_WCPtW4": {
           "type": "announcement",
           "settings": {
-            "text": "FREE SHIPPING WHEN YOU SIGNUP.",
+            "text": "FREE SHIPPING WHEN YOU SIGN UP",
             "link": ""
           }
         }
@@ -26,8 +26,8 @@
         "announcement_WCPtW4"
       ],
       "custom_css": [
-        "/* Announcement bar text - force white */.announcement-bar {color: #FFFFFF !important;}",
-        ".announcement-bar * {color: #FFFFFF !important;}"
+        "/* Announcement bar text - force white */.announcement-bar {color: #ffffff !important;}",
+        ".announcement-bar * {color: #ffffff !important;}"
       ],
       "name": "t:sections.announcement-bar.presets.name",
       "settings": {
