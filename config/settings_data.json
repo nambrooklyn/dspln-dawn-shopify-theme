@@ -141,13 +141,13 @@
         "disabled": false,
         "settings": {}
       },
-      "11082817785457682960": {
-        "type": "shopify://apps/chatra-live-chat-chatbot/blocks/widget/3617185a-5880-4550-b1d3-81cdb9d37290",
-        "disabled": false,
-        "settings": {}
-      },
       "12264981854551093274": {
         "type": "shopify://apps/zigpoll-customer-surveys/blocks/zigpoll-embed/019a552e-a887-7983-9977-f95313668ab3",
+        "disabled": true,
+        "settings": {}
+      },
+      "11082817785457682960": {
+        "type": "shopify://apps/chatra-live-chat-chatbot/blocks/widget/3617185a-5880-4550-b1d3-81cdb9d37290",
         "disabled": true,
         "settings": {}
       }
@@ -188,7 +188,7 @@
       },
       "scheme-4": {
         "settings": {
-          "background": "#7E0000",
+          "background": "#7e0000",
           "background_gradient": "",
           "text": "#ffffff",
           "button": "#ffffff",
