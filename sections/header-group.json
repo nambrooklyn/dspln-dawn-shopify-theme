@@ -14,31 +14,15 @@
     "announcement_bar_n9BQP8": {
       "type": "announcement-bar",
       "blocks": {
-        "announcement_nidjzP": {
-          "type": "announcement",
-          "settings": {
-            "text": "Welcome to our store",
-            "link": ""
-          }
-        },
-        "announcement_bQiqBy": {
-          "type": "announcement",
-          "settings": {
-            "text": "Welcome to our store",
-            "link": ""
-          }
-        },
         "announcement_WCPtW4": {
           "type": "announcement",
           "settings": {
             "text": "FREE SHIPPING WHEN YOU SIGN UP",
-            "link": ""
+            "link": "https://dspln.com/pages/sign-up"
           }
         }
       },
       "block_order": [
-        "announcement_nidjzP",
-        "announcement_bQiqBy",
         "announcement_WCPtW4"
       ],
       "custom_css": [
