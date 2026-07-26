@@ -44,10 +44,20 @@
       "settings": {
         "include_margins": true
       }
+    },
+    "dspln_contact_wWVcnY": {
+      "type": "dspln-contact",
+      "name": "DSPLN contact",
+      "settings": {
+        "heading": "Have Any Questions?",
+        "text": "<p>Have a question or need assistance? Drop us a message, we're here to help!</p>",
+        "button_label": "Send message"
+      }
     }
   },
   "order": [
     "main",
-    "1785106274bdf78bc9"
+    "1785106274bdf78bc9",
+    "dspln_contact_wWVcnY"
   ]
 }
