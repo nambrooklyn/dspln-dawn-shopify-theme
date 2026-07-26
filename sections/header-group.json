@@ -25,6 +25,10 @@
       "block_order": [
         "announcement_WCPtW4"
       ],
+      "custom_css": [
+        "/* Announcement bar text - force white */.announcement-bar {color: #FFFFFF !important;}",
+        ".announcement-bar * {color: #FFFFFF !important;}"
+      ],
       "name": "t:sections.announcement-bar.presets.name",
       "settings": {
         "auto_rotate": false,
