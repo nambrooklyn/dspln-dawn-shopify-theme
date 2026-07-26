@@ -294,14 +294,14 @@ export function TheLocker() {
           <a
             href={customer.storefrontOrigin}
             target="_top"
-            className={`w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
+            className="dspln-locker-rail-link w-full px-1 py-3 text-center text-[#aaa] hover:text-white"
           >
             Home
           </a>
           <a
             href={`${customer.storefrontOrigin}/collections/all`}
             target="_top"
-            className={`w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
+            className="dspln-locker-rail-link w-full px-1 py-3 text-center text-[#aaa] hover:text-white"
           >
             Shop
           </a>
@@ -311,14 +311,14 @@ export function TheLocker() {
               setPage('designs');
               setSelectedDesign(null);
             }}
-            className={`w-full px-1 py-3 text-center text-white ${label}`}
+            className="dspln-locker-rail-link w-full px-1 py-3 text-center text-white"
           >
             Locker
           </button>
           <a
             href={`${customer.storefrontOrigin}/account/logout`}
             target="_top"
-            className={`mt-auto w-full px-1 py-3 text-center text-[#aaa] hover:text-white ${label}`}
+            className="dspln-locker-rail-link mt-auto w-full px-1 py-3 text-center text-[#aaa] hover:text-white"
           >
             Log out
           </a>
