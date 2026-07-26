@@ -219,6 +219,12 @@ export const DesignCommandBar = memo(
 
           {menuOpen ? (
             <div className="border-border bg-background absolute top-full right-0 z-50 mt-1 w-48 rounded border p-1 shadow-xl">
+              <p
+                className="text-foreground border-border truncate border-b px-3 pt-2 pb-2.5 text-xs font-semibold tracking-[0.08em] uppercase"
+                title={designName}
+              >
+                {designName}
+              </p>
               <button
                 type="button"
                 disabled={status === 'saving' || (Boolean(designId) && !hasUnsavedChanges)}
