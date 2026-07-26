@@ -11,6 +11,31 @@
   "name": "t:sections.header.name",
   "type": "header",
   "sections": {
+    "announcement_bar_n9BQP8": {
+      "type": "announcement-bar",
+      "blocks": {
+        "announcement_WCPtW4": {
+          "type": "announcement",
+          "settings": {
+            "text": "Welcome to our store",
+            "link": ""
+          }
+        }
+      },
+      "block_order": [
+        "announcement_WCPtW4"
+      ],
+      "name": "t:sections.announcement-bar.presets.name",
+      "settings": {
+        "auto_rotate": false,
+        "change_slides_speed": 5,
+        "color_scheme": "scheme-ab4c42ec-0efe-4d36-bb64-0cee122b532e",
+        "show_line_separator": false,
+        "show_social": false,
+        "enable_country_selector": false,
+        "enable_language_selector": false
+      }
+    },
     "header": {
       "type": "header",
       "settings": {
@@ -32,6 +57,7 @@
     }
   },
   "order": [
+    "announcement_bar_n9BQP8",
     "header"
   ]
 }

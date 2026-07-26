@@ -36,6 +36,15 @@
     "dspln_stats_quotes_8L8A8E": {
       "type": "dspln-stats-quotes",
       "blocks": {
+        "quote_cqNiVk": {
+          "type": "quote",
+          "settings": {
+            "text": "Fit is perfect and they worked with me to get it right.",
+            "author": "MARCUS R. — PURPLE BELT",
+            "link_label": "",
+            "link_url": ""
+          }
+        },
         "stat_6zi46i": {
           "type": "stat",
           "settings": {
@@ -75,6 +84,7 @@
         }
       },
       "block_order": [
+        "quote_cqNiVk",
         "stat_6zi46i",
         "stat_V7H4nC",
         "stat_GiM9XW",
