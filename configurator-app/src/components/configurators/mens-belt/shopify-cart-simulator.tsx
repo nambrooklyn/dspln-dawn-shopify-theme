@@ -462,6 +462,13 @@ function cartPropertiesForShopify(line: ShopifyCartLine) {
     },
     {},
   );
+  // Design snapshot for order confirmation emails: hidden properties are
+  // stripped above, but the hosted preview URL must survive onto the Shopify
+  // order line so the email template can show the customer's actual design.
+  // Skip data: URLs — only a hosted image is safe to store and email.
+  if (/^https?:\/\//.test(line.thumbnailUrl ?? '')) {
+    properties['_preview_image_url'] = line.thumbnailUrl;
+  }
   properties[CHECKOUT_SAVED_MESSAGE_NAME] = CHECKOUT_SAVED_MESSAGE_VALUE;
   return properties;
 }
