@@ -46,6 +46,7 @@
     logo10: null,
     backLogo25: null,
     beltText10: null,
+    customSize25: null,
   };
 
   const CHARGE_LABELS = {
@@ -55,6 +56,7 @@
     logo10: '$10 customization charge',
     backLogo25: 'Back logo $25 charge',
     beltText10: 'Belt text $10 charge',
+    customSize25: 'Custom sizing $25 charge',
   };
 
   function getCartSectionIds() {
