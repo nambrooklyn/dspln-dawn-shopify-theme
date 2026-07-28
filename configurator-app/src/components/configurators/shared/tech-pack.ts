@@ -1243,6 +1243,11 @@ async function drawSummaryPage({
         logo: logoForSlot(kimonoLogos, 'left-chest'),
       },
       {
+        label: 'Right Chest Logo:',
+        kind: 'logo',
+        logo: logoForSlot(kimonoLogos, 'right-chest'),
+      },
+      {
         label: 'Left Sleeve Logo:',
         kind: 'logo',
         logo: logoForSlot(kimonoLogos, 'left-sleeve'),

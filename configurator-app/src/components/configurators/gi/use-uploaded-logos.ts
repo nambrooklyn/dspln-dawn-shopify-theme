@@ -39,6 +39,7 @@ export const APPLY_TARGETS: Array<{ value: LogoApplyTarget; label: string }> = [
 
 export const KIMONO_UPLOAD_LABEL: Record<KimonoLogoSlot, string> = {
   'left-chest': 'Left Chest',
+  'right-chest': 'Right Chest',
   'left-sleeve': 'Left Sleeve',
   'right-sleeve': 'Right Sleeve',
   back: 'Back',

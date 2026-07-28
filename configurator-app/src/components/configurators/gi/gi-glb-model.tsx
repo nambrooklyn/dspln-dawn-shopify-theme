@@ -289,6 +289,11 @@ export const GiGlbModel = memo(() => {
         center.y + size.y * 0.205 - 0.05,
         bbox.max.z + out,
       ],
+      'right-chest': [
+        center.x - size.x * 0.23 + 0.075,
+        center.y + size.y * 0.205 - 0.05,
+        bbox.max.z + out,
+      ],
       // Sleeve anchors sit on the outside bicep, vertically aligned
       // with the left-chest print box.
       'left-sleeve': [

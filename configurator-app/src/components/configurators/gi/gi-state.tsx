@@ -223,8 +223,7 @@ interface GiStateValue {
     }>,
   ) => void;
 
-  // One logo per named anchor on the kimono (left-chest, left-sleeve,
-  // right-sleeve, back). Slots without an entry are empty.
+  // One logo per named anchor on the kimono. Slots without an entry are empty.
   kimonoLogos: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   setKimonoLogo: (slot: KimonoLogoSlot, logo: KimonoLogo) => void;
   removeKimonoLogo: (slot: KimonoLogoSlot) => void;

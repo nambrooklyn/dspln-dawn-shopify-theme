@@ -21,6 +21,7 @@ const KIMONO_LOGO_PRICE_LABEL: Record<
   string
 > = {
   'left-chest': '+$10',
+  'right-chest': '+$10',
   'left-sleeve': '+$10',
   'right-sleeve': '+$10',
   back: '+$25',
