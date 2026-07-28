@@ -30,6 +30,10 @@ export const GI_PART_PRICES: Record<GiPart, number> = {
   belt: 15,
 };
 
+/** Flat upcharge when the merchant picks "Custom Measurements" for any
+ * garment size — covers the manual pattern work. Charged once per design. */
+export const CUSTOM_SIZE_PRICE = 25;
+
 export const GI_PART_DISPLAY: Record<GiPart, string> = {
   jacket: 'Kimono',
   pants: 'Pant',
