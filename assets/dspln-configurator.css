@@ -6,7 +6,9 @@
 }
 
 .dspln-configurator-product__inner {
-  width: min(100%, 1800px);
+  /* Full-bleed: a capped width leaves empty gutters beside the app's own
+     sidebars on monitors wider than the cap. */
+  width: 100%;
   margin: 0 auto;
   padding: 0;
 }
