@@ -92,7 +92,12 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
   // cart, checkout, and order admin never show details for something not ordered.
   if (spec.partVisibility.jacket) {
     props.push(
-      { name: 'Kimono Size', value: spec.kimono.size },
+      {
+        name: 'Kimono Size',
+        value:
+          spec.kimono.size?.trim() ||
+          (spec.customSizing ? 'Custom Measurements' : ''),
+      },
       { name: 'Kimono Body Color', value: colorValue(spec.kimono.colors.body) },
       { name: 'Kimono Lapel Color', value: colorValue(spec.kimono.colors.lapel) },
       {
@@ -125,7 +130,12 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
 
   if (spec.partVisibility.belt) {
     props.push(
-      { name: 'Belt Size', value: spec.belt.size },
+      {
+        name: 'Belt Size',
+        value:
+          spec.belt.size?.trim() ||
+          (spec.customSizing ? 'Custom Measurements' : ''),
+      },
       {
         name: 'Belt Color',
         value: spec.belt.rank.name || colorValue(spec.belt.color),
@@ -152,7 +162,12 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
 
   if (spec.partVisibility.pants) {
     props.push(
-      { name: 'Pant Size', value: spec.pant.size },
+      {
+        name: 'Pant Size',
+        value:
+          spec.pant.size?.trim() ||
+          (spec.customSizing ? 'Custom Measurements' : ''),
+      },
       { name: 'Pant Body Color', value: colorValue(spec.pant.colors.body) },
       {
         name: 'Pant Reinforcements Color',
