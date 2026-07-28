@@ -429,7 +429,7 @@ const TextLayerDecal = memo(
         widthWorld={widthIn * IN_TO_WORLD}
         heightWorld={heightIn * IN_TO_WORLD}
         depthWorld={0.3}
-        surfaceOffsetWorld={0.008}
+        surfaceOffsetWorld={0.002}
         depthTest
         normalCullMinDot={0.18}
       />
@@ -624,8 +624,9 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
         .clone()
         .transformDirection(hit.object.matrixWorld)
         .normalize();
-      // Anchor floats just off the fabric, like the static anchors do.
-      const position = hit.point.clone().addScaledVector(normal, 0.012);
+      // Keep movable artwork nearly flush to the fabric while retaining
+      // enough lift to avoid z-fighting.
+      const position = hit.point.clone().addScaledVector(normal, 0.002);
       // Orient the projector so +Z runs along the surface normal while
       // world-up keeps the artwork upright (no roll).
       const euler = new Euler().setFromRotationMatrix(
@@ -808,7 +809,13 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                             ? 0.32
                             : undefined
                 }
-                surfaceOffsetWorld={override || isBackPanel ? 0.008 : 0.003}
+                surfaceOffsetWorld={
+                  override || slot === 'back'
+                    ? 0.002
+                    : slot === 'back-skirt'
+                      ? 0.008
+                      : 0.003
+                }
                 depthTest
                 polygonOffsetFactor={isBackPanel ? -2 : undefined}
                 polygonOffsetUnits={isBackPanel ? -2 : undefined}
