@@ -308,7 +308,11 @@ export const GiGlbModel = memo(() => {
       ],
       // Square print area on the flatter upper-back panel. Kept high
       // enough that all four corners stay inside the jacket's taper.
-      back: [center.x, center.y + size.y * 0.075 - 0.025, bbox.min.z - out],
+      back: [
+        center.x,
+        center.y + size.y * 0.075 - 0.025,
+        bbox.min.z - 0.002,
+      ],
       // Wide strip on the back skirt just below the belt (studio-only
       // placement). Measured on the real mesh: the belt's back band ends
       // at ~33% up the body bbox and the BACK hem is at ~7% (the front

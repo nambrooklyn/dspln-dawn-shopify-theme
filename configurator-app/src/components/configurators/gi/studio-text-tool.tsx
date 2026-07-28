@@ -49,7 +49,9 @@ export const StudioTextTool = memo(() => {
       text: text.trim(),
       font: fontValue,
       colorHex,
-      position: chest ?? [0.215, 2, 0.43],
+      position: chest
+        ? [chest[0], chest[1], chest[2] - 0.01]
+        : [0.215, 2, 0.42],
       rotation: [0, 0, 0],
       rotateDeg: 0,
       scalePct: 100,
