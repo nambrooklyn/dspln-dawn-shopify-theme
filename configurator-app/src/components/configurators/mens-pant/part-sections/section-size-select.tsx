@@ -1,5 +1,9 @@
 import { memo } from 'react';
 
+import { useGiState } from '../gi-state';
+import { SectionCustomSizeNotes } from './section-custom-size-notes';
+import { CUSTOM_MEASUREMENTS } from './size-options';
+
 import { SectionSizeRecommender } from './section-size-recommender';
 import { SectionSizeWheelPicker } from './section-size-wheel-picker';
 
@@ -8,6 +12,16 @@ interface SectionSizeSelectProps {
   value: string;
   onChange: (value: string) => void;
 }
+
+const CustomNotes = () => {
+  const { customSizeNotes, setCustomSizeNotes } = useGiState();
+  return (
+    <SectionCustomSizeNotes
+      value={customSizeNotes}
+      onChange={setCustomSizeNotes}
+    />
+  );
+};
 
 export const SectionSizeSelect = memo(
   ({ title, value, onChange }: SectionSizeSelectProps) => (
@@ -22,6 +36,8 @@ export const SectionSizeSelect = memo(
         </span>
       </div>
       <SectionSizeWheelPicker value={value} onChange={onChange} />
+
+      {value === CUSTOM_MEASUREMENTS ? <CustomNotes /> : null}
 
       <SectionSizeRecommender selectedSize={value} onUseSize={onChange} />
     </section>

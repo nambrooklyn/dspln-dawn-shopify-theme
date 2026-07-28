@@ -33,6 +33,7 @@ export function getMissingGiSizeMessage(spec: {
   kimono: { size?: string };
   belt: { size?: string };
   pant: { size?: string };
+  customSizing?: { notes: string; price: number };
 }) {
   if (
     !spec.partVisibility.jacket &&
@@ -40,6 +41,13 @@ export function getMissingGiSizeMessage(spec: {
     !spec.partVisibility.pants
   ) {
     return 'Please add at least one item—Kimono, Belt, or Pant—before adding this Gi to cart.';
+  }
+
+  // Custom Measurements covers the whole design — one set of body
+  // measurements sizes every included garment, so nothing else is
+  // "missing" a size.
+  if (spec.customSizing) {
+    return null;
   }
 
   const missingParts: string[] = [];

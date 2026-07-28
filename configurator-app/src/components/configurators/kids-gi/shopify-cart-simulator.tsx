@@ -20,7 +20,8 @@ type ShopifyChargeVariantKey =
   | 'pant'
   | 'logo10'
   | 'backLogo25'
-  | 'beltText10';
+  | 'beltText10'
+  | 'customSize25';
 
 interface CartProperty {
   name: string;
@@ -77,12 +78,32 @@ function logoYesNo(filename?: string) {
 function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
   const props: CartProperty[] = [];
 
+  // Custom-measurement notes ride on the main line so they reach the order
+  // admin and the factory alongside the design.
+  if (spec.customSizing) {
+    props.push(
+      {
+        name: 'Custom Sizing',
+        value: `$${spec.customSizing.price}.00`,
+      },
+      {
+        name: 'Custom Sizing Notes',
+        value: spec.customSizing.notes.trim() || '(none provided)',
+      },
+    );
+  }
+
   // Only list a part's customizations when it was actually purchased. An
   // un-bought part (partVisibility === false) collapses to a single "NO" so the
   // cart, checkout, and order admin never show details for something not ordered.
   if (spec.partVisibility.jacket) {
     props.push(
-      { name: 'Kimono Size', value: spec.kimono.size },
+      {
+        name: 'Kimono Size',
+        value:
+          spec.kimono.size?.trim() ||
+          (spec.customSizing ? 'Custom Measurements' : ''),
+      },
       { name: 'Kimono Body Color', value: colorValue(spec.kimono.colors.body) },
       { name: 'Kimono Lapel Color', value: colorValue(spec.kimono.colors.lapel) },
       {
@@ -116,7 +137,12 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
 
   if (spec.partVisibility.belt) {
     props.push(
-      { name: 'Belt Size', value: spec.belt.size },
+      {
+        name: 'Belt Size',
+        value:
+          spec.belt.size?.trim() ||
+          (spec.customSizing ? 'Custom Measurements' : ''),
+      },
       {
         name: 'Belt Color',
         value: spec.belt.rank.name || colorValue(spec.belt.color),
@@ -144,7 +170,12 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
 
   if (spec.partVisibility.pants) {
     props.push(
-      { name: 'Pant Size', value: spec.pant.size },
+      {
+        name: 'Pant Size',
+        value:
+          spec.pant.size?.trim() ||
+          (spec.customSizing ? 'Custom Measurements' : ''),
+      },
       { name: 'Pant Body Color', value: colorValue(spec.pant.colors.body) },
       {
         name: 'Pant Reinforcements Color',
@@ -202,11 +233,15 @@ function calculateConfiguredTotal(spec: GiSerializedState) {
     (spec.belt.embroidery.leftEnd.trim() ? 10 : 0) +
     (spec.belt.embroidery.rightEnd.trim() ? 10 : 0);
 
+  // Flat once-per-design custom-measurements upcharge (set in serialize).
+  const customSizeTotal = spec.customSizing?.price ?? 0;
+
   return (
     baseTotal +
     (spec.partVisibility.jacket ? kimonoLogoTotal : 0) +
     (spec.partVisibility.pants ? pantLogoTotal : 0) +
-    (spec.partVisibility.belt ? beltTextTotal : 0)
+    (spec.partVisibility.belt ? beltTextTotal : 0) +
+    customSizeTotal
   );
 }
 
@@ -330,6 +365,24 @@ function buildShopifyCharges({
     });
   }
 
+  // Once-per-design custom-measurements upcharge. Only used by the legacy
+  // per-charge cart path — the TDA_PRICE_<total> variant path already folds
+  // it into the configured total.
+  if (spec.customSizing) {
+    charges.push({
+      key: `${configuratorId}-custom-sizing`,
+      label: 'Custom Sizing',
+      variantKey: 'customSize25',
+      quantity: 1,
+      unitPrice: spec.customSizing.price,
+      properties: buildChargeProperties({
+        configuratorId,
+        label: 'Custom Sizing',
+        summary,
+      }),
+    });
+  }
+
   return charges;
 }
 
@@ -437,6 +490,13 @@ function cartPropertiesForShopify(line: ShopifyCartLine) {
     },
     {},
   );
+  // Design snapshot for order confirmation emails: hidden properties are
+  // stripped above, but the hosted preview URL must survive onto the Shopify
+  // order line so the email template can show the customer's actual design.
+  // Skip data: URLs — only a hosted image is safe to store and email.
+  if (/^https?:\/\//.test(line.thumbnailUrl ?? '')) {
+    properties['_preview_image_url'] = line.thumbnailUrl;
+  }
   properties[CHECKOUT_SAVED_MESSAGE_NAME] = CHECKOUT_SAVED_MESSAGE_VALUE;
   return properties;
 }
