@@ -3,7 +3,7 @@ import {
   FolderHeart,
   HelpCircle,
   ImageIcon,
-  LogIn,
+  Type,
 } from 'lucide-react';
 import { isStudioMode } from '../shared/studio-mode';
 
@@ -20,6 +20,10 @@ function openUploadedLogos() {
   window.dispatchEvent(new CustomEvent('dspln:configurator-rail:uploads'));
 }
 
+function openTextTool() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('dspln:configurator-rail:text'));
+}
 
 function openGuide() {
   openStorefrontPage('/pages/how-to-use-customizer');
@@ -62,6 +66,15 @@ export const ConfiguratorActionRail = memo(
           >
             <ImageIcon className="h-6 w-6 stroke-[1.7]" />
             <span className="text-[11px] font-medium leading-none">Uploads</span>
+          </button>
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={openTextTool}
+            title="Add and position text"
+          >
+            <Type className="h-6 w-6 stroke-[1.7]" />
+            <span className="text-[11px] font-medium leading-none">Text</span>
           </button>
           </>
         ) : null}

@@ -15,6 +15,7 @@ import {
   GI_PART_PRICES,
   KIMONO_LOGO_SLOT_LABEL,
   KIMONO_LOGO_SLOTS,
+  STUDIO_ONLY_KIMONO_LOGO_SLOTS,
   KIMONO_SUBPART_LABEL,
   KIMONO_SUBPARTS,
   PANT_LOGO_SLOT_LABEL,
@@ -30,6 +31,7 @@ import {
   type CameraView,
   type GiPart,
 } from './gi-config';
+import { isStudioMode } from '../shared/studio-mode';
 import { SectionAddRemove } from './part-sections/section-add-remove';
 import { SectionColorSwatches } from './part-sections/section-color-swatches';
 import { SectionKimonoSize } from './part-sections/section-kimono-size';
@@ -47,6 +49,7 @@ const KIMONO_LOGO_PRICE_LABEL: Record<
   'left-sleeve': '+$10',
   'right-sleeve': '+$10',
   back: '+$25',
+  'back-skirt': '+$25',
 };
 
 const ADD_ON_PRICE = 10;
@@ -273,7 +276,10 @@ export const MobileConfiguratorFlow = memo(
             />
           ),
         })),
-        ...KIMONO_LOGO_SLOTS.map<MobileStep>((slot) => {
+        ...KIMONO_LOGO_SLOTS.filter(
+          (slot) =>
+            isStudioMode() || !STUDIO_ONLY_KIMONO_LOGO_SLOTS.includes(slot),
+        ).map<MobileStep>((slot) => {
           const logo = kimonoLogos[slot];
           return {
             key: `kimono-logo-${slot}`,

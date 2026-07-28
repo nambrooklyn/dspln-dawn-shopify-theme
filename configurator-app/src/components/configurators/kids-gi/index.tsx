@@ -51,6 +51,7 @@ import type { KimonoLogo } from './gi-state';
 import { APPLY_TARGETS, useUploadedLogos } from './use-uploaded-logos';
 import { UploadedLogosProvider } from './uploaded-logos-context';
 import { CameraTuner } from './camera-tuner';
+import { StudioTextTool } from './studio-text-tool';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
 import {
@@ -773,6 +774,7 @@ const GiConfiguratorInner = memo(() => {
         railContent={!isStudioMode() ? undefined :
           <>
           <CameraTuner />
+          <StudioTextTool />
           <SavedDesignsRail
             status={draftStatus}
             savedDesigns={savedDesigns}
