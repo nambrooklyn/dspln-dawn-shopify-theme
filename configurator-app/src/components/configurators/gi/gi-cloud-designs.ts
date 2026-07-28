@@ -370,12 +370,27 @@ export async function getGiCloudDesign(id: string) {
 export function buildGiCloudDesignUrls(id: string) {
   const base = apiBaseUrl();
   if (!base) return null;
-  const designUrl = new URL(PRODUCT_CONFIG.shopifyProductPath, storefrontOrigin());
-  designUrl.searchParams.set('design', id);
+  const storefrontDesignUrl = new URL(
+    PRODUCT_CONFIG.shopifyProductPath,
+    storefrontOrigin(),
+  );
+  storefrontDesignUrl.searchParams.set('design', id);
+  const netlifyDesignUrl = `${base}${PRODUCT_CONFIG.netlifyPath}?design=${encodeURIComponent(id)}`;
+
+  // A design made on the dev branch can contain schema/UI features that
+  // have not been promoted to the live storefront yet. Sending that link
+  // to dspln.com opens the production configurator, which cannot hydrate
+  // the newer design. Keep dev shares on the dev customer-view build;
+  // production builds continue to share the Shopify product page.
+  const isDevBranch =
+    typeof window !== 'undefined' &&
+    window.location.hostname.startsWith('dev--');
 
   return {
-    designUrl: designUrl.toString(),
-    netlifyDesignUrl: `${base}${PRODUCT_CONFIG.netlifyPath}?design=${encodeURIComponent(id)}`,
+    designUrl: isDevBranch
+      ? netlifyDesignUrl
+      : storefrontDesignUrl.toString(),
+    netlifyDesignUrl,
     productionUrl: `${base}/api/customer-designs?id=${encodeURIComponent(id)}`,
   };
 }
