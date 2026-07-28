@@ -3,6 +3,7 @@ import { ChevronDown, Loader2, ShoppingCart } from 'lucide-react';
 
 import { useGiState } from '../gi/gi-state';
 import {
+  CUSTOM_SIZE_PRICE,
   GI_PART_DISPLAY,
   GI_PART_PRICES,
   KIMONO_LOGO_SLOT_LABEL,
@@ -18,6 +19,7 @@ import {
   type GiPart,
   type KimonoLogoSlot,
 } from '../gi/gi-config';
+import { CUSTOM_MEASUREMENTS } from './part-sections/size-options';
 
 const PART_ORDER: GiPart[] = ['jacket', 'belt', 'pants'];
 const ADD_ON_PRICE = 10;
@@ -137,10 +139,19 @@ export const PriceSidebar = memo(
       partVisibility.pants,
       textLayers,
     ]);
+    // Flat once-per-design upcharge when any purchased garment is set to
+    // "Custom Measurements" — mirrors serialize() in gi-state.
+    const customSizeTotal =
+      (partVisibility.jacket && kimonoSize === CUSTOM_MEASUREMENTS) ||
+      (partVisibility.pants && pantSize === CUSTOM_MEASUREMENTS)
+        ? CUSTOM_SIZE_PRICE
+        : 0;
     const total = useMemo(
       () =>
-        included.reduce((sum, p) => sum + GI_PART_PRICES[p], 0) + addOnTotal,
-      [addOnTotal, included],
+        included.reduce((sum, p) => sum + GI_PART_PRICES[p], 0) +
+        addOnTotal +
+        customSizeTotal,
+      [addOnTotal, customSizeTotal, included],
     );
 
     const details = useMemo<
@@ -300,6 +311,14 @@ export const PriceSidebar = memo(
                   </li>
                 );
               })}
+              {customSizeTotal > 0 ? (
+                <li className="text-foreground flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="truncate pl-[1.375rem]">Custom Sizing</span>
+                  <span className="shrink-0 font-mono text-xs">
+                    ${customSizeTotal}.00
+                  </span>
+                </li>
+              ) : null}
             </ul>
           </section>
           <button

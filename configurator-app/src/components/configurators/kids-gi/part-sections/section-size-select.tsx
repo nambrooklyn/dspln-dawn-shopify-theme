@@ -1,5 +1,9 @@
 import { memo } from 'react';
 
+import { useGiState } from '../gi-state';
+import { SectionCustomSizeNotes } from './section-custom-size-notes';
+import { CUSTOM_MEASUREMENTS } from './size-options';
+
 import { SIZE_OPTIONS } from './kids-size-options';
 
 interface SectionSizeSelectProps {
@@ -7,6 +11,16 @@ interface SectionSizeSelectProps {
   value: string;
   onChange: (value: string) => void;
 }
+
+const CustomNotes = () => {
+  const { customSizeNotes, setCustomSizeNotes } = useGiState();
+  return (
+    <SectionCustomSizeNotes
+      value={customSizeNotes}
+      onChange={setCustomSizeNotes}
+    />
+  );
+};
 
 export const SectionSizeSelect = memo(
   ({ title, value, onChange }: SectionSizeSelectProps) => (
@@ -40,6 +54,20 @@ export const SectionSizeSelect = memo(
           );
         })}
       </div>
+      <button
+        type="button"
+        onClick={() => onChange(CUSTOM_MEASUREMENTS)}
+        aria-pressed={value === CUSTOM_MEASUREMENTS}
+        className={`mt-1 h-8 w-full rounded-sm border text-[12px] font-bold tracking-wide text-[#17115f] uppercase transition-colors ${
+          value === CUSTOM_MEASUREMENTS
+            ? 'border-2 border-[#17115f] bg-white shadow-sm'
+            : 'border-border bg-background hover:border-[#17115f]/50'
+        }`}
+      >
+        Custom Measurements
+      </button>
+
+      {value === CUSTOM_MEASUREMENTS ? <CustomNotes /> : null}
     </section>
   ),
 );

@@ -61,7 +61,8 @@ type ShopifyChargeVariantKey =
   | 'pant'
   | 'logo10'
   | 'backLogo25'
-  | 'beltText10';
+  | 'beltText10'
+  | 'customSize25';
 
 interface CartProperty {
   name: string;
@@ -117,6 +118,15 @@ function logoYesNo(filename?: string) {
 
 function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
   const props: CartProperty[] = [];
+
+  // Custom-measurement notes ride on the main line so they reach the order
+  // admin and the factory alongside the design.
+  if (spec.customSizing) {
+    props.push({
+      name: 'Custom Sizing Notes',
+      value: spec.customSizing.notes.trim() || '(none provided)',
+    });
+  }
 
   // Only list a part's customizations when it was actually purchased. An
   // un-bought part (partVisibility === false) collapses to a single "NO" so the
@@ -240,11 +250,15 @@ function calculateConfiguredTotal(spec: GiSerializedState) {
     (spec.belt.embroidery.leftEnd.trim() ? 10 : 0) +
     (spec.belt.embroidery.rightEnd.trim() ? 10 : 0);
 
+  // Flat once-per-design custom-measurements upcharge (set in serialize).
+  const customSizeTotal = spec.customSizing?.price ?? 0;
+
   return (
     baseTotal +
     (spec.partVisibility.jacket ? kimonoLogoTotal : 0) +
     (spec.partVisibility.pants ? pantLogoTotal : 0) +
-    (spec.partVisibility.belt ? beltTextTotal : 0)
+    (spec.partVisibility.belt ? beltTextTotal : 0) +
+    customSizeTotal
   );
 }
 
@@ -366,6 +380,24 @@ function buildShopifyCharges({
           summary,
         }),
       });
+    });
+  }
+
+  // Once-per-design custom-measurements upcharge. Only used by the legacy
+  // per-charge cart path — the TDA_PRICE_<total> variant path already folds
+  // it into the configured total.
+  if (spec.customSizing) {
+    charges.push({
+      key: `${configuratorId}-custom-sizing`,
+      label: 'Custom Sizing',
+      variantKey: 'customSize25',
+      quantity: 1,
+      unitPrice: spec.customSizing.price,
+      properties: buildChargeProperties({
+        configuratorId,
+        label: 'Custom Sizing',
+        summary,
+      }),
     });
   }
 

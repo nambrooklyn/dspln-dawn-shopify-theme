@@ -17,6 +17,7 @@ import {
   CAMERA_TARGETS,
   MOBILE_CAMERA_POSITIONS,
   GI_DEFAULT_COLORS,
+  CUSTOM_SIZE_PRICE,
   GI_PART_PRICES,
   GI_PARTS,
   KIMONO_SUBPART_DEFAULT,
@@ -32,6 +33,7 @@ import {
   type PantSubPart,
 } from './gi-config';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
+import { CUSTOM_MEASUREMENTS } from './part-sections/size-options';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS.womens;
 
@@ -125,6 +127,12 @@ export interface GiSerializedState {
   };
   layers: Array<Omit<GiLayer, 'imageUrl'> & { imageDataUrl?: string }>;
   cameraView: CameraView;
+  // Present only when a "Custom Measurements" size is selected. Optional so
+  // designs saved before the custom-sizing upcharge still hydrate.
+  customSizing?: {
+    notes: string;
+    price: number;
+  };
 }
 
 interface GiStateValue {
@@ -147,6 +155,12 @@ interface GiStateValue {
   // payload that gets saved.
   kimonoSize: string;
   setKimonoSize: (size: string) => void;
+
+  // Free-text measurements/notes the merchant types when any size picker is
+  // set to "Custom Measurements". One box per design (kimono + pant share it),
+  // and its presence drives the flat CUSTOM_SIZE_PRICE upcharge.
+  customSizeNotes: string;
+  setCustomSizeNotes: (notes: string) => void;
 
   // Per-sub-part colors on the kimono (body, lapel, reinforcement,
   // stitching). Each maps to one or more meshes in the .glb via
@@ -270,6 +284,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     Record<GiPart, boolean>
   >({ jacket: true, pants: true, belt: true });
   const [kimonoSize, setKimonoSize] = useState<string>('');
+  const [customSizeNotes, setCustomSizeNotes] = useState<string>('');
   const [pantSize, setPantSize] = useState<string>('');
   const [beltSize, setBeltSize] = useState<string>('');
   const [kimonoSubColors, setKimonoSubColorsState] = useState<
@@ -471,6 +486,11 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       included: partVisibility[part],
       unitPrice: GI_PART_PRICES[part],
     }));
+    // Flat upcharge, once per design, when any purchased garment's size is
+    // "Custom Measurements".
+    const hasCustomSizing =
+      (partVisibility.jacket && kimonoSize === CUSTOM_MEASUREMENTS) ||
+      (partVisibility.pants && pantSize === CUSTOM_MEASUREMENTS);
 
     const logos = Object.entries(kimonoLogos).reduce<
       GiSerializedState['kimono']['logos']
@@ -503,12 +523,21 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       partVisibility,
       price: {
         currency: 'USD',
-        total: priceLines.reduce(
-          (sum, line) => sum + (line.included ? line.unitPrice : 0),
-          0,
-        ),
+        total:
+          priceLines.reduce(
+            (sum, line) => sum + (line.included ? line.unitPrice : 0),
+            0,
+          ) + (hasCustomSizing ? CUSTOM_SIZE_PRICE : 0),
         lines: priceLines,
       },
+      ...(hasCustomSizing
+        ? {
+            customSizing: {
+              notes: customSizeNotes,
+              price: CUSTOM_SIZE_PRICE,
+            },
+          }
+        : {}),
       kimono: {
         size: kimonoSize,
         colors: {
@@ -572,6 +601,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     partColors,
     partVisibility,
     kimonoSize,
+    customSizeNotes,
     kimonoSubColors,
     kimonoLogos,
     pantLogos,
@@ -589,6 +619,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setPartVisibilityState({ ...state.partVisibility });
       setScenePartVisibilityState({ ...state.partVisibility });
       setKimonoSize(state.kimono.size);
+      setCustomSizeNotes(state.customSizing?.notes ?? '');
       setPantSize(state.pant.size);
       setBeltSize(state.belt.size ?? '');
       setKimonoSubColorsState({
@@ -636,6 +667,8 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setScenePartVisible,
       kimonoSize,
       setKimonoSize,
+      customSizeNotes,
+      setCustomSizeNotes,
       kimonoSubColors,
       setKimonoSubColor,
       pantSize,
@@ -692,6 +725,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       scenePartVisibility,
       setScenePartVisible,
       kimonoSize,
+      customSizeNotes,
       pantSize,
       beltSize,
       kimonoSubColors,

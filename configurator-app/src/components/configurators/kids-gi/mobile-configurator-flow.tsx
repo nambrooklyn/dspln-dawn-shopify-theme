@@ -26,6 +26,7 @@ import {
   PANT_SUBPART_CAMERA_VIEW,
   PANT_LOGO_SLOT_CAMERA_VIEW,
   PART_CAMERA_VIEW,
+  CUSTOM_SIZE_PRICE,
   type CameraView,
   type GiPart,
 } from './gi-config';
@@ -36,6 +37,7 @@ import { SectionLogoUpload } from './part-sections/section-logo-upload';
 import { SectionSizeSelect } from './part-sections/section-size-select';
 import { BeltEndTextSection } from './part-sections/belt-sections';
 import { BASE_SIZES as BELT_SIZE_OPTIONS } from './part-sections/kids-size-options';
+import { CUSTOM_MEASUREMENTS } from './part-sections/size-options';
 
 const KIMONO_LOGO_PRICE_LABEL: Record<
   (typeof KIMONO_LOGO_SLOTS)[number],
@@ -213,6 +215,7 @@ export const MobileConfiguratorFlow = memo(
       removeKimonoLogo,
       beltEmbroidery,
       setBeltEmbroidery,
+      kimonoSize,
       pantSize,
       setPantSize,
       pantSubColors,
@@ -587,7 +590,13 @@ export const MobileConfiguratorFlow = memo(
         (sum, [part, visible]) =>
           sum + (visible ? GI_PART_PRICES[part as GiPart] : 0),
         0,
-      ) + addOnTotal;
+      ) +
+      addOnTotal +
+      // Flat once-per-design custom-measurements upcharge (mirrors gi-state).
+      ((partVisibility.jacket && kimonoSize === CUSTOM_MEASUREMENTS) ||
+      (partVisibility.pants && pantSize === CUSTOM_MEASUREMENTS)
+        ? CUSTOM_SIZE_PRICE
+        : 0);
 
     if (!step) return null;
 

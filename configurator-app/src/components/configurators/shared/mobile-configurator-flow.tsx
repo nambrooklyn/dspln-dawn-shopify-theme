@@ -27,6 +27,7 @@ import {
   PANT_SUBPART_CAMERA_VIEW,
   PANT_LOGO_SLOT_CAMERA_VIEW,
   PART_CAMERA_VIEW,
+  CUSTOM_SIZE_PRICE,
   type CameraView,
   type GiPart,
 } from '../gi/gi-config';
@@ -37,7 +38,10 @@ import { SectionKimonoSize } from './part-sections/section-kimono-size';
 import { SectionLogoUpload } from './part-sections/section-logo-upload';
 import { SectionSizeSelect } from './part-sections/section-size-select';
 import { BeltEndTextSection } from './part-sections/belt-sections';
-import { BASE_SIZES as BELT_SIZE_OPTIONS } from './part-sections/size-options';
+import {
+  BASE_SIZES as BELT_SIZE_OPTIONS,
+  CUSTOM_MEASUREMENTS,
+} from './part-sections/size-options';
 
 const KIMONO_LOGO_PRICE_LABEL: Record<
   (typeof KIMONO_LOGO_SLOTS)[number],
@@ -223,6 +227,7 @@ export const MobileConfiguratorFlow = memo(
       setBeltEmbroidery,
       beltSize,
       setBeltSize,
+      kimonoSize,
       pantSize,
       setPantSize,
       pantSubColors,
@@ -559,7 +564,12 @@ export const MobileConfiguratorFlow = memo(
           (beltEmbroidery.rightEnd.trim() ? ADD_ON_PRICE : 0)
         : 0) +
       // Free-placement text layers render on the jacket, $10 each.
-      (partVisibility.jacket ? textLayers.length * ADD_ON_PRICE : 0);
+      (partVisibility.jacket ? textLayers.length * ADD_ON_PRICE : 0) +
+      // Flat once-per-design custom-measurements upcharge (mirrors gi-state).
+      ((partVisibility.jacket && kimonoSize === CUSTOM_MEASUREMENTS) ||
+      (partVisibility.pants && pantSize === CUSTOM_MEASUREMENTS)
+        ? CUSTOM_SIZE_PRICE
+        : 0);
     const total =
       Object.entries(partVisibility).reduce(
         (sum, [part, visible]) =>

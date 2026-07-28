@@ -2,6 +2,7 @@ import { memo } from 'react';
 
 import { useGiState } from '../gi-state';
 import { storefrontUrl } from '../../shared/storefront-links';
+import { SectionCustomSizeNotes } from './section-custom-size-notes';
 import { SectionSizeRecommender } from './section-size-recommender';
 import { SectionSizeWheelPicker } from './section-size-wheel-picker';
 import { CUSTOM_MEASUREMENTS } from './size-options';
@@ -12,7 +13,8 @@ import { CUSTOM_MEASUREMENTS } from './size-options';
  * link, then the visual size picker.
  */
 export const SectionKimonoSize = memo(() => {
-  const { kimonoSize, setKimonoSize } = useGiState();
+  const { kimonoSize, setKimonoSize, customSizeNotes, setCustomSizeNotes } =
+    useGiState();
   const isCustom = kimonoSize === CUSTOM_MEASUREMENTS;
 
   return (
@@ -39,6 +41,13 @@ export const SectionKimonoSize = memo(() => {
       </p>
 
       <SectionSizeWheelPicker value={kimonoSize} onChange={setKimonoSize} />
+
+      {isCustom ? (
+        <SectionCustomSizeNotes
+          value={customSizeNotes}
+          onChange={setCustomSizeNotes}
+        />
+      ) : null}
 
       <p className="mt-3 mb-3 text-center text-[12px] leading-snug lg:hidden">
         <a
