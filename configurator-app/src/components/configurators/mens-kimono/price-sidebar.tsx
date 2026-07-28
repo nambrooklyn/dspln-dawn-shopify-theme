@@ -313,9 +313,11 @@ export const PriceSidebar = memo(
                 );
               })}
               {customSizeTotal > 0 ? (
-                <li className="text-foreground flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="truncate pl-[1.375rem]">Custom Sizing</span>
-                  <span className="shrink-0 font-mono text-xs">
+                <li className="grid grid-cols-[minmax(0,1fr)_5.25rem] gap-1.5 py-2 text-[10px] leading-[1.45]">
+                  <span className="text-muted-foreground min-w-0 truncate">
+                    Custom Sizing
+                  </span>
+                  <span className="text-foreground min-w-0 truncate text-right font-medium">
                     ${customSizeTotal}.00
                   </span>
                 </li>

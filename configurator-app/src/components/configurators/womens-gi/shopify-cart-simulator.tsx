@@ -122,10 +122,16 @@ function buildOrderDetailProperties(spec: GiSerializedState): CartProperty[] {
   // Custom-measurement notes ride on the main line so they reach the order
   // admin and the factory alongside the design.
   if (spec.customSizing) {
-    props.push({
-      name: 'Custom Sizing Notes',
-      value: spec.customSizing.notes.trim() || '(none provided)',
-    });
+    props.push(
+      {
+        name: 'Custom Sizing',
+        value: `$${spec.customSizing.price}.00`,
+      },
+      {
+        name: 'Custom Sizing Notes',
+        value: spec.customSizing.notes.trim() || '(none provided)',
+      },
+    );
   }
 
   // Only list a part's customizations when it was actually purchased. An
