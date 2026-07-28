@@ -194,6 +194,7 @@ export const KIMONO_SUBPART_DEFAULT: Record<KimonoSubPart, string> = {
  */
 export const KIMONO_LOGO_SLOTS = [
   'left-chest',
+  'right-chest',
   'left-sleeve',
   'right-sleeve',
   'back',
@@ -210,6 +211,7 @@ export type KimonoLogoSlot = (typeof KIMONO_LOGO_SLOTS)[number];
 
 export const KIMONO_LOGO_SLOT_LABEL: Record<KimonoLogoSlot, string> = {
   'left-chest': 'Logo on Left Chest',
+  'right-chest': 'Logo on Right Chest',
   'left-sleeve': 'Logo on Left Sleeve',
   'right-sleeve': 'Logo on Right Sleeve',
   back: 'Big Logo on Back',
@@ -232,6 +234,13 @@ export const KIMONO_LOGO_ANCHORS: Record<KimonoLogoSlot, KimonoLogoAnchor> = {
   'left-chest': {
     position: [0.215, 2, 0.42],
     rotation: [0, 0.5, -Math.PI / 18],
+    defaultSizeIn: { w: 1.95, h: 1.95 },
+  },
+  // Wearer's right chest = camera's LEFT in the front view. Mirrored
+  // from the left-chest placement across the jacket centerline.
+  'right-chest': {
+    position: [-0.215, 2, 0.42],
+    rotation: [0, -0.5, Math.PI / 18],
     defaultSizeIn: { w: 1.95, h: 1.95 },
   },
   // Wearer's left sleeve = camera's right side. Uses the same square
@@ -482,6 +491,7 @@ export const KIMONO_SUBPART_CAMERA_VIEW: Record<KimonoSubPart, CameraView> = {
 
 export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = {
   'left-chest': 'chest-close',
+  'right-chest': 'chest-close',
   'left-sleeve': 'left-sleeve-close',
   'right-sleeve': 'right-sleeve-close',
   back: 'back-close',

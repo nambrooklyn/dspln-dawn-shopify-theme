@@ -60,6 +60,7 @@ const MOBILE_CAMERA_MAX_DISTANCE = 3.35;
 // at 45° outward so their normal is a diagonal (sin45 ≈ 0.707).
 const SLOT_NORMAL: Record<KimonoLogoSlot, [number, number, number]> = {
   'left-chest': [0, 0, 1],
+  'right-chest': [0, 0, 1],
   'left-sleeve': [0.707, 0, 0.707],
   'right-sleeve': [-0.707, 0, 0.707],
   back: [0, 0, -1],
@@ -801,7 +802,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                         0.7
                       : slot === 'back-skirt'
                         ? 0.36
-                        : slot === 'left-chest'
+                        : slot === 'left-chest' || slot === 'right-chest'
                           ? 0.18
                           : isSleeve
                             ? 0.32
