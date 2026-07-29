@@ -7,11 +7,13 @@ import {
   Mail,
   MessageCircle,
   MessageSquareText,
+  Download,
   MoreHorizontal,
   Music2,
   X,
   type LucideIcon,
 } from 'lucide-react';
+import { downloadArtworkFile } from './artwork-download';
 import { toast } from 'sonner';
 import { lockerUrl } from './dspln-rail-links';
 import { copyTextToClipboard } from './studio-mode';
@@ -103,6 +105,7 @@ const SHARE_TARGETS: Array<{
 export interface CommandBarUpload {
   key: string;
   url: string;
+  filename?: string;
 }
 
 interface DesignCommandBarProps {
@@ -301,7 +304,7 @@ export const DesignCommandBar = memo(
               {uploads?.length ? (
                 <ul className="grid max-h-64 grid-cols-3 gap-1.5 overflow-y-auto">
                   {uploads.map((upload) => (
-                    <li key={upload.key}>
+                    <li key={upload.key} className="relative">
                       <button
                         type="button"
                         aria-label="Apply this artwork"
@@ -316,6 +319,17 @@ export const DesignCommandBar = memo(
                           alt=""
                           className="max-h-full max-w-full object-contain"
                         />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Download this artwork"
+                        title="Download this artwork"
+                        onClick={() =>
+                          void downloadArtworkFile(upload.url, upload.filename)
+                        }
+                        className="bg-background/90 border-border text-foreground absolute top-0.5 right-0.5 rounded border p-0.5"
+                      >
+                        <Download className="h-3 w-3" />
                       </button>
                     </li>
                   ))}

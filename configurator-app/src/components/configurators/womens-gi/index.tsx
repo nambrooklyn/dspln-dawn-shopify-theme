@@ -264,7 +264,7 @@ const GiConfiguratorInner = memo(() => {
     defaultDesignName: currentDesignName || formatDesignName(),
   });
   const commandBarUploads = useMemo(
-    () => uploadedLogos.map(({ key, url }) => ({ key, url })),
+    () => uploadedLogos.map(({ key, url, filename }) => ({ key, url, filename })),
     [uploadedLogos],
   );
   const handleApplyUpload = useCallback(
