@@ -20,11 +20,13 @@ import {
   buildGiCloudDesignUrls,
   deleteGiCloudDesign,
   getGiCloudDesign,
+  getGiCloudDesignForAdmin,
   getGiCloudOwnerContext,
   listGiCloudDesigns,
   saveGiCloudDesign,
   saveGiCloudDesignRecord,
   type CloudArtworkLink,
+  type GiCloudOwnerContext,
 } from './gi-cloud-designs';
 import { SavedDesignsRail, type DraftStatus } from './saved-designs-rail';
 import { ConfiguratorShell } from './configurator-shell';
@@ -184,6 +186,15 @@ function getCartEditMode() {
   return params.get('mode') === 'cart-edit' && Boolean(params.get('cart_line'));
 }
 
+// DSPLN admin correcting an order's design before it goes to the factory
+// (opened from the portal's "Open 3D design"). Saves overwrite the customer's
+// original record so the regenerated tech pack is right.
+function getAdminEditMode() {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('edit') === 'admin';
+}
+
+
 const GiConfiguratorInner = memo(() => {
   const {
     layers,
@@ -224,6 +235,10 @@ const GiConfiguratorInner = memo(() => {
   const [isSavingDesign, setIsSavingDesign] = useState(false);
   const [lastEditedAt, setLastEditedAt] = useState<string | null>(null);
   const [cloudOwnerContext] = useState(() => getGiCloudOwnerContext());
+  const [isAdminEdit] = useState(getAdminEditMode);
+  // The owner the design being edited was originally saved under — captured on
+  // load in admin mode so a save overwrites that record, not a guest copy.
+  const [adminEditOwner, setAdminEditOwner] = useState<GiCloudOwnerContext | null>(null);
   const draftReadyRef = useRef(false);
   const savingDesignRef = useRef(false);
   const markCleanRef = useRef(false);
@@ -359,6 +374,14 @@ const GiConfiguratorInner = memo(() => {
       setDraftStatus('loading');
       try {
         const linkedDesignId = getLinkedDesignId();
+        // Admin edit captures the design's original owner alongside the draft
+        // so a later save overwrites the customer's record.
+        if (isAdminEdit && linkedDesignId) {
+          const adminLoad = await getGiCloudDesignForAdmin(linkedDesignId).catch(
+            () => null,
+          );
+          if (adminLoad) setAdminEditOwner(adminLoad.owner);
+        }
         const [autoDraft] = await Promise.all([
           linkedDesignId
             ? getGiCloudDesign(linkedDesignId).then((design) => design ?? readGiDraftDocument(AUTO_GI_DRAFT_ID))
@@ -385,7 +408,7 @@ const GiConfiguratorInner = memo(() => {
     return () => {
       isActive = false;
     };
-  }, [loadDraftDocument, refreshSavedDesigns]);
+  }, [isAdminEdit, loadDraftDocument, refreshSavedDesigns]);
 
   useEffect(() => {
     if (!draftReadyRef.current) return;
@@ -446,7 +469,9 @@ const GiConfiguratorInner = memo(() => {
       });
       await saveGiDraftDocument(draft);
 
-      const cloudDraft = await saveGiCloudDesign(draft, cloudOwnerContext);
+      const ownerForSave =
+        isAdminEdit && adminEditOwner ? adminEditOwner : cloudOwnerContext;
+      const cloudDraft = await saveGiCloudDesign(draft, ownerForSave);
       if (cloudDraft) {
         await saveGiDraftDocument(cloudDraft);
         if (cloudDraft.id !== draft.id) {
@@ -490,10 +515,12 @@ const GiConfiguratorInner = memo(() => {
       setIsSavingDesign(false);
     }
   }, [
+    adminEditOwner,
     cloudOwnerContext,
     currentDesignId,
     currentDesignName,
     designSignature,
+    isAdminEdit,
     getCanvasEl,
     kimonoLogos,
     pantLogos,
@@ -720,6 +747,29 @@ const GiConfiguratorInner = memo(() => {
 
   return (
     <UploadedLogosProvider value={uploadedLogos}>
+      {isAdminEdit ? (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 60,
+            background: '#5d0909',
+            color: '#fff',
+            textAlign: 'center',
+            padding: '7px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+          }}
+        >
+          DSPLN admin — editing this order&rsquo;s design. Saving updates the
+          tech pack the factory receives.
+        </div>
+      ) : null}
       <ConfiguratorShell
         onAddToCart={handleAddToCart}
         onExport={handleExport}

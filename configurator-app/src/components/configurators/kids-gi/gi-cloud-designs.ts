@@ -366,6 +366,43 @@ export async function getGiCloudDesign(id: string) {
   return recordToDraft(response.data.design);
 }
 
+
+/**
+ * Fetch a saved design together with the owner context it was stored under.
+ * Admin edits (portal "Open 3D design") reuse this so a save overwrites the
+ * customer's original record instead of minting a fresh guest copy.
+ */
+export async function getGiCloudDesignForAdmin(id: string): Promise<{
+  draft: GiDraftDocument;
+  owner: GiCloudOwnerContext | null;
+} | null> {
+  if (!apiBaseUrl()) return null;
+
+  const url = makeApiUrl('/customer-designs', { id });
+  const response = await requestJson<DesignResponse>(url);
+  const record = response.data.design as (typeof response.data.design) & {
+    ownerKey?: string;
+    shopDomain?: string | null;
+    shopifyCustomerId?: string | null;
+    customerEmail?: string | null;
+    productId?: string | null;
+    productHandle?: string;
+  };
+  const owner: GiCloudOwnerContext | null = record.ownerKey
+    ? {
+        ownerKey: record.ownerKey,
+        shopDomain: record.shopDomain ?? null,
+        shopifyCustomerId: record.shopifyCustomerId ?? null,
+        customerEmail: record.customerEmail ?? null,
+        guestToken: null,
+        productId: record.productId ?? null,
+        productHandle: record.productHandle ?? PRODUCT_HANDLE,
+        isCustomer: Boolean(record.shopifyCustomerId),
+      }
+    : null;
+  return { draft: await recordToDraft(record), owner };
+}
+
 export function buildGiCloudDesignUrls(id: string) {
   const base = apiBaseUrl();
   if (!base) return null;

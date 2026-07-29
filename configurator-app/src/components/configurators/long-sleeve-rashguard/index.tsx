@@ -20,6 +20,7 @@ import {
   buildRashguardCloudDesignUrls,
   getRashguardCloudOwnerContext,
   saveRashguardCloudDesignRecord,
+  type RashguardCloudOwnerContext,
 } from '../shared/rashguard-cloud-designs';
 import {
   generateRashguardArtFile,
@@ -153,6 +154,15 @@ function getCartEditMode() {
   return params.get('mode') === 'cart-edit' && Boolean(params.get('cart_line'));
 }
 
+// DSPLN admin correcting an order's design before it goes to the factory
+// (opened from the portal's "Open 3D design"). Saves overwrite the customer's
+// original record so the regenerated tech pack is right.
+function getAdminEditMode() {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('edit') === 'admin';
+}
+
+
 function formatOrderDate(d: Date) {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()}`;
@@ -223,6 +233,11 @@ const RashguardConfiguratorInner = memo(() => {
   const [cloudOwnerContext] = useState(() =>
     getRashguardCloudOwnerContext(RASHGUARD_PRODUCT_CONFIG),
   );
+  const [isAdminEdit] = useState(getAdminEditMode);
+  // The owner the design being edited was originally saved under — captured on
+  // load in admin mode so a save overwrites that record, not a guest copy.
+  const [adminEditOwner, setAdminEditOwner] =
+    useState<RashguardCloudOwnerContext | null>(null);
   const [isCartEditMode] = useState(getCartEditMode);
   const draftReadyRef = useRef(false);
   const savingDesignRef = useRef(false);
@@ -436,7 +451,7 @@ const RashguardConfiguratorInner = memo(() => {
     const autoDraft = readRashguardDraftDocument(AUTO_RASHGUARD_DRAFT_ID);
     refreshSavedDesigns();
 
-    if (linkedDraft) {
+    if (linkedDraft && !getAdminEditMode()) {
       loadDraftDocument(linkedDraft, false);
     } else if (linkedDesignId) {
       // A ?design= link (from an order, the portal, or another browser)
@@ -457,6 +472,12 @@ const RashguardConfiguratorInner = memo(() => {
               design?: {
                 id: string;
                 name?: string;
+                ownerKey?: string;
+                shopDomain?: string | null;
+                shopifyCustomerId?: string | null;
+                customerEmail?: string | null;
+                productId?: string | null;
+                productHandle?: string;
                 createdAt?: string;
                 updatedAt?: string;
                 configData?: {
@@ -469,6 +490,22 @@ const RashguardConfiguratorInner = memo(() => {
           const design = payload.data?.design;
           const spec = design?.configData?.spec;
           if (!design || !spec) return;
+          // Admin edit: keep the record's original owner so a save
+          // overwrites the customer's design, not a fresh guest copy.
+          if (getAdminEditMode() && design.ownerKey) {
+            setAdminEditOwner({
+              ownerKey: design.ownerKey,
+              shopDomain: design.shopDomain ?? null,
+              shopifyCustomerId: design.shopifyCustomerId ?? null,
+              customerEmail: design.customerEmail ?? null,
+              guestToken: null,
+              productId: design.productId ?? null,
+              productHandle:
+                design.productHandle ??
+                RASHGUARD_PRODUCT_CONFIG.shopifyProductHandle,
+              isCustomer: Boolean(design.shopifyCustomerId),
+            });
+          }
           loadDraftDocument(
             {
               id: design.id,
@@ -597,9 +634,11 @@ const RashguardConfiguratorInner = memo(() => {
           artworkLayers,
           thumbnailUrl: snapshotCanvas(getCanvasEl()) ?? undefined,
         });
+        const ownerForSave =
+          isAdminEdit && adminEditOwner ? adminEditOwner : cloudOwnerContext;
         const cloudResult = await saveRashguardCloudDesignRecord(
           draft,
-          cloudOwnerContext,
+          ownerForSave,
           RASHGUARD_PRODUCT_CONFIG,
         );
         if (!cloudResult) return null;
@@ -613,7 +652,7 @@ const RashguardConfiguratorInner = memo(() => {
         return null;
       }
     },
-    [artworkLayers, cloudOwnerContext, designSignature, getCanvasEl, serialize],
+    [adminEditOwner, artworkLayers, cloudOwnerContext, designSignature, getCanvasEl, isAdminEdit, serialize],
   );
 
   const handleShareDesign = useCallback(
@@ -835,6 +874,29 @@ const RashguardConfiguratorInner = memo(() => {
 
   return (
     <UploadedArtworkProvider value={uploadedArtwork}>
+      {isAdminEdit ? (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 60,
+            background: '#5d0909',
+            color: '#fff',
+            textAlign: 'center',
+            padding: '7px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+          }}
+        >
+          DSPLN admin — editing this order&rsquo;s design. Saving updates the
+          tech pack the factory receives.
+        </div>
+      ) : null}
       <RashguardShell
         onAddToCart={handleAddToCart}
         isAddingToCart={isAddingToCart}
