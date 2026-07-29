@@ -171,7 +171,10 @@ export const GiGlbModel = memo(() => {
       } else if (pantSub) {
         target = pantSubTints[pantSub];
       } else if (BELT_PATCH_MESHES.has(mesh.name)) {
-        target = new Color('#050505');
+        // BJJ convention: the rank bar on a black belt is red; every
+        // other belt color keeps the black bar.
+        const isBlackBelt = partColors.belt.toLowerCase() === '#000000';
+        target = new Color(isBlackBelt ? '#8b1a1a' : '#050505');
       } else {
         const part = MESH_TO_PART[mesh.name];
         if (part) target = partTints[part];
