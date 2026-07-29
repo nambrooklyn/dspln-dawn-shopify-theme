@@ -643,7 +643,7 @@ const RashguardConfiguratorInner = memo(() => {
     defaultDesignName: currentDesignName || formatDesignName(),
   });
   const commandBarUploads = useMemo(
-    () => uploadedArtwork.map(({ key, url }) => ({ key, url })),
+    () => uploadedArtwork.map(({ key, url, filename }) => ({ key, url, filename })),
     [uploadedArtwork],
   );
   const handleApplyUpload = useCallback(
