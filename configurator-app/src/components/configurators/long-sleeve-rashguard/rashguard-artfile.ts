@@ -79,6 +79,8 @@ export interface ArtFileInput {
   views?: ArtFileViews;
   /** Aspect (w/h) of the captured view images, for letterbox fitting. */
   viewAspect?: number;
+  /** Garment size (e.g. "M") — shown beside the stitch colour on render pages. */
+  size?: string;
 }
 
 // US Letter, portrait, in mm.
@@ -141,6 +143,7 @@ function drawStitchColorBadge(
   marginMm: number,
   subY: number,
   stitchHex: string,
+  size?: string,
 ) {
   const [r, g, b] = hexToRgb(stitchHex);
   const sw = 11;
@@ -154,6 +157,13 @@ function drawStitchColorBadge(
   doc.setFontSize(11);
   doc.setTextColor(90);
   doc.text('STITCH COLOR', swX - 3, subY - 1, { align: 'right' });
+  if (size) {
+    const labelLeft = swX - 3 - doc.getTextWidth('STITCH COLOR');
+    doc.setTextColor(20);
+    doc.text(`SIZE  ${size.toUpperCase()}`, labelLeft - 9, subY - 1, {
+      align: 'right',
+    });
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(140);
@@ -203,6 +213,7 @@ function drawRenderPage(
   info: ArtFileOrderInfo,
   aspect: number,
   marginMm: number,
+  size?: string,
 ) {
   drawOrderHeader(doc, LETTER_W, marginMm, info);
   const noticeBottom = drawRgbNotice(doc, LETTER_W, marginMm);
@@ -213,7 +224,7 @@ function drawRenderPage(
   doc.setFontSize(13);
   doc.setTextColor(90);
   doc.text(caption, marginMm, subY);
-  drawStitchColorBadge(doc, LETTER_W, marginMm, subY, stitchHex);
+  drawStitchColorBadge(doc, LETTER_W, marginMm, subY, stitchHex, size);
 
   // Single render, fit + centred in the area below the sub-header.
   const availTop = subY + 8;
@@ -420,7 +431,7 @@ export async function generateRashguardArtFile(
     ];
     renderPages.forEach(([image, caption], i) => {
       if (i > 0) doc!.addPage([LETTER_W, LETTER_H], 'portrait');
-      drawRenderPage(doc!, image, caption, stitchHex, orderInfo, viewAspect, mm(margin));
+      drawRenderPage(doc!, image, caption, stitchHex, orderInfo, viewAspect, mm(margin), input.size);
     });
   }
 

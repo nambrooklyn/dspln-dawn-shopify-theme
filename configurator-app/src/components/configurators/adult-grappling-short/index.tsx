@@ -374,6 +374,7 @@ const RashguardConfiguratorInner = memo(() => {
         await generateRashguardArtFile({
           partColors,
           artworkLayers,
+          size: serialize().size,
           orderInfo: buildPreviewOrderInfo(),
           views: captured?.views,
           viewAspect: captured?.aspect,

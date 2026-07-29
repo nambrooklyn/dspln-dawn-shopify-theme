@@ -229,6 +229,7 @@ export function RashguardTechPackDownloadPage() {
           artworkLayers: buildArtworkLayers(spec, design.configData?.images),
           views: completeViews(design.configData?.renders),
           viewAspect: design.configData?.renders?.aspect,
+          size: (spec as { size?: string }).size,
           orderInfo,
           options: {
             output: silent ? ('archive' as const) : ('save' as const),
