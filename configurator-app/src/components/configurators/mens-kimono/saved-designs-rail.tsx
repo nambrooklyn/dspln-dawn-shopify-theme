@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react';
 import {
   Check,
   Clock3,
+  Download,
   ImageIcon,
   Link2,
   LogIn,
@@ -22,6 +23,7 @@ import {
   type LogoApplyTarget,
   type UploadedLogoItem,
 } from './use-uploaded-logos';
+import { downloadArtworkFile } from '../shared/artwork-download';
 
 export type DraftStatus = 'loading' | 'saving' | 'saved' | 'error';
 
@@ -479,6 +481,16 @@ export const SavedDesignsRail = memo(
                           <ImageIcon className="h-3.5 w-3.5" />
                           Open
                         </a>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void downloadArtworkFile(logo.url, logo.filename)
+                          }
+                          className="border-border hover:bg-muted mt-1.5 flex h-8 w-full items-center justify-center gap-1 rounded border text-[10px] font-semibold uppercase tracking-[0.12em]"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Download
+                        </button>
                         <button
                           type="button"
                           onClick={() => applyLogo(logo)}

@@ -12,6 +12,7 @@ import {
   ArrowDown,
   ArrowUp,
   Copy,
+  Download,
   Eye,
   EyeOff,
   GripVertical,
@@ -28,6 +29,7 @@ import {
   Type,
   UploadCloud,
 } from 'lucide-react';
+import { downloadArtworkFile } from '../shared/artwork-download';
 
 import { RashguardColorField } from './rashguard-color-picker';
 import {
@@ -994,19 +996,31 @@ export const RashguardArtworkSections = memo(() => {
                     <span className="text-[10px]">Device</span>
                   </button>
                   {savedUploads.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      aria-label="Apply this artwork"
-                      onClick={() => void applyExisting(item)}
-                      className="border-border bg-muted/60 hover:ring-foreground/40 flex aspect-square w-full items-center justify-center overflow-hidden rounded border p-1 hover:ring-2"
-                    >
-                      <img
-                        src={item.url}
-                        alt=""
-                        className="max-h-full max-w-full object-contain"
-                      />
-                    </button>
+                    <div key={item.key} className="relative">
+                      <button
+                        type="button"
+                        aria-label="Apply this artwork"
+                        onClick={() => void applyExisting(item)}
+                        className="border-border bg-muted/60 hover:ring-foreground/40 flex aspect-square w-full items-center justify-center overflow-hidden rounded border p-1 hover:ring-2"
+                      >
+                        <img
+                          src={item.url}
+                          alt=""
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Download this artwork"
+                        title="Download this artwork"
+                        onClick={() =>
+                          void downloadArtworkFile(item.url, item.filename)
+                        }
+                        className="bg-background/90 border-border text-foreground absolute top-0.5 right-0.5 rounded border p-0.5"
+                      >
+                        <Download className="h-3 w-3" />
+                      </button>
+                    </div>
                   ))}
                 </div>
                 <input
