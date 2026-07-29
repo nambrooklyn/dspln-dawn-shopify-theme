@@ -73,7 +73,9 @@
     }
 
     // studio=1 enables the owner-only save/share UI inside the configurator.
-    ['mode', 'cart_line', 'studio'].forEach((param) => {
+    // edit=admin puts the configurator in DSPLN admin-correction mode (saves
+    // overwrite the order's design so the regenerated tech pack is right).
+    ['mode', 'cart_line', 'studio', 'edit'].forEach((param) => {
       const value = searchParams.get(param);
       if (value) frameUrl.searchParams.set(param, value);
     });
