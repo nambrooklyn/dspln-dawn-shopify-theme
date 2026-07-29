@@ -35,6 +35,16 @@ interface CustomerDesignRecord {
   thumbnailUrl: string | null;
   createdAt: string;
   updatedAt: string;
+  // Owner fields the backend returns but the client normally ignores. Admin
+  // edits need them: a save must overwrite the customer's ORIGINAL record so
+  // the tech pack and the customer's Locker stay in sync, rather than writing
+  // a fresh guest copy under whoever opened the editor.
+  ownerKey?: string;
+  shopDomain?: string | null;
+  shopifyCustomerId?: string | null;
+  customerEmail?: string | null;
+  productId?: string | null;
+  productHandle?: string;
   designUrl?: string;
   netlifyDesignUrl?: string;
   productionUrl?: string;
@@ -365,6 +375,37 @@ export async function getGiCloudDesign(id: string) {
   const url = makeApiUrl('/customer-designs', { id });
   const response = await requestJson<DesignResponse>(url);
   return recordToDraft(response.data.design);
+}
+
+/**
+ * Fetch a saved design together with the owner context it was stored under.
+ * Admin edits (portal "Open 3D design") reuse this so a save overwrites the
+ * customer's original record instead of minting a fresh guest copy. Returns a
+ * null owner for legacy records that predate stored owner fields — callers
+ * fall back to the normal URL-derived context in that case.
+ */
+export async function getGiCloudDesignForAdmin(id: string): Promise<{
+  draft: GiDraftDocument;
+  owner: GiCloudOwnerContext | null;
+} | null> {
+  if (!apiBaseUrl()) return null;
+
+  const url = makeApiUrl('/customer-designs', { id });
+  const response = await requestJson<DesignResponse>(url);
+  const record = response.data.design;
+  const owner: GiCloudOwnerContext | null = record.ownerKey
+    ? {
+        ownerKey: record.ownerKey,
+        shopDomain: record.shopDomain ?? null,
+        shopifyCustomerId: record.shopifyCustomerId ?? null,
+        customerEmail: record.customerEmail ?? null,
+        guestToken: null,
+        productId: record.productId ?? null,
+        productHandle: record.productHandle ?? PRODUCT_HANDLE,
+        isCustomer: Boolean(record.shopifyCustomerId),
+      }
+    : null;
+  return { draft: await recordToDraft(record), owner };
 }
 
 export function buildGiCloudDesignUrls(id: string) {
