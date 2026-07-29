@@ -545,11 +545,18 @@ const RashguardConfiguratorInner = memo(() => {
             matchingSavedDesign?.id ??
             createLineDesignId(RASHGUARD_PRODUCT_CONFIG.savedDesignIdPrefix);
         const existing = readRashguardDraftDocument(id);
+        // Admin corrections must keep the order's 3D render pages: the
+        // rashguard tech pack is generated from STORED renders, so a save
+        // without them would produce a pack with pattern pieces only.
+        const captured = isAdminEdit ? captureGarmentViewsSafe() : null;
         const draft = await createRashguardDraftDocument({
           id,
           name: cleanName,
           spec: serialize(),
           artworkLayers,
+          renders: captured
+            ? { ...captured.views, aspect: captured.aspect }
+            : undefined,
           thumbnailUrl: snapshotCanvas(getCanvasEl()) ?? undefined,
           existingCreatedAt: existing?.createdAt,
         });
