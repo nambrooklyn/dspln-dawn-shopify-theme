@@ -890,6 +890,9 @@ const GiConfiguratorInner = memo(() => {
             left: 0,
             right: 0,
             zIndex: 60,
+            // Informational only — must never swallow clicks on the design
+            // actions that sit underneath it.
+            pointerEvents: 'none',
             background: '#5d0909',
             color: '#fff',
             textAlign: 'center',

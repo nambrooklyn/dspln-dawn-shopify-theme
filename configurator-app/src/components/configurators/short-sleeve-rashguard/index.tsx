@@ -560,7 +560,27 @@ const RashguardConfiguratorInner = memo(() => {
         setLastSavedSignature(signatureAtSave);
         refreshSavedDesigns();
         setDraftStatus('saved');
-        toast.success('Design saved locally');
+        // An admin correction is pointless if it only lives in this browser:
+        // the portal regenerates the tech pack from the CLOUD record. Push it
+        // there under the design's original owner, and report honestly.
+        if (isAdminEdit) {
+          const ownerForSave = adminEditOwner ?? cloudOwnerContext;
+          const cloudResult = await saveRashguardCloudDesignRecord(
+            draft,
+            ownerForSave,
+            RASHGUARD_PRODUCT_CONFIG,
+          ).catch((error: unknown) => {
+            console.error('[admin-edit] cloud save failed', error);
+            return null;
+          });
+          if (cloudResult) {
+            toast.success('Order design updated — regenerate the tech pack in the portal');
+          } else {
+            toast.error('Cloud save FAILED — the order design was NOT updated');
+          }
+        } else {
+          toast.success('Design saved locally');
+        }
         return draft.id;
       } catch {
         setDraftStatus('error');
@@ -571,11 +591,14 @@ const RashguardConfiguratorInner = memo(() => {
       }
     },
     [
+      adminEditOwner,
+      artworkLayers,
+      cloudOwnerContext,
       currentDesignId,
       currentDesignName,
       designSignature,
       getCanvasEl,
-      artworkLayers,
+      isAdminEdit,
       refreshSavedDesigns,
       savedDesigns,
       serialize,
@@ -848,6 +871,9 @@ const RashguardConfiguratorInner = memo(() => {
             left: 0,
             right: 0,
             zIndex: 60,
+            // Informational only — must never swallow clicks on the design
+            // actions that sit underneath it.
+            pointerEvents: 'none',
             background: '#5d0909',
             color: '#fff',
             textAlign: 'center',
