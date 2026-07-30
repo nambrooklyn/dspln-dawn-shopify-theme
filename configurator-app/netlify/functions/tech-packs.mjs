@@ -129,7 +129,14 @@ async function handlePost(request) {
     if (!meta) return json(404, { error: 'Unknown upload' });
     const bytes = Buffer.from(String(payload.dataBase64 || ''), 'base64');
     if (!bytes.length) return json(400, { error: 'Empty part' });
-    await store.set(partKey(designId, uploadId, part), bytes.buffer);
+    // bytes.buffer is the UNDERLYING ArrayBuffer — for Buffers under ~8KB
+    // that is Node's shared allocation pool, so storing it wrote pool
+    // garbage and finalize failed its %PDF- magic check. Store the exact
+    // byte range instead.
+    await store.set(
+      partKey(designId, uploadId, part),
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    );
     return json(200, { data: { stored: part, byteSize: bytes.length } });
   }
 

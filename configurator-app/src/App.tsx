@@ -15,7 +15,10 @@ export function App() {
       : '';
   const isProductionDashboard =
     typeof window !== 'undefined' &&
-    ['/production', '/account/designs', '/account/logos'].includes(
+    // '/production' was removed: it exposed every customer design and upload
+    // with no login. Admin browsing moves to the factory portal (behind auth);
+    // the /account/* views stay — they are scoped to the signed-in customer.
+    ['/account/designs', '/account/logos'].includes(
       path,
     );
   const configuratorSlug = path.match(/^\/configurator\/([^/]+)$/)?.[1];
