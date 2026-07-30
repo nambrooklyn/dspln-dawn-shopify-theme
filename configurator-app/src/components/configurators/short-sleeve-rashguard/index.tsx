@@ -578,32 +578,45 @@ const RashguardConfiguratorInner = memo(() => {
         setLastEditedAt(draft.updatedAt);
         setLastSavedSignature(signatureAtSave);
         refreshSavedDesigns();
-        setDraftStatus('saved');
-        // An admin correction is pointless if it only lives in this browser:
-        // the portal regenerates the tech pack from the CLOUD record. Push it
-        // there under the design's original owner, and report honestly.
-        if (isAdminEdit) {
-          const ownerForSave = adminEditOwner ?? cloudOwnerContext;
-          const cloudResult = await saveRashguardCloudDesignRecord(
-            draft,
-            ownerForSave,
-            RASHGUARD_PRODUCT_CONFIG,
-          ).catch((error: unknown) => {
-            console.error('[admin-edit] cloud save failed', error);
-            return null;
-          });
-          if (cloudResult) {
-            toast.success('Order design updated — regenerate the tech pack in the portal');
-          } else {
-            toast.error('Cloud save FAILED — the order design was NOT updated');
-          }
-        } else {
-          toast.success('Design saved locally');
+
+        // A named Studio save is an online save. The local record above is a
+        // recovery copy, but success is reported only after the shareable
+        // cloud record exists.
+        const ownerForSave =
+          isAdminEdit && adminEditOwner
+            ? adminEditOwner
+            : cloudOwnerContext;
+        const cloudResult = await saveRashguardCloudDesignRecord(
+          draft,
+          ownerForSave,
+          RASHGUARD_PRODUCT_CONFIG,
+        );
+        if (!cloudResult) {
+          setDraftStatus('error');
+          toast.error('Online save failed — a local backup was kept');
+          return null;
         }
-        return draft.id;
-      } catch {
+
+        cloudSyncedRef.current.set(
+          cloudResult.draft.id,
+          signatureAtSave,
+        );
+        if (cloudResult.draft.id !== draft.id) {
+          setCurrentDesignId(cloudResult.draft.id);
+        }
+        setDraftStatus('saved');
+        if (isAdminEdit) {
+          toast.success(
+            'Order design updated — regenerate the tech pack in the portal',
+          );
+        } else {
+          toast.success('Design saved online');
+        }
+        return cloudResult.draft.id;
+      } catch (error) {
+        console.error('[RashguardConfigurator] named save failed', error);
         setDraftStatus('error');
-        toast.error('Design could not be saved');
+        toast.error('Online save failed — a local backup may still be available');
         return null;
       } finally {
         savingDesignRef.current = false;

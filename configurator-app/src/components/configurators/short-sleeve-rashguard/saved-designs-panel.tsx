@@ -107,7 +107,7 @@ export const RashguardSavedDesignsPanel = memo(
                   Saved Designs
                 </p>
                 <p className="text-muted-foreground mt-1 text-xs">
-                  Stored locally in this browser
+                  Saved online with a browser backup
                 </p>
               </div>
               <button
