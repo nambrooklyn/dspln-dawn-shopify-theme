@@ -35,10 +35,29 @@
         "padding_top": 36,
         "padding_bottom": 36
       }
+    },
+    "dspln_philosophy_meaning_zEmxUc": {
+      "type": "dspln-philosophy-meaning",
+      "name": "DSPLN philosophy meaning",
+      "settings": {
+        "heading": "BLOOD SWEAT & TEARS",
+        "text": "<p>The red, white and blue drops not only represents where we come from, but also epitomizes the relentless pursuit of excellence and mastery within a discipline. Each element, blood, sweat, and tears, symbolizes the sacrifices, perseverance, and dedication required to achieve greatness.</p><p><strong>Blood</strong> signifies the physical effort and occasional pain endured in the pursuit of one's goals.</p><p><strong>Sweat</strong> represents the hard work and toil poured into honing skills and pushing boundaries.</p><p><strong>Tears</strong> embody the emotional investment and resilience needed to overcome setbacks and challenges along the journey.</p><p>Together, these elements encapsulate the essence of unwavering determination and commitment to mastery, serving as a powerful emblem of the relentless pursuit of excellence.</p>"
+      }
+    },
+    "dspln_philosophy_closing_6wwzeA": {
+      "type": "dspln-philosophy-closing",
+      "name": "DSPLN philosophy closing",
+      "settings": {
+        "eyebrow": "BLOOD SWEAT AND TEARS",
+        "heading": "OUR PHILOSOPHY",
+        "text": "<p>Yet, discipline extends far beyond the confines of the workshop or studio; it permeates every facet of existence. In life, discipline is the compass that steers us towards our goals, the inner strength that propels us through adversity, and the beacon of light that illuminates the path to self-realization.</p><p>To master a skill requires not only talent and passion but also discipline, a discipline that demands sacrifice, resilience, and an unwavering commitment to growth. It is a lifelong journey, fraught with challenges and setbacks, but also rich with triumphs and revelations.</p><p>In the end, discipline is not merely a means to an end; it is the essence of mastery itself. It is the alchemy that transforms ordinary into extraordinary, potential into reality, and dreams into destiny. Embrace discipline, and you will unlock the boundless potential that lies within you, both as a craftsman and as a human being.</p>"
+      }
     }
   },
   "order": [
     "main",
-    "dspln_prestige_product_carousel_TK7YdD"
+    "dspln_prestige_product_carousel_TK7YdD",
+    "dspln_philosophy_meaning_zEmxUc",
+    "dspln_philosophy_closing_6wwzeA"
   ]
 }
