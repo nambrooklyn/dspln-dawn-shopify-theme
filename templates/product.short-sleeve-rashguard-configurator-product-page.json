@@ -38,6 +38,7 @@
     },
     "dspln_philosophy_meaning_zEmxUc": {
       "type": "dspln-philosophy-meaning",
+      "disabled": true,
       "name": "DSPLN philosophy meaning",
       "settings": {
         "heading": "BLOOD SWEAT & TEARS",
