@@ -4,7 +4,8 @@ import { connectLambda, getStore } from '@netlify/blobs';
 
 const STORE_NAME = 'dspln-customer-designs';
 
-// Store-wide listings (all designs / the studio summary) are DSPLN-internal:
+// Store-wide listings (all designs / the studio summary) are DSPLN-internal
+// (key configured via DSPLN_ADMIN_API_KEY; requires a deploy to apply):
 // they require the shared admin key when one is configured. Per-customer
 // queries (ownerKey / customerEmail) stay open for the Locker.
 function adminKeyOk(event) {
