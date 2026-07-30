@@ -1,8 +1,21 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 import { connectLambda, getStore } from '@netlify/blobs';
 
 const STORE_NAME = 'dspln-customer-designs';
+
+// Store-wide listings (all designs / the studio summary) are DSPLN-internal:
+// they require the shared admin key when one is configured. Per-customer
+// queries (ownerKey / customerEmail) stay open for the Locker.
+function adminKeyOk(event) {
+  const expected = process.env.DSPLN_ADMIN_API_KEY;
+  if (!expected) return true; // not configured yet — behave as before
+  const given =
+    event.headers['x-dspln-admin-key'] ?? event.headers['X-Dspln-Admin-Key'] ?? '';
+  const a = Buffer.from(String(given));
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 const jsonResponse = (statusCode, body) => ({
   statusCode,
@@ -681,7 +694,61 @@ export const handler = async (event) => {
         });
       }
 
+      // Studio summary: paginated, lightweight listing of every design.
+      // Loads only one page of records at a time — the full all=1 listing
+      // runs the function out of memory on real data.
+      if (query.summary === '1') {
+        if (!adminKeyOk(event)) return jsonResponse(403, { error: 'Admin key required' });
+        const limit = Math.min(60, Math.max(1, Number(query.limit) || 24));
+        const offset = Math.max(0, Number(query.offset) || 0);
+        const keys = [];
+        let cursor;
+        do {
+          const page = await store.list({ prefix: 'designs/', cursor });
+          keys.push(...page.blobs.map((blob) => blob.key));
+          cursor = page.cursor;
+        } while (cursor);
+        keys.sort().reverse();
+        const pageKeys = keys.slice(offset, offset + limit);
+        const records = await Promise.all(
+          pageKeys.map((key) => store.get(key, { type: 'json' }).catch(() => null)),
+        );
+        const designs = records.filter(Boolean).map((record) => {
+          const linked = withLinks(event, record);
+          const thumbnailUrl =
+            typeof record.thumbnailUrl === 'string' &&
+            record.thumbnailUrl.startsWith('data:') &&
+            record.thumbnailUrl.length > 200000
+              ? null
+              : record.thumbnailUrl ?? null;
+          return {
+            id: record.id,
+            name: record.name ?? null,
+            productHandle: record.productHandle ?? null,
+            ownerKey: record.ownerKey ?? null,
+            customerEmail: record.customerEmail ?? null,
+            orderName: record.orderName ?? null,
+            source: record.configData?.source ?? null,
+            thumbnailUrl,
+            createdAt: record.createdAt ?? null,
+            updatedAt: record.updatedAt ?? null,
+            designUrl: linked.designUrl,
+            artwork: linked.artwork,
+          };
+        });
+        // Sorted newest-first by key only approximates recency; the client
+        // re-sorts the page by updatedAt.
+        return jsonResponse(200, {
+          data: {
+            designs,
+            total: keys.length,
+            nextOffset: offset + limit < keys.length ? offset + limit : null,
+          },
+        });
+      }
+
       if (query.all === '1') {
+        if (!adminKeyOk(event)) return jsonResponse(403, { error: 'Admin key required' });
         const designs = await listRecords(store, 'designs/');
         return jsonResponse(200, {
           data: {
