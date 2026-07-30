@@ -1,5 +1,8 @@
 import { RASHGUARD_PRODUCT_CONFIG } from './rashguard-config';
-import { shrinkArtworkDataUrl } from '../shared/preview-upload';
+import {
+  shrinkArtworkDataUrl,
+  uploadArtworkImage,
+} from '../shared/preview-upload';
 import type {
   RashguardArtworkLayer,
   RashguardSerializedState,
@@ -85,20 +88,24 @@ async function imageUrlToDataUrl(url: string) {
 
 async function artworkLayerToDraftImage(
   layer: RashguardArtworkLayer,
+  hostArtwork: boolean,
 ): Promise<RashguardDraftArtworkImage> {
+  let dataUrl: string | undefined;
+  if (layer.kind === 'image' && layer.imageUrl) {
+    const slim = await shrinkArtworkDataUrl(
+      layer.file
+        ? await fileToDataUrl(layer.file)
+        : await imageUrlToDataUrl(layer.imageUrl),
+    );
+    dataUrl = hostArtwork ? (await uploadArtworkImage(slim)) ?? slim : slim;
+  }
+
   return {
     id: layer.id,
     kind: layer.kind,
     // Shrink to the print ceiling before storing: raw uploads can be 20MB+,
     // which overflows localStorage quotas and the cloud-save body limit.
-    dataUrl:
-      layer.kind === 'image' && layer.imageUrl
-        ? await shrinkArtworkDataUrl(
-            layer.file
-              ? await fileToDataUrl(layer.file)
-              : await imageUrlToDataUrl(layer.imageUrl),
-          )
-        : undefined,
+    dataUrl,
     filename: layer.filename,
     imageWidth: layer.imageWidth,
     imageHeight: layer.imageHeight,
@@ -125,6 +132,7 @@ export async function createRashguardDraftDocument({
   renders,
   thumbnailUrl,
   existingCreatedAt,
+  hostArtwork = false,
 }: {
   id: string;
   name: string;
@@ -133,9 +141,10 @@ export async function createRashguardDraftDocument({
   renders?: RashguardDraftDocument['renders'];
   thumbnailUrl?: string;
   existingCreatedAt?: string;
+  hostArtwork?: boolean;
 }): Promise<RashguardDraftDocument> {
   const images = await Promise.all(
-    artworkLayers.map((layer) => artworkLayerToDraftImage(layer)),
+    artworkLayers.map((layer) => artworkLayerToDraftImage(layer, hostArtwork)),
   );
 
   const now = new Date().toISOString();
@@ -168,7 +177,22 @@ export function saveRashguardDraftDocument(draft: RashguardDraftDocument) {
     index >= 0
       ? drafts.map((item) => (item.id === draft.id ? draft : item))
       : [draft, ...drafts];
-  writeAllDrafts(next);
+  try {
+    writeAllDrafts(next);
+  } catch (error) {
+    // A named save supersedes the disposable autosave. If older embedded
+    // artwork has filled localStorage, drop only that autosave and retry;
+    // never discard another named customer design.
+    if (
+      draft.id === AUTO_RASHGUARD_DRAFT_ID ||
+      !next.some((item) => item.id === AUTO_RASHGUARD_DRAFT_ID)
+    ) {
+      throw error;
+    }
+    writeAllDrafts(
+      next.filter((item) => item.id !== AUTO_RASHGUARD_DRAFT_ID),
+    );
+  }
 }
 
 export function deleteRashguardDraftDocument(id: string) {
