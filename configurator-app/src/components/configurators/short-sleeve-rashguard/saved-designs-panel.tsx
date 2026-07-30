@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { Clock3, Save, Trash2, X } from 'lucide-react';
+import { Clock3, Link2, RotateCcw, Save, Trash2, X } from 'lucide-react';
 
 import type { RashguardDraftDocument } from './rashguard-storage';
 
@@ -26,6 +26,7 @@ export const RashguardSavedDesignsPanel = memo(
     onSaveDesign,
     onLoadDesign,
     onDeleteDesign,
+    onCopyCustomerLink,
   }: {
     status: DraftStatus;
     savedDesigns: RashguardDraftDocument[];
@@ -35,6 +36,7 @@ export const RashguardSavedDesignsPanel = memo(
     onSaveDesign: (name: string) => void;
     onLoadDesign: (design: RashguardDraftDocument) => void;
     onDeleteDesign: (id: string) => void;
+    onCopyCustomerLink: (design: RashguardDraftDocument) => void;
   }) => {
     const [open, setOpen] = useState(false);
     const [nameDialogOpen, setNameDialogOpen] = useState(false);
@@ -141,14 +143,7 @@ export const RashguardSavedDesignsPanel = memo(
                         design.id === activeDesignId ? 'bg-muted/50' : ''
                       }`}
                     >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onLoadDesign(design);
-                          setOpen(false);
-                        }}
-                        className="flex w-full gap-3 text-left"
-                      >
+                      <div className="flex w-full gap-3 text-left">
                         <div className="bg-muted h-14 w-12 shrink-0 overflow-hidden rounded border">
                           {design.thumbnailUrl ? (
                             <img
@@ -165,16 +160,38 @@ export const RashguardSavedDesignsPanel = memo(
                           <p className="text-muted-foreground mt-1 text-[11px]">
                             {formatSavedTime(design.updatedAt)}
                           </p>
+                          <div className="mt-2 flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onLoadDesign(design);
+                                setOpen(false);
+                              }}
+                              className="border-border hover:bg-muted flex items-center gap-1 rounded border px-2 py-1 text-[11px] font-medium"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Load
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onCopyCustomerLink(design)}
+                              title="Copy the customer link for this design"
+                              className="border-border hover:bg-muted flex items-center gap-1 rounded border px-2 py-1 text-[11px] font-medium"
+                            >
+                              <Link2 className="h-3 w-3" />
+                              Copy Link
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteDesign(design.id)}
+                              className="border-border text-muted-foreground hover:text-destructive hover:bg-muted flex items-center gap-1 rounded border px-2 py-1 text-[11px] font-medium"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Delete
+                            </button>
+                          </div>
                         </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteDesign(design.id)}
-                        className="text-muted-foreground hover:text-destructive mt-2 inline-flex items-center gap-1 text-[11px]"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
-                      </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

@@ -49,7 +49,10 @@ import { createLineDesignId } from '../shared/order-flow';
 import { DesignCommandBar } from '../shared/design-command-bar';
 import { RashguardShell } from './rashguard-shell';
 import { RashguardViewToggle } from './view-toggle';
-import { isStudioMode } from '../shared/studio-mode';
+import {
+  copyTextToClipboard,
+  isStudioMode,
+} from '../shared/studio-mode';
 import { UploadedArtworkProvider } from './uploaded-artwork-context';
 import {
   APPLY_TARGETS,
@@ -550,6 +553,13 @@ const RashguardConfiguratorInner = memo(() => {
         // rashguard tech pack is generated from STORED renders, so a save
         // without them would produce a pack with pattern pieces only.
         const captured = isAdminEdit ? captureGarmentViewsSafe() : null;
+        const localThumbnailUrl =
+          snapshotCanvasThumbnail(getCanvasEl()) ??
+          snapshotCanvas(getCanvasEl()) ??
+          undefined;
+        const hostedThumbnailUrl = localThumbnailUrl
+          ? await uploadPreviewImage(localThumbnailUrl)
+          : null;
         const draft = await createRashguardDraftDocument({
           id,
           name: cleanName,
@@ -558,8 +568,9 @@ const RashguardConfiguratorInner = memo(() => {
           renders: captured
             ? { ...captured.views, aspect: captured.aspect }
             : undefined,
-          thumbnailUrl: snapshotCanvas(getCanvasEl()) ?? undefined,
+          thumbnailUrl: hostedThumbnailUrl ?? localThumbnailUrl,
           existingCreatedAt: existing?.createdAt,
+          hostArtwork: true,
         });
         saveRashguardDraftDocument(draft);
         setCurrentDesignId(draft.id);
@@ -717,6 +728,20 @@ const RashguardConfiguratorInner = memo(() => {
       loadDraftDocument(draft);
     },
     [loadDraftDocument],
+  );
+
+  const handleCopyCustomerLink = useCallback(
+    async (draft: RashguardDraftDocument) => {
+      const url = await handleShareDesign(draft.id);
+      if (!url) return;
+      const copied = await copyTextToClipboard(url);
+      if (copied) {
+        toast.success('Customer link copied', { description: url });
+      } else {
+        toast.info('Copy this link', { description: url, duration: 15000 });
+      }
+    },
+    [handleShareDesign],
   );
 
   const handleDeleteDesign = useCallback(
@@ -914,6 +939,7 @@ const RashguardConfiguratorInner = memo(() => {
             activeDesignName={currentDesignName}
             onLoadDesign={handleLoadDesign}
             onDeleteDesign={handleDeleteDesign}
+            onCopyCustomerLink={handleCopyCustomerLink}
           />
         }
         sceneTopContent={
