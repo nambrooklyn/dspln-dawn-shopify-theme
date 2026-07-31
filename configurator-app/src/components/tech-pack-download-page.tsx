@@ -111,6 +111,23 @@ function orderNumberForDesign(id: string) {
   return id.replace(/[^a-z0-9]+/gi, '_').toUpperCase();
 }
 
+// The portal passes the authoritative order number and placed date on the
+// generate URL (?order=#1237-B&date=...). They must win over the record:
+// the webhook stamps the PARENT order name (#1237) onto every design of a
+// multi-item order, so record data alone can never carry the -A/-B letter.
+function urlOrderNumber() {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('order')?.trim() || null;
+}
+
+function urlOrderDate() {
+  if (typeof window === 'undefined') return null;
+  const raw = new URLSearchParams(window.location.search).get('date');
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 // The order number shown in the header: the real Shopify order name once the
 // webhook has stamped it, otherwise the design id as a fallback.
 function orderNumberForRecord(design: SavedDesignRecord) {
@@ -458,7 +475,8 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           rightBeltEndDataUrl: rightBeltEnd,
           kimonoLogos,
           pantLogos,
-          orderNumber: orderNumberForRecord(design),
+          orderNumber: urlOrderNumber() || orderNumberForRecord(design),
+          orderDate: urlOrderDate() ?? undefined,
           productName: productNameForSource(design.configData?.source),
           includeParts: includePartsForSource(design.configData?.source),
           includeSizeMeasurements: !(design.configData?.source ?? '').startsWith(
@@ -485,7 +503,7 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           blob: generated.blob,
           designId: design.id,
           source: design.configData?.source,
-          orderNumber: orderNumberForRecord(design),
+          orderNumber: urlOrderNumber() || orderNumberForRecord(design),
           fileName: generated.fileName,
         });
         if (!cancelled) {
