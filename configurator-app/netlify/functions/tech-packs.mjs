@@ -212,7 +212,10 @@ async function handlePost(request) {
 
 export default async (request) => {
   if (request.method === 'OPTIONS') {
-    return new Response('', { status: 204, headers: CORS });
+    // 204 must have a NULL body — '' counts as a body and makes Response()
+    // throw, which surfaced as a 502 on every CORS preflight (cross-origin
+    // POSTs from the portal never reached the handler).
+    return new Response(null, { status: 204, headers: CORS });
   }
 
   try {
