@@ -74,8 +74,10 @@ ownerKey, create a new id instead of guessing — never orphan their copy.
 }
 ```
 
-Slot keys — kimono: `left-chest`, `right-chest`, `left-sleeve`,
-`right-sleeve`, `back`, `back-skirt`; pant: `left-pant`, `right-pant`.
+Slot keys — kimono: `left-chest`, `right-chest` (mens only),
+`left-sleeve`, `right-sleeve`, `back`, `back-skirt` (mens, studio-only);
+pant: `left-pant`, `right-pant`. Kids and womens support only
+left-chest / left-sleeve / right-sleeve / back on the kimono.
 Every slot present in `configData.images` must also appear in
 `spec.kimono.logos` / `spec.pant.logos` (metadata only:
 `{filename, imageWidth, imageHeight}`) — pricing and cart labels read the
@@ -159,6 +161,13 @@ Consistency rules the configurator relies on:
   in `price.lines`.
 - `layers` is always `[]`; `kind` is `"gi"` / `"kids-gi"` / `"womens-gi"`
   per product.
+- **Kids belt difference:** the kids gi serializes the belt as a rank —
+  `belt.rank: { "name": "Yellow/White", "baseHex": "#f0c537",
+  "stripeHex": "#ffffff" }` (13 valid ranks in the catalog) instead of a
+  single `belt.color`. Before hand-authoring a kids or womens spec,
+  confirm the exact belt/size fields against that product's serializer if
+  anything beyond colors differs — the template above is verified for the
+  mens gi.
 
 ## Verification before you hand over the link
 

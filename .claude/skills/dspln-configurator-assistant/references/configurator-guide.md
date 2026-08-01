@@ -38,8 +38,9 @@ mobile.
    stitching; pants: body, reinforcements, stitching, drawcord; belt:
    one color.
 4. Add logos: click a logo box, upload PNG/JPG. The logo lands in that
-   fixed placement automatically, sized to fit its print box.
-   (Kids/womens also offer nudge/scale/rotate controls per logo.)
+   fixed placement automatically, sized to fit its print box — there are
+   no move/scale controls on gi logos (fixed placements keep the print
+   production-safe).
 5. Belt text: type text for either belt end, pick a font and thread
    color (+$10 per end).
 6. Review the price panel and ADD TO CART.

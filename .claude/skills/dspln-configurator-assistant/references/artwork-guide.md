@@ -20,15 +20,15 @@ bigger than ~3000px or ~6MB gets automatically scaled down."*
 ## Print sizes per placement (gi configurators)
 
 Logos are auto-fitted inside a fixed print box per slot, keeping aspect
-ratio — customers do not free-position gi logos (mens; kids/womens add
-nudge/scale/rotate controls on each slot):
+ratio — customers cannot move, scale, or rotate gi logos (fixed
+placements keep the print production-safe):
 
 | Slot | Print box | Add-on price |
 |---|---|---|
-| Left chest / Right chest | 1.95" × 1.95" | +$10 each |
+| Left chest (womens: 1.755"×1.755") / Right chest (mens only) | 1.95" × 1.95" | +$10 each |
 | Left sleeve / Right sleeve | 1.95" × 1.95" | +$10 each |
 | Big logo on back | 3.7" × 3.7" | +$25 |
-| Logo below belt, back skirt | 4.2" × 1.6" (wide strip) | +$25 — **studio-only**: staff place it on request; customers can't add it themselves |
+| Logo below belt, back skirt (mens) | 4.2" × 1.6" (wide strip) | +$25 — **studio-only**: staff place it on request; customers can't add it themselves |
 | Left thigh / Right thigh (pants) | 1.95" × 1.95" | +$10 each |
 
 Aspect-ratio consequence worth telling customers: a very wide logo in a
