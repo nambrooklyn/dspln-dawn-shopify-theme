@@ -53,19 +53,22 @@ Colorable panels (default white):
 
 ## Gi logo slots
 
-| Slot | Mens | Kids | Womens | Price | Print box |
-|---|---|---|---|---|---|
-| Left chest | ✔ | ✔ | ✔ | +$10 | 1.95"×1.95" (womens: 1.755"×1.755") |
-| Right chest | ✔ | — | — | +$10 | 1.95"×1.95" |
-| Left sleeve | ✔ | ✔ | ✔ | +$10 | 1.95"×1.95" |
-| Right sleeve | ✔ | ✔ | ✔ | +$10 | 1.95"×1.95" |
-| Big logo on back | ✔ | ✔ | ✔ | +$25 | 3.7"×3.7" |
-| Below-belt back strip | studio-only | — | — | +$25 | 4.2"×1.6" — placed by DSPLN staff on request |
-| Left thigh (pant) | ✔ | ✔ | ✔ | +$10 | 1.95"×1.95" |
-| Right thigh (pant) | ✔ | ✔ | ✔ | +$10 | 1.95"×1.95" |
+| Slot | Mens | Kids | Womens | Price |
+|---|---|---|---|---|
+| Left chest | ✔ | ✔ | ✔ | +$10 |
+| Right chest | ✔ | — | — | +$10 |
+| Left sleeve | ✔ | ✔ | ✔ | +$10 |
+| Right sleeve | ✔ | ✔ | ✔ | +$10 |
+| Big logo on back | ✔ | ✔ | ✔ | +$25 |
+| Below-belt back strip | studio-only | — | — | +$25 — placed by DSPLN staff on request |
+| Left thigh (pant) | ✔ | ✔ | ✔ | +$10 |
+| Right thigh (pant) | ✔ | ✔ | ✔ | +$10 |
 
-Logos are auto-fitted into the print box keeping aspect ratio; customers
-cannot move/scale/rotate gi logos (fixed production-safe placements).
+Production decoration sizes (official artwork guide): standard areas
+~4" wide; the back logo is 10" wide. Logos are auto-fitted keeping
+aspect ratio; customers cannot move/scale/rotate gi logos (fixed
+production-safe placements). Preview-box dimensions live in
+artwork-guide.md.
 Text layers on the gi chest exist but are studio-only (+$10 each, staff
 placed).
 
