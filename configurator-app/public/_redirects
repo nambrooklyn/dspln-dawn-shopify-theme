@@ -1,2 +1,3 @@
 /api/customer-designs /.netlify/functions/customer-designs 200
+/api/design-assistant /.netlify/functions/design-assistant 200
 /* /index.html 200

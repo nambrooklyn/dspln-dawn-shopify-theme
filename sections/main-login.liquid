@@ -1,5 +1,4 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
-{{ 'dspln-account.css' | asset_url | stylesheet_tag }}
 
 {%- style -%}
   .section-{{ section.id }}-padding {
@@ -19,7 +18,7 @@
   {%- assign hide_shop_login_button = true -%}
 {%- endif -%}
 
-<div class="customer login dspln-account dspln-account--login section-{{ section.id }}-padding">
+<div class="customer login section-{{ section.id }}-padding">
   <h1 id="recover" tabindex="-1">
     {{ 'customer.recover_password.title' | t }}
   </h1>

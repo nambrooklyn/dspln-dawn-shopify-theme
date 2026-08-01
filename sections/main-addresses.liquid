@@ -1,5 +1,4 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
-{{ 'dspln-account.css' | asset_url | stylesheet_tag }}
 
 <script src="{{ 'customer.js' | asset_url }}" defer></script>
 
@@ -18,22 +17,13 @@
 {%- endstyle -%}
 
 {%- paginate customer.addresses by 5 -%}
-  <div
-    class="customer addresses dspln-account dspln-account--addresses section-{{ section.id }}-padding"
-    data-customer-addresses
-  >
-    <div class="dspln-account__header">
-      <h1>{{ 'customer.addresses.title' | t }}</h1>
-    </div>
+  <div class="customer addresses section-{{ section.id }}-padding" data-customer-addresses>
+    <h1>{{ 'customer.addresses.title' | t }}</h1>
+    <a href="{{ routes.account_url }}">
+      {{ 'customer.account.return' | t }}
+    </a>
 
-    <div class="dspln-account__layout">
-      {% render 'dspln-account-rail' %}
-      {% render 'dspln-account-profile' %}
-
-      <div class="dspln-account__content">
-        {% render 'dspln-account-nav', active: 'addresses' %}
-
-        <div data-address>
+    <div data-address>
       <button
         type="button"
         aria-expanded="false"
@@ -175,7 +165,7 @@
       </div>
     </div>
 
-    <ul role="list" class="dspln-account__address-list">
+    <ul role="list">
       {%- for address in customer.addresses -%}
         <li data-address>
           {%- if address == customer.default_address -%}
@@ -389,8 +379,6 @@
         </nav>
       {%- endif -%}
     {%- endif -%}
-      </div>
-    </div>
   </div>
 {%- endpaginate -%}
 
