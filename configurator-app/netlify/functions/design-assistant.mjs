@@ -1,5 +1,5 @@
 /**
- * Design Assistant — server side.
+ * Design Assistant — server side. (rev 2: env pickup)
  *
  * Thin proxy between the in-configurator chat UI and the Anthropic API.
  * Exists so the API key stays in Netlify env (ANTHROPIC_API_KEY) and so the
