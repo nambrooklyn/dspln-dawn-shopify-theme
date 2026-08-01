@@ -1,0 +1,50 @@
+{
+  "skill_name": "dspln-configurator-assistant",
+  "evals": [
+    {
+      "id": 0,
+      "name": "design-for-me-black-gi",
+      "prompt": "hey! i want to order a custom gi from dspln. black jacket and pants, red stitching everywhere, black belt with BROOKLYN BJJ on the left end of the belt. im usually an A2. can you just set the whole thing up for me so i can buy it?",
+      "expected_output": "A real design record created via the customer-designs API with exactly the requested options (all from the valid catalog), verified by GET, and a working dspln.com/products/customgi?design=<id> share link returned with a summary of choices and stated assumptions (e.g. belt text font/thread color).",
+      "files": [],
+      "assertions": [
+        "A real design record was created via the customer-designs API and verified with a GET (verify.json or equivalent evidence exists)",
+        "The reply contains a working share link of the form dspln.com/products/customgi?design=<id>",
+        "The design spec uses only valid catalog values: Black #000000 body/pants, Red #a82828 stitching on both kimono and pant, black belt, size A2, belt leftEnd BROOKLYN BJJ (<=18 chars is violated \u2014 BROOKLYN BJJ is 12 chars OK) with a valid font",
+        "The spec is structurally complete (partColors, partVisibility, price block, all four kimono color subparts, all four pant color subparts incl. drawcord, belt embroidery block, layers [], cameraView)",
+        "The reply summarizes every choice and flags assumptions (e.g. font/thread color/other panel colors) instead of silently deciding",
+        "No invented options (no colors, fonts, or features outside the catalog); prices if mentioned are correct ($55/$45/$15 parts, $10 belt text)"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "artwork-check-and-fix",
+      "prompt": "attached is our academy logo (white-bg-logo.jpg). we want it as the big back logo on our team gis. is the file good enough to print? if something's wrong with it can you fix it?",
+      "expected_output": "Runs the inspection, identifies the real issues (solid white background, low resolution ~400px, JPEG/no transparency), explains them in plain language with the printed consequence, removes the background to a NEW transparent PNG, warns that resolution is still low for a 3.7-inch back print and asks for a larger source or offers alternatives. Does not overwrite the original.",
+      "files": [
+        "white-bg-logo.jpg"
+      ],
+      "assertions": [
+        "Identifies the solid white background and explains the printed consequence (white box on the gi) in plain language",
+        "Identifies the low resolution (~400px long side) and warns it's below what a 3.7-inch back print wants; does not claim upscaling fully fixes it",
+        "Produces a fixed file: transparent-background PNG saved as a NEW file; the original white-bg-logo.jpg is byte-identical to the input",
+        "Mentions the correct back-logo context: 3.7 x 3.7 inch print box and/or +$25 price (values from the catalog, not invented)",
+        "Asks for a higher-resolution source or offers a concrete alternative (smaller placement, vector redraw) rather than calling the file fully print-ready"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "options-and-pricing-question",
+      "prompt": "quick questions before i order \u2014 can i put our logo on both shoulders of the mens gi and what does that cost? and my daughter wants a pink gi, is that possible? she competes so she also needs her name on the belt",
+      "expected_output": "Sleeve logos: yes, left + right sleeve slots at +$10 each ($20). Pink gi: NOT possible on any gi (fixed 10-color palette, no pink) \u2014 says so plainly and offers the closest real options and/or notes rashguards/shorts do allow custom colors. Kids belt text: yes, 18 chars max, +$10 per belt end, and kids belts are rank colors (13 two-tone options). No invented options.",
+      "files": [],
+      "assertions": [
+        "Shoulder logos: answers yes via left + right sleeve slots at +$10 each ($20 total) \u2014 correct slots and prices",
+        "Pink gi: states clearly that pink is NOT available on gis (fixed palette) \u2014 does not invent a pink option or custom color for gis",
+        "Offers a real alternative for pink (closest gi colors from the 10-swatch palette, and/or notes rashguards/shorts allow any custom color)",
+        "Kids belt text: confirms belt text exists (+$10 per end, 18 char max) and correctly reflects kids belt = rank colors (13 two-tone options), not the adult 5-color belt",
+        "No invented options or wrong prices anywhere in the reply"
+      ]
+    }
+  ]
+}
