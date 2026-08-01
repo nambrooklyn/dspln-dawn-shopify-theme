@@ -11,7 +11,7 @@
  */
 
 const MODEL = process.env.DSPLN_ASSISTANT_MODEL || 'claude-sonnet-5';
-const MAX_TOKENS = 700;
+const MAX_TOKENS = 1600;
 const MAX_MESSAGES = 40; // hard cap per conversation request
 const MAX_BODY_BYTES = 200_000;
 
