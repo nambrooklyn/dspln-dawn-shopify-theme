@@ -52,7 +52,7 @@ import type { GiTextLayer } from './gi-state';
 const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
 const MOBILE_CAMERA_MAX_DISTANCE = 3.35;
-const CAMERA_VERTICAL_PAN_EVENT = 'dspln:configurator-camera:vertical-pan';
+const CAMERA_PAN_EVENT = 'dspln:configurator-camera:pan';
 const CAMERA_VERTICAL_PAN_STEP = 0.18;
 const CAMERA_TARGET_MIN_Y = 0.35;
 const CAMERA_TARGET_MAX_Y = 1.7;
@@ -596,17 +596,25 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   // camera and orbit target moving together so customers can inspect the
   // collar, chest, belt, and pants without changing their zoom.
   useEffect(() => {
-    const handleVerticalPan = (event: Event) => {
+    const handleCameraPan = (event: Event) => {
       const controls = controlsRef.current;
       if (!controls) return;
 
-      const { direction } = (
-        event as CustomEvent<{ direction?: 'up' | 'down' }>
+      const { action } = (
+        event as CustomEvent<{ action?: 'up' | 'down' | 'center' }>
       ).detail ?? {};
-      if (direction !== 'up' && direction !== 'down') return;
+      if (action !== 'up' && action !== 'down' && action !== 'center') return;
+
+      if (action === 'center') {
+        const centeredTarget = new Vector3(...CAMERA_TARGET);
+        camera.position.add(centeredTarget.clone().sub(controls.target));
+        controls.target.copy(centeredTarget);
+        controls.update();
+        return;
+      }
 
       const requestedDelta =
-        direction === 'up'
+        action === 'up'
           ? CAMERA_VERTICAL_PAN_STEP
           : -CAMERA_VERTICAL_PAN_STEP;
       const nextTargetY = Math.min(
@@ -621,9 +629,9 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       controls.update();
     };
 
-    window.addEventListener(CAMERA_VERTICAL_PAN_EVENT, handleVerticalPan);
+    window.addEventListener(CAMERA_PAN_EVENT, handleCameraPan);
     return () => {
-      window.removeEventListener(CAMERA_VERTICAL_PAN_EVENT, handleVerticalPan);
+      window.removeEventListener(CAMERA_PAN_EVENT, handleCameraPan);
     };
   }, [camera]);
 
@@ -1032,9 +1040,9 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
   const [useMobileCamera, setUseMobileCamera] = useState(false);
   const initialPosition = cameraViewToPosition(cameraView, useMobileCamera);
   const touchHandlers = useDirectionalCanvasTouch();
-  const panVertically = useCallback((direction: 'up' | 'down') => {
+  const moveCamera = useCallback((action: 'up' | 'down' | 'center') => {
     window.dispatchEvent(
-      new CustomEvent(CAMERA_VERTICAL_PAN_EVENT, { detail: { direction } }),
+      new CustomEvent(CAMERA_PAN_EVENT, { detail: { action } }),
     );
   }, []);
 
@@ -1100,18 +1108,27 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
           className="flex h-11 w-11 items-center justify-center border-b border-black/10 text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
           aria-label="Move view up"
           title="Move view up"
-          onClick={() => panVertically('up')}
+          onClick={() => moveCamera('up')}
         >
           <span aria-hidden="true">&#8593;</span>
         </button>
         <button
           type="button"
-          className="flex h-11 w-11 items-center justify-center text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          className="flex h-11 w-11 items-center justify-center border-b border-black/10 text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
           aria-label="Move view down"
           title="Move view down"
-          onClick={() => panVertically('down')}
+          onClick={() => moveCamera('down')}
         >
           <span aria-hidden="true">&#8595;</span>
+        </button>
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center text-lg text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          aria-label="Re-center model"
+          title="Re-center model"
+          onClick={() => moveCamera('center')}
+        >
+          <span aria-hidden="true">&#9678;</span>
         </button>
       </div>
     </div>
