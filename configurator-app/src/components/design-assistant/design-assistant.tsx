@@ -31,7 +31,7 @@ import { uploadArtworkImage } from '../configurators/shared/preview-upload';
  * state, so the customer watches the 3D gi change as the assistant works.
  *
  * Dev-store only for now: renders on Netlify branch deploys (dev--*) or with
- * ?assistant=0 remains available as an emergency per-page opt-out.
+ * ?assistant=1. Production customers see nothing until the flag is opened up.
  */
 
 const MAX_TOOL_ROUNDS = 6;
@@ -125,10 +125,11 @@ export function shouldShowDesignAssistant(): boolean {
   try {
     const params = new URLSearchParams(window.location.search);
     const flag = params.get('assistant');
+    if (flag === '1') return true;
     if (flag === '0') return false;
-    return true;
+    return window.location.hostname.startsWith('dev--');
   } catch {
-    return true;
+    return false;
   }
 }
 
