@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type DragEvent,
   type FormEvent,
 } from 'react';
 import { ImagePlus, LoaderCircle, MessageCircleHeart, Send, X } from 'lucide-react';
@@ -158,6 +159,7 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [uploadingArtwork, setUploadingArtwork] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [artworkError, setArtworkError] = useState('');
   const [attachedArtwork, setAttachedArtwork] = useState<AttachedArtwork | null>(null);
   const conversationRef = useRef<ApiMessage[]>([]);
@@ -185,11 +187,7 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
     );
   }, []);
 
-  const attachArtwork = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
+  const processArtworkFile = useCallback(async (file: File) => {
     setArtworkError('');
     if (!['image/png', 'image/jpeg'].includes(file.type)) {
       setArtworkError('Please choose a PNG or JPEG image.');
@@ -221,6 +219,44 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
       setUploadingArtwork(false);
     }
   }, []);
+
+  const attachArtwork = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) await processArtworkFile(file);
+  }, [processArtworkFile]);
+
+  const handleArtworkDragOver = useCallback((event: DragEvent<HTMLElement>) => {
+    if (placement !== 'desktop') return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+    setDragActive(true);
+  }, [placement]);
+
+  const handleArtworkDragLeave = useCallback((event: DragEvent<HTMLElement>) => {
+    if (placement !== 'desktop') return;
+    const nextTarget = event.relatedTarget as Node | null;
+    if (nextTarget && event.currentTarget.contains(nextTarget)) return;
+    setDragActive(false);
+  }, [placement]);
+
+  const handleArtworkDrop = useCallback(async (event: DragEvent<HTMLElement>) => {
+    if (placement !== 'desktop') return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+    const file = Array.from(event.dataTransfer.files).find((candidate) =>
+      ['image/png', 'image/jpeg'].includes(candidate.type),
+    );
+    if (!file) {
+      setArtworkError('Please drop a PNG or JPEG image.');
+      openChat();
+      return;
+    }
+    openChat();
+    await processArtworkFile(file);
+  }, [openChat, placement, processArtworkFile]);
 
   // ---- tool execution against live configurator state ----
 
@@ -639,16 +675,22 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
         <button
           type="button"
           onClick={openChat}
+          onDragEnter={handleArtworkDragOver}
+          onDragOver={handleArtworkDragOver}
+          onDragLeave={handleArtworkDragLeave}
+          onDrop={handleArtworkDrop}
           aria-label="Open design assistant"
           className={
             placement === 'desktop'
-              ? 'absolute top-3 left-3 z-[70] flex h-12 w-[min(17rem,calc(100%-1.5rem))] items-center justify-between gap-3 rounded-xl border border-[#e3ded7] bg-white px-4 text-[11px] font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase shadow-md hover:bg-[#faf8f5]'
+              ? `absolute top-3 left-3 z-[70] flex h-12 w-[min(17rem,calc(100%-1.5rem))] items-center justify-between gap-3 rounded-xl border bg-white px-4 text-[11px] font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase shadow-md hover:bg-[#faf8f5] ${dragActive ? 'border-[#5c0000] ring-4 ring-[#5c0000]/20' : 'border-[#e3ded7]'}`
               : 'flex h-12 w-full items-center justify-between gap-3 bg-white px-4 text-[11px] font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase hover:bg-[#faf8f5]'
           }
         >
           <span className="inline-flex items-center gap-2">
             <MessageCircleHeart className="h-5 w-5 text-[#5c0000]" />
-            Design Assistant
+            {placement === 'desktop' && dragActive
+              ? 'Drop image to upload'
+              : 'Design Assistant'}
           </span>
           {placement === 'mobile' ? (
             <span className="text-lg text-[#8a8580]" aria-hidden="true">+</span>
@@ -658,12 +700,21 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
         </button>
       ) : (
         <div
+          onDragEnter={handleArtworkDragOver}
+          onDragOver={handleArtworkDragOver}
+          onDragLeave={handleArtworkDragLeave}
+          onDrop={handleArtworkDrop}
           className={
             placement === 'desktop'
-              ? 'absolute top-3 left-3 z-[70] flex h-[min(28rem,calc(100%-1.5rem))] w-[min(17rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border border-[#e3ded7] bg-white shadow-2xl'
+              ? `absolute top-3 left-3 z-[70] flex h-[min(28rem,calc(100%-1.5rem))] w-[min(17rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border bg-white shadow-2xl ${dragActive ? 'border-[#5c0000] ring-4 ring-[#5c0000]/20' : 'border-[#e3ded7]'}`
               : 'fixed inset-x-0 bottom-0 z-[80] flex h-[min(52dvh,30rem)] w-full flex-col overflow-hidden rounded-t-3xl border border-[#e3ded7] bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl'
           }
         >
+          {placement === 'desktop' && dragActive ? (
+            <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-white/90 px-5 text-center text-xs font-semibold tracking-[0.12em] text-[#5c0000] uppercase">
+              Drop image to attach
+            </div>
+          ) : null}
           {placement === 'mobile' ? (
             <div className="flex h-6 shrink-0 items-center justify-center bg-[#faf8f5]">
               <span className="h-1 w-10 rounded-full bg-[#c9c3bc]" />
