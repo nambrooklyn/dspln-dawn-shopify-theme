@@ -1114,21 +1114,21 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
         </button>
         <button
           type="button"
-          className="flex h-11 w-11 items-center justify-center border-b border-black/10 text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
-          aria-label="Move view down"
-          title="Move view down"
-          onClick={() => moveCamera('down')}
-        >
-          <span aria-hidden="true">&#8595;</span>
-        </button>
-        <button
-          type="button"
-          className="flex h-11 w-11 items-center justify-center text-lg text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          className="flex h-11 w-11 items-center justify-center border-b border-black/10 text-lg text-black transition hover:bg-black hover:text-white active:bg-black/80"
           aria-label="Re-center model"
           title="Re-center model"
           onClick={() => moveCamera('center')}
         >
           <span aria-hidden="true">&#9678;</span>
+        </button>
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          aria-label="Move view down"
+          title="Move view down"
+          onClick={() => moveCamera('down')}
+        >
+          <span aria-hidden="true">&#8595;</span>
         </button>
       </div>
     </div>
