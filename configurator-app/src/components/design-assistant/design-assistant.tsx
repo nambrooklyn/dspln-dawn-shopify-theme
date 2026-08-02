@@ -63,6 +63,18 @@ interface AttachedArtwork {
   height: number;
 }
 
+interface ArtworkAgentResponse {
+  artwork?: {
+    id: string;
+    url: string;
+    filename: string;
+    width: number;
+    height: number;
+    operation: 'generate' | 'edit';
+  };
+  message?: string;
+}
+
 const readArtworkFile = async (file: File) => {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -82,6 +94,31 @@ const readArtworkFile = async (file: File) => {
   );
 
   return { dataUrl, dimensions };
+};
+
+const requestArtworkRevision = async (payload: {
+  operation: 'generate' | 'edit';
+  prompt: string;
+  imageUrl?: string;
+  filename?: string;
+}): Promise<AttachedArtwork> => {
+  const response = await fetch('/api/artwork-agent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = (await response.json().catch(() => ({}))) as ArtworkAgentResponse;
+  if (!response.ok || !data.artwork) {
+    throw new Error(data.message || 'Artwork revision failed');
+  }
+  return {
+    id: data.artwork.id,
+    url: data.artwork.url,
+    previewUrl: data.artwork.url,
+    filename: data.artwork.filename,
+    width: data.artwork.width,
+    height: data.artwork.height,
+  };
 };
 
 export function shouldShowDesignAssistant(): boolean {
@@ -207,7 +244,7 @@ export function DesignAssistant() {
   // ---- tool execution against live configurator state ----
 
   const runTool = useCallback(
-    (name: string, toolInput: Record<string, unknown>): string => {
+    async (name: string, toolInput: Record<string, unknown>): Promise<string> => {
       const s = stateRef.current;
       switch (name) {
         case 'get_design': {
@@ -331,6 +368,84 @@ export function DesignAssistant() {
           }
           return JSON.stringify({ ok: false, error: `Unknown artwork target ${target}` });
         }
+        case 'create_artwork': {
+          const prompt = String(toolInput.prompt ?? '').trim();
+          if (!prompt) {
+            return JSON.stringify({ ok: false, error: 'An artwork prompt is required.' });
+          }
+          try {
+            const artwork = await requestArtworkRevision({
+              operation: 'generate',
+              prompt,
+            });
+            artworkRef.current.set(artwork.id, artwork);
+            setBubbles((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                text: 'New generated artwork revision',
+                imageUrl: artwork.previewUrl,
+                imageAlt: artwork.filename,
+              },
+            ]);
+            return JSON.stringify({
+              ok: true,
+              artworkId: artwork.id,
+              filename: artwork.filename,
+              width: artwork.width,
+              height: artwork.height,
+              originalPreserved: true,
+            });
+          } catch (error) {
+            return JSON.stringify({
+              ok: false,
+              error: error instanceof Error ? error.message : 'Artwork generation failed.',
+            });
+          }
+        }
+        case 'edit_uploaded_artwork': {
+          const artworkId = String(toolInput.artworkId ?? '');
+          const prompt = String(toolInput.prompt ?? '').trim();
+          const source = artworkRef.current.get(artworkId);
+          if (!source) {
+            return JSON.stringify({ ok: false, error: 'Source artwork not found.' });
+          }
+          if (!prompt) {
+            return JSON.stringify({ ok: false, error: 'An edit instruction is required.' });
+          }
+          try {
+            const artwork = await requestArtworkRevision({
+              operation: 'edit',
+              prompt,
+              imageUrl: source.url,
+              filename: source.filename,
+            });
+            artworkRef.current.set(artwork.id, artwork);
+            setBubbles((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                text: 'New edited artwork revision',
+                imageUrl: artwork.previewUrl,
+                imageAlt: artwork.filename,
+              },
+            ]);
+            return JSON.stringify({
+              ok: true,
+              artworkId: artwork.id,
+              sourceArtworkId: artworkId,
+              filename: artwork.filename,
+              width: artwork.width,
+              height: artwork.height,
+              originalPreserved: true,
+            });
+          } catch (error) {
+            return JSON.stringify({
+              ok: false,
+              error: error instanceof Error ? error.message : 'Artwork edit failed.',
+            });
+          }
+        }
         default:
           return JSON.stringify({ ok: false, error: `Unknown tool ${name}` });
       }
@@ -427,16 +542,16 @@ export function DesignAssistant() {
           );
           if (data.stopReason !== 'tool_use' || toolUses.length === 0) return;
 
+          const toolResults = await Promise.all(
+            toolUses.map(async (tool) => ({
+              type: 'tool_result',
+              tool_use_id: tool.id,
+              content: await runTool(tool.name, tool.input),
+            })),
+          );
           conversationRef.current = [
             ...conversationRef.current,
-            {
-              role: 'user',
-              content: toolUses.map((tool) => ({
-                type: 'tool_result',
-                tool_use_id: tool.id,
-                content: runTool(tool.name, tool.input),
-              })),
-            },
+            { role: 'user', content: toolResults },
           ];
         }
       } catch {
