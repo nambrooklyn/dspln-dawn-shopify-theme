@@ -53,7 +53,7 @@ interface ChatBubble {
   imageAlt?: string;
 }
 
-interface AttachedArtwork {
+export interface AttachedArtwork {
   id: string;
   url: string;
   previewUrl: string;
@@ -150,10 +150,143 @@ const nameOfHex = (hex: string) =>
 
 interface DesignAssistantProps {
   placement?: 'desktop' | 'mobile';
+  productKey?: GiAssistantProductKey;
+  useProductState?: () => unknown;
+  productContext?: AssistantProductContext;
+  runProductTool?: (
+    name: string,
+    input: Record<string, unknown>,
+    helpers: { getArtwork: (id: string) => AttachedArtwork | undefined },
+  ) => Promise<string | null>;
 }
 
-export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) {
-  const state = useGiState();
+export interface AssistantProductContext {
+  id: string;
+  name: string;
+  family: 'gi' | 'rashguard';
+  allowedParts: string[];
+  colorTargets: string[];
+  artworkTargets: string[];
+  supportsBeltText: boolean;
+  audience: 'adult' | 'women' | 'kids';
+}
+
+export type GiAssistantProductKey =
+  | 'mens'
+  | 'womens'
+  | 'kids'
+  | 'mens-kimono'
+  | 'kids-kimono'
+  | 'mens-pant'
+  | 'kids-pant'
+  | 'mens-belt'
+  | 'kids-belt';
+
+const GI_ASSISTANT_PROFILES: Record<
+  GiAssistantProductKey,
+  {
+    name: string;
+    allowedParts: GiPart[];
+    colorTargets: string[];
+    artworkTargets: string[];
+    supportsBeltText: boolean;
+    audience: 'adult' | 'women' | 'kids';
+  }
+> = {
+  mens: {
+    name: "Men's Custom GI Suit",
+    allowedParts: ['jacket', 'pants', 'belt'],
+    colorTargets: ['kimono-body', 'kimono-lapel', 'kimono-reinforcement', 'kimono-stitching', 'pant-body', 'pant-reinforcement', 'pant-stitching', 'pant-drawcord', 'belt'],
+    artworkTargets: ['kimono:left-chest', 'kimono:right-chest', 'kimono:left-sleeve', 'kimono:right-sleeve', 'kimono:back', 'pant:left-pant', 'pant:right-pant'],
+    supportsBeltText: true,
+    audience: 'adult',
+  },
+  womens: {
+    name: "Women's Custom GI Suit",
+    allowedParts: ['jacket', 'pants', 'belt'],
+    colorTargets: ['kimono-body', 'kimono-lapel', 'kimono-reinforcement', 'kimono-stitching', 'pant-body', 'pant-reinforcement', 'pant-stitching', 'pant-drawcord', 'belt'],
+    artworkTargets: ['kimono:left-chest', 'kimono:right-chest', 'kimono:left-sleeve', 'kimono:right-sleeve', 'kimono:back', 'pant:left-pant', 'pant:right-pant'],
+    supportsBeltText: true,
+    audience: 'women',
+  },
+  kids: {
+    name: "Kids' Custom GI Suit",
+    allowedParts: ['jacket', 'pants', 'belt'],
+    colorTargets: ['kimono-body', 'kimono-lapel', 'kimono-reinforcement', 'kimono-stitching', 'pant-body', 'pant-reinforcement', 'pant-stitching', 'pant-drawcord', 'belt'],
+    artworkTargets: ['kimono:left-chest', 'kimono:right-chest', 'kimono:left-sleeve', 'kimono:right-sleeve', 'kimono:back', 'pant:left-pant', 'pant:right-pant'],
+    supportsBeltText: true,
+    audience: 'kids',
+  },
+  'mens-kimono': {
+    name: "Men's Custom Kimono",
+    allowedParts: ['jacket'],
+    colorTargets: ['kimono-body', 'kimono-lapel', 'kimono-reinforcement', 'kimono-stitching'],
+    artworkTargets: ['kimono:left-chest', 'kimono:right-chest', 'kimono:left-sleeve', 'kimono:right-sleeve', 'kimono:back'],
+    supportsBeltText: false,
+    audience: 'adult',
+  },
+  'kids-kimono': {
+    name: "Kids' Custom Kimono",
+    allowedParts: ['jacket'],
+    colorTargets: ['kimono-body', 'kimono-lapel', 'kimono-reinforcement', 'kimono-stitching'],
+    artworkTargets: ['kimono:left-chest', 'kimono:right-chest', 'kimono:left-sleeve', 'kimono:right-sleeve', 'kimono:back'],
+    supportsBeltText: false,
+    audience: 'kids',
+  },
+  'mens-pant': {
+    name: "Men's Custom BJJ Pant",
+    allowedParts: ['pants'],
+    colorTargets: ['pant-body', 'pant-reinforcement', 'pant-stitching', 'pant-drawcord'],
+    artworkTargets: ['pant:left-pant', 'pant:right-pant'],
+    supportsBeltText: false,
+    audience: 'adult',
+  },
+  'kids-pant': {
+    name: "Kids' Custom BJJ Pant",
+    allowedParts: ['pants'],
+    colorTargets: ['pant-body', 'pant-reinforcement', 'pant-stitching', 'pant-drawcord'],
+    artworkTargets: ['pant:left-pant', 'pant:right-pant'],
+    supportsBeltText: false,
+    audience: 'kids',
+  },
+  'mens-belt': {
+    name: "Men's Custom BJJ Belt",
+    allowedParts: ['belt'],
+    colorTargets: ['belt'],
+    artworkTargets: [],
+    supportsBeltText: true,
+    audience: 'adult',
+  },
+  'kids-belt': {
+    name: "Kids' Custom BJJ Belt",
+    allowedParts: ['belt'],
+    colorTargets: ['belt'],
+    artworkTargets: [],
+    supportsBeltText: true,
+    audience: 'kids',
+  },
+};
+
+export function DesignAssistant({
+  placement = 'mobile',
+  productKey = 'mens',
+  useProductState,
+  productContext,
+  runProductTool,
+}: DesignAssistantProps) {
+  const stateHook = useProductState ?? useGiState;
+  const state = stateHook() as ReturnType<typeof useGiState>;
+  const productProfile = GI_ASSISTANT_PROFILES[productKey];
+  const activeProductContext: AssistantProductContext = productContext ?? {
+    id: productKey,
+    name: productProfile.name,
+    family: 'gi',
+    allowedParts: productProfile.allowedParts,
+    colorTargets: productProfile.colorTargets,
+    artworkTargets: productProfile.artworkTargets,
+    supportsBeltText: productProfile.supportsBeltText,
+    audience: productProfile.audience,
+  };
   const [open, setOpen] = useState(false);
   const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
   const [input, setInput] = useState('');
@@ -181,11 +314,11 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
         : [
             {
               role: 'assistant',
-              text: "Tell me how you want your gi to look. I can change the body, lapel, stitching, and reinforcement colors; personalize your belt; create a new logo; clean up an uploaded image or remove its background; and place artwork on the chest, sleeves, back, or pants. Try: ‘Make my gi black with khaki stitching and create a matching lion logo for the left chest.’",
+              text: `Tell me how you want your ${activeProductContext.name} to look. I can change its available colors${activeProductContext.supportsBeltText ? ', personalize the belt' : ''}${activeProductContext.artworkTargets.length ? ', create or clean up artwork, remove backgrounds, and place logos on the product' : ''}. Tell me what to change and I’ll apply it live in 3D.`,
             },
           ],
     );
-  }, []);
+  }, [activeProductContext]);
 
   const processArtworkFile = useCallback(async (file: File) => {
     setArtworkError('');
@@ -262,10 +395,16 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
 
   const runTool = useCallback(
     async (name: string, toolInput: Record<string, unknown>): Promise<string> => {
+      if (runProductTool) {
+        const productResult = await runProductTool(name, toolInput, {
+          getArtwork: (id) => artworkRef.current.get(id),
+        });
+        if (productResult !== null) return productResult;
+      }
       const s = stateRef.current;
       switch (name) {
         case 'get_design': {
-          const included = (['jacket', 'pants', 'belt'] as GiPart[]).filter(
+          const included = productProfile.allowedParts.filter(
             (part) => s.partVisibility[part],
           );
           const logoCount = Object.values(s.kimonoLogos).filter(Boolean).length;
@@ -298,6 +437,9 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
         case 'set_panel_color': {
           const target = String(toolInput.target ?? '');
           const colorName = String(toolInput.color ?? '');
+          if (!productProfile.colorTargets.includes(target)) {
+            return JSON.stringify({ ok: false, error: `${target} is not available on ${productProfile.name}.` });
+          }
           if (target === 'belt') {
             const hex = beltHex(colorName);
             if (!hex) return JSON.stringify({ ok: false, error: `"${colorName}" is not a belt color. Belt colors: White, Blue, Purple, Brown, Black.` });
@@ -320,19 +462,22 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
         }
         case 'set_part_included': {
           const part = String(toolInput.part ?? '') as GiPart;
-          if (!['jacket', 'pants', 'belt'].includes(part)) {
-            return JSON.stringify({ ok: false, error: 'Unknown part' });
+          if (!productProfile.allowedParts.includes(part)) {
+            return JSON.stringify({ ok: false, error: `${part} is not part of ${productProfile.name}.` });
           }
           s.setPartVisible(part, Boolean(toolInput.included));
           return JSON.stringify({ ok: true });
         }
         case 'set_sizes': {
-          if (typeof toolInput.kimono === 'string') s.setKimonoSize(toolInput.kimono);
-          if (typeof toolInput.pant === 'string') s.setPantSize(toolInput.pant);
-          if (typeof toolInput.belt === 'string') s.setBeltSize(toolInput.belt);
+          if (productProfile.allowedParts.includes('jacket') && typeof toolInput.kimono === 'string') s.setKimonoSize(toolInput.kimono);
+          if (productProfile.allowedParts.includes('pants') && typeof toolInput.pant === 'string') s.setPantSize(toolInput.pant);
+          if (productProfile.allowedParts.includes('belt') && typeof toolInput.belt === 'string') s.setBeltSize(toolInput.belt);
           return JSON.stringify({ ok: true });
         }
         case 'set_belt_text': {
+          if (!productProfile.supportsBeltText) {
+            return JSON.stringify({ ok: false, error: `Belt text is not available on ${productProfile.name}.` });
+          }
           const side = toolInput.side === 'right' ? 'right' : 'left';
           const text = String(toolInput.text ?? '').slice(0, 18);
           const patch: Record<string, string> = {};
@@ -355,6 +500,9 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
         case 'apply_uploaded_artwork': {
           const artworkId = String(toolInput.artworkId ?? '');
           const target = String(toolInput.target ?? '');
+          if (!productProfile.artworkTargets.includes(target)) {
+            return JSON.stringify({ ok: false, error: `${target} is not available on ${productProfile.name}.` });
+          }
           const artwork = artworkRef.current.get(artworkId);
           if (!artwork) {
             return JSON.stringify({ ok: false, error: 'Uploaded artwork not found.' });
@@ -397,6 +545,12 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
           const action = String(toolInput.action ?? '');
           const source = String(toolInput.source ?? '');
           const target = String(toolInput.target ?? '');
+          if (!productProfile.artworkTargets.includes(source)) {
+            return JSON.stringify({ ok: false, error: `${source} is not available on ${productProfile.name}.` });
+          }
+          if (action !== 'remove' && !productProfile.artworkTargets.includes(target)) {
+            return JSON.stringify({ ok: false, error: `${target} is not available on ${productProfile.name}.` });
+          }
           const validKimonoSlots = ['left-chest', 'right-chest', 'left-sleeve', 'right-sleeve', 'back'];
           const validPantSlots = ['left-pant', 'right-pant'];
 
@@ -551,7 +705,7 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
           return JSON.stringify({ ok: false, error: `Unknown tool ${name}` });
       }
     },
-    [],
+    [productProfile, runProductTool],
   );
 
   // ---- conversation loop ----
@@ -600,7 +754,10 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
           const response = await fetch('/api/design-assistant', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: conversationRef.current }),
+            body: JSON.stringify({
+              messages: conversationRef.current,
+              productContext: activeProductContext,
+            }),
           });
           if (!response.ok) {
             const detail = (await response.json().catch(() => null)) as
@@ -664,7 +821,7 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
         setBusy(false);
       }
     },
-    [attachedArtwork, busy, input, runTool, uploadingArtwork],
+    [activeProductContext, attachedArtwork, busy, input, runTool, uploadingArtwork],
   );
 
   // ---- UI ----

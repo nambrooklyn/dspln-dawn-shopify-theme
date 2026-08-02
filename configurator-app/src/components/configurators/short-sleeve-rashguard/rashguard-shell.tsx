@@ -13,6 +13,8 @@ interface RashguardShellProps {
   cartActionLoadingLabel?: string;
   skinnyRailContent?: ReactNode;
   railContent?: ReactNode;
+  desktopSceneOverlayContent?: ReactNode;
+  mobileOverlayContent?: ReactNode;
   sceneTopContent?: ReactNode;
   children: ReactNode;
 }
@@ -25,6 +27,8 @@ export const RashguardShell = memo(
     cartActionLoadingLabel,
     skinnyRailContent,
     railContent,
+    desktopSceneOverlayContent,
+    mobileOverlayContent,
     sceneTopContent,
     children,
   }: RashguardShellProps) => {
@@ -46,6 +50,7 @@ export const RashguardShell = memo(
           <SkinnyRail>{skinnyRailContent}</SkinnyRail>
           <RashguardLeftSidebar />
           <div className="dspln-configurator-scene">
+            {!showMobileFlow ? desktopSceneOverlayContent : null}
             {sceneTopContent ? (
               <div className="dspln-configurator-scene-top pointer-events-auto z-20">
                 {sceneTopContent}
@@ -67,6 +72,7 @@ export const RashguardShell = memo(
             isAddingToCart={isAddingToCart}
             cartActionLabel={cartActionLabel}
             cartActionLoadingLabel={cartActionLoadingLabel}
+            assistantContent={mobileOverlayContent}
           />
         ) : null}
       </div>

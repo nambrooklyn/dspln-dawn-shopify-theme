@@ -30,6 +30,10 @@ import {
 import { SavedDesignsRail, type DraftStatus } from './saved-designs-rail';
 import { ConfiguratorShell } from './configurator-shell';
 import {
+  DesignAssistant,
+  shouldShowDesignAssistant,
+} from '../../design-assistant/design-assistant';
+import {
   exportGiPdf,
   snapshotCanvas,
   snapshotCanvasCenteredThumbnail,
@@ -197,6 +201,7 @@ function getAdminEditMode() {
 
 
 const GiConfiguratorInner = memo(() => {
+  const [showDesignAssistant] = useState(shouldShowDesignAssistant);
   const {
     layers,
     cameraView,
@@ -797,6 +802,24 @@ const GiConfiguratorInner = memo(() => {
             isCustomer={cloudOwnerContext?.isCustomer}
             onLoginToSave={handleLoginToSave}
           />
+        }
+        desktopSceneOverlayContent={
+          showDesignAssistant ? (
+            <DesignAssistant
+              placement="desktop"
+              productKey="mens-belt"
+              useProductState={useGiState}
+            />
+          ) : null
+        }
+        mobileOverlayContent={
+          showDesignAssistant ? (
+            <DesignAssistant
+              placement="mobile"
+              productKey="mens-belt"
+              useProductState={useGiState}
+            />
+          ) : null
         }
         sceneTopContent={
           <DesignCommandBar

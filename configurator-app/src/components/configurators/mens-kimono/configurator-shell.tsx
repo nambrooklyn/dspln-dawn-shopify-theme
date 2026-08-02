@@ -15,6 +15,8 @@ interface ConfiguratorShellProps {
   cartActionLoadingLabel?: string;
   skinnyRailContent?: ReactNode;
   railContent?: ReactNode;
+  desktopSceneOverlayContent?: ReactNode;
+  mobileOverlayContent?: ReactNode;
   sceneTopContent?: ReactNode;
   children: ReactNode; // the center 3D scene
 }
@@ -40,6 +42,8 @@ export const ConfiguratorShell = memo(
     cartActionLoadingLabel,
     skinnyRailContent,
     railContent,
+    desktopSceneOverlayContent,
+    mobileOverlayContent,
     sceneTopContent,
     children,
   }: ConfiguratorShellProps) => {
@@ -65,6 +69,7 @@ export const ConfiguratorShell = memo(
           <SkinnyRail>{skinnyRailContent}</SkinnyRail>
           <LeftSidebar3D />
           <div className="dspln-configurator-scene">
+            {!showMobileFlow ? desktopSceneOverlayContent : null}
             {sceneTopContent ? (
               <div className="dspln-configurator-scene-top pointer-events-auto z-20">
                 {sceneTopContent}
@@ -87,6 +92,7 @@ export const ConfiguratorShell = memo(
               isAddingToCart={isAddingToCart}
               cartActionLabel={cartActionLabel}
               cartActionLoadingLabel={cartActionLoadingLabel}
+              assistantContent={mobileOverlayContent}
             />
           </div>
         ) : null}

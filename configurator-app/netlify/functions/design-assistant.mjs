@@ -22,34 +22,25 @@ const JSON_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const SYSTEM_PROMPT = `You are the DSPLN design assistant, embedded inside the mens custom gi configurator on dspln.com. The customer is looking at a live 3D gi. Your tools change that gi in real time — when you call one, the customer sees the model update instantly.
+const SYSTEM_PROMPT = `You are the DSPLN AI Design Assistant embedded inside a live 3D product configurator on dspln.com. Your tools change the product in real time.
 
-Mission: help them reach a design they love, fast. Be warm, concise, and concrete. One or two short sentences per reply, then act. Never invent options the configurator doesn't have.
+Mission: help the customer reach a design they love, fast. Be warm, concise, and concrete. Use one or two short sentences, then act. The CURRENT PRODUCT CONTEXT supplied below is authoritative: only its parts, color targets, artwork targets, and capabilities exist. Never offer or modify a feature from another product.
 
-THE PRODUCT (mens custom gi):
-- Parts and prices: Kimono $55, Pant $45, Belt $15 — each can be removed. Total = included parts + add-ons.
-- Fabric: kimono 350gsm Pearl Weave; pants 12oz Cotton Canvas.
-- Garment colors (the ONLY choices, for every kimono/pant panel and belt-text thread): White, Royal Blue, Black, Olive, Khaki, Gray, Navy, Red, Orange, Brown.
-- Kimono panels: body, lapel, reinforcement, stitching. Pant panels: body, reinforcement, stitching, drawcord.
-- Belt colors (the ONLY belt choices): White, Blue, Purple, Brown, Black.
-- Belt text: left and/or right belt end, 18 characters max, renders UPPERCASE, +$10 per end. Fonts: Arial Black, Impact, Helvetica Bold, Georgia Bold, Courier Bold.
-- Logo slots: left chest +$10, right chest +$10, left sleeve +$10, right sleeve +$10, big back logo +$25, and left/right pant thigh +$10 each. Customers can upload through the left panel or attach artwork in this chat. Logos are PNG/JPG; transparent PNG is best; placement is fixed per slot.
-- Customers can attach PNG/JPG artwork in this chat. You can inspect it, place the exact upload with apply_uploaded_artwork, move/copy/remove artwork already on the gi with manage_existing_artwork, create new artwork with create_artwork, or make a new edited revision with edit_uploaded_artwork. Editing includes isolating a requested subject, removing/replacing backgrounds, cleanup, recoloring, simplification, restyling, adding/removing visual elements, and production-oriented variants. Every image edit creates a new file; the original remains available.
-- Sizes: kimono/pant A00–A6 each in S / regular / L (e.g. A1S, A1, A1L) plus "Custom Measurements" (+$25 once, with a notes box). Belt sizes A00–A6 only. There is a "Find my size" tool in the size section if they're unsure.
-- After ordering, DSPLN sends a 3D model for approval before production.
+IMAGE CAPABILITIES:
+- Customers can attach PNG/JPG artwork. You can inspect it, place the exact upload, move/copy/remove existing artwork, create new artwork, or make a new edited revision.
+- Editing includes subject isolation, background removal/replacement, cleanup, recoloring, simplification, restyling, and adding/removing visual elements. Every image edit creates a new file; preserve the original.
 
-DESIGN JUDGMENT you may offer when asked for recommendations:
-- Contrast reads premium: dark body + light stitching (or the reverse). Fewer colors reads cleaner.
-- Competition note: IBJJF-style rules generally allow only white, royal blue, or black gis — mention this if they say they compete.
-- Classic combos: all-black with red or gray stitching; white with royal blue lapel accents; navy with white stitching.
+DESIGN JUDGMENT:
+- Strong contrast improves readability; fewer colors usually reads cleaner and more premium.
+- If the current product is a competition gi, mention common competition color restrictions only when relevant.
 
 RULES:
-- Only the options listed above exist. If asked for anything else (pink, custom hex, hoods, different fonts), say it's not available and offer the closest real option.
+- Only options in CURRENT PRODUCT CONTEXT exist. If asked for something unavailable, say so and offer the closest available option.
 - Use tools for every design change the customer asks for; never claim a change happened without calling the tool.
-- Do not mention logo or artwork placement prices unless the customer explicitly asks about cost. The configurator updates its visible total automatically. For non-artwork additions, mention a price only when it helps answer the request.
+- Do not mention logo or artwork placement prices unless the customer explicitly asks. The visible total updates automatically.
 - Change only what they asked; keep the rest of their design.
 - If a request is ambiguous in a way that matters, pick the sensible default, say what you assumed, and make it easy to correct.
-- For sizing advice beyond the built-in recommender, point to dspln.com/pages/sizing.
+- Use only a size explicitly named by the customer or returned by the current product UI. For general sizing advice, point to dspln.com/pages/sizing.
 - For artwork file problems or anything you can't do here, suggest info@dspln.com. This is the only DSPLN contact email you may provide; never invent or mention another address.
 - When the customer requests an image generation or edit, use the appropriate artwork tool instead of explaining how they could do it elsewhere. Briefly state what revision you are making. After the tool succeeds, use the returned artworkId to apply it if the customer named a placement; otherwise show the revision and ask where they want it.
 - Image models can alter small text or fine brand details. Never promise exact fidelity; tell the customer to inspect the returned revision when text or a logo identity matters. Do not call an upscaled low-resolution source fully restored.
@@ -59,13 +50,13 @@ const TOOLS = [
   {
     name: 'get_design',
     description:
-      'Read the current design state: included parts, all panel colors, sizes, belt text, logos present, and total price. Call before making changes if you are unsure of the current state.',
+      'Read the current product design state, including its available colors, size, text, and artwork placements. Call before changes when the current placement or value matters.',
     input_schema: { type: 'object', properties: {} },
   },
   {
     name: 'set_panel_color',
     description:
-      'Set the color of one panel. Garment panels accept the 10 garment color names; target "belt" accepts the 5 belt color names.',
+      'Set one color target listed in CURRENT PRODUCT CONTEXT. Use only a color available in that product palette.',
     input_schema: {
       type: 'object',
       properties: {
@@ -81,6 +72,17 @@ const TOOLS = [
             'pant-stitching',
             'pant-drawcord',
             'belt',
+            'rashguard:front',
+            'rashguard:back',
+            'rashguard:leftSleeve',
+            'rashguard:rightSleeve',
+            'rashguard:neckBand',
+            'rashguard:waistband',
+            'rashguard:rightFrontLeg',
+            'rashguard:rightBackLeg',
+            'rashguard:leftFrontLeg',
+            'rashguard:leftBackLeg',
+            'rashguard:stitching',
           ],
         },
         color: {
@@ -108,13 +110,14 @@ const TOOLS = [
   {
     name: 'set_sizes',
     description:
-      'Set sizes for any of the parts. Kimono/pant: A00S…A6L or "Custom Measurements". Belt: A00…A6.',
+      'Set a customer-specified size. Use kimono, pant, or belt for GI-family products; use size for rashguards and grappling shorts.',
     input_schema: {
       type: 'object',
       properties: {
         kimono: { type: 'string' },
         pant: { type: 'string' },
         belt: { type: 'string' },
+        size: { type: 'string', description: 'Size for a rashguard or grappling short.' },
       },
     },
   },
@@ -157,7 +160,7 @@ const TOOLS = [
   {
     name: 'apply_uploaded_artwork',
     description:
-      'Apply an artwork attached in this chat to one fixed logo slot on the live 3D design. Use the exact artworkId supplied with the image. Chest, sleeve, and pant slots add $10; the big back slot adds $25.',
+      'Apply artwork attached or created in this chat to one artwork target listed in CURRENT PRODUCT CONTEXT. Use the exact artworkId supplied by the image message or prior tool result.',
     input_schema: {
       type: 'object',
       properties: {
@@ -175,6 +178,16 @@ const TOOLS = [
             'kimono:back',
             'pant:left-pant',
             'pant:right-pant',
+            'rashguard:front',
+            'rashguard:back',
+            'rashguard:leftSleeve',
+            'rashguard:rightSleeve',
+            'rashguard:neckBand',
+            'rashguard:waistband',
+            'rashguard:rightFrontLeg',
+            'rashguard:rightBackLeg',
+            'rashguard:leftFrontLeg',
+            'rashguard:leftBackLeg',
           ],
         },
       },
@@ -200,7 +213,7 @@ const TOOLS = [
   {
     name: 'manage_existing_artwork',
     description:
-      'Move, copy, or remove artwork that is already placed on the live gi. Use this instead of asking the customer to remove and re-upload it. Move transfers the same artwork and clears the source; copy keeps both placements; remove clears the source.',
+      'Move, copy, or remove artwork already placed on the live product. Use this instead of asking the customer to remove and re-upload it. Move clears the source; copy keeps both; remove clears the source.',
     input_schema: {
       type: 'object',
       properties: {
@@ -215,6 +228,16 @@ const TOOLS = [
             'kimono:back',
             'pant:left-pant',
             'pant:right-pant',
+            'rashguard:front',
+            'rashguard:back',
+            'rashguard:leftSleeve',
+            'rashguard:rightSleeve',
+            'rashguard:neckBand',
+            'rashguard:waistband',
+            'rashguard:rightFrontLeg',
+            'rashguard:rightBackLeg',
+            'rashguard:leftFrontLeg',
+            'rashguard:leftBackLeg',
           ],
         },
         target: {
@@ -228,6 +251,16 @@ const TOOLS = [
             'kimono:back',
             'pant:left-pant',
             'pant:right-pant',
+            'rashguard:front',
+            'rashguard:back',
+            'rashguard:leftSleeve',
+            'rashguard:rightSleeve',
+            'rashguard:neckBand',
+            'rashguard:waistband',
+            'rashguard:rightFrontLeg',
+            'rashguard:rightBackLeg',
+            'rashguard:leftFrontLeg',
+            'rashguard:leftBackLeg',
           ],
         },
       },
@@ -272,6 +305,49 @@ const sanitizeMessages = (raw) => {
   }
   return messages;
 };
+
+const sanitizeProductContext = (raw) => {
+  const fallback = {
+    id: 'mens',
+    name: "Men's Custom GI Suit",
+    family: 'gi',
+    allowedParts: ['jacket', 'pants', 'belt'],
+    colorTargets: [
+      'kimono-body', 'kimono-lapel', 'kimono-reinforcement', 'kimono-stitching',
+      'pant-body', 'pant-reinforcement', 'pant-stitching', 'pant-drawcord', 'belt',
+    ],
+    artworkTargets: [
+      'kimono:left-chest', 'kimono:right-chest', 'kimono:left-sleeve',
+      'kimono:right-sleeve', 'kimono:back', 'pant:left-pant', 'pant:right-pant',
+    ],
+    supportsBeltText: true,
+    audience: 'adult',
+  };
+  if (!raw || typeof raw !== 'object') return fallback;
+  const cleanList = (value) =>
+    Array.isArray(value)
+      ? value
+          .filter((item) => typeof item === 'string' && /^[a-z0-9:_-]{1,40}$/i.test(item))
+          .slice(0, 30)
+      : [];
+  return {
+    id: typeof raw.id === 'string' ? raw.id.slice(0, 50) : fallback.id,
+    name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : fallback.name,
+    family: raw.family === 'rashguard' ? 'rashguard' : 'gi',
+    allowedParts: cleanList(raw.allowedParts),
+    colorTargets: cleanList(raw.colorTargets),
+    artworkTargets: cleanList(raw.artworkTargets),
+    supportsBeltText: raw.supportsBeltText === true,
+    audience: ['adult', 'women', 'kids'].includes(raw.audience)
+      ? raw.audience
+      : fallback.audience,
+  };
+};
+
+const instructionsForProduct = (context) => `${SYSTEM_PROMPT}
+
+CURRENT PRODUCT CONTEXT:
+${JSON.stringify(context, null, 2)}`;
 
 const isAllowedArtworkUrl = (rawUrl, allowedHost) => {
   try {
@@ -418,6 +494,7 @@ export const handler = async (event) => {
   if (!messages || messages.length === 0) {
     return jsonResponse(400, { error: 'messages array is required' });
   }
+  const productContext = sanitizeProductContext(payload.productContext);
 
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -430,7 +507,7 @@ export const handler = async (event) => {
         model: MODEL,
         max_output_tokens: MAX_TOKENS,
         reasoning: { effort: 'none' },
-        instructions: SYSTEM_PROMPT,
+        instructions: instructionsForProduct(productContext),
         tools: TOOLS.map(({ name, description, input_schema: parameters }) => ({
           type: 'function',
           name,
