@@ -53,9 +53,11 @@ const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
 const MOBILE_CAMERA_MAX_DISTANCE = 3.35;
 const CAMERA_PAN_EVENT = 'dspln:configurator-camera:pan';
-const CAMERA_VERTICAL_PAN_STEP = 0.18;
-const CAMERA_TARGET_MIN_Y = 0.35;
-const CAMERA_TARGET_MAX_Y = 1.7;
+const CAMERA_VERTICAL_PAN_STEP = 0.22;
+// The model spans roughly floor-to-head in this range. These wider limits
+// keep every part reachable even at the closest allowed zoom.
+const CAMERA_TARGET_MIN_Y = -0.1;
+const CAMERA_TARGET_MAX_Y = 2.75;
 
 // Surface normal for each slot — derived from the slot's plane
 // rotation (Y axis only, for our four anchors). Used to push the
