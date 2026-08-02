@@ -1,7 +1,8 @@
 import { connectLambda, getStore } from '@netlify/blobs';
 
 const STORE_NAME = 'dspln-preview-images';
-const KEY_PATTERN = /^gi\/\d{4}-\d{2}-\d{2}\/[a-f0-9-]+\.(?:jpg|png|webp)$/i;
+const KEY_PATTERN =
+  /^gi\/(?:ai\/)?\d{4}-\d{2}-\d{2}\/[a-f0-9-]+\.(?:jpg|png|webp)$/i;
 
 const response = (statusCode, body, headers = {}, isBase64Encoded = false) => ({
   statusCode,
