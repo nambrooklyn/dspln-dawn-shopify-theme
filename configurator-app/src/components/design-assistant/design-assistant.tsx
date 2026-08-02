@@ -576,7 +576,7 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
   return (
     <>
       {placement === 'mobile' && inviteVisible && !open ? (
-        <div className="fixed bottom-20 left-4 z-[70] max-w-[15.5rem] rounded-2xl border border-[#e3ded7] bg-white p-3.5 shadow-xl">
+        <div className="absolute top-16 left-3 z-[70] max-w-[15.5rem] rounded-2xl border border-[#e3ded7] bg-white p-3.5 shadow-xl">
           <button
             type="button"
             aria-label="Dismiss"
@@ -608,11 +608,13 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
           className={
             placement === 'desktop'
               ? 'flex h-12 w-full items-center justify-center gap-2 border-t border-[#e3ded7] bg-[#1c1b1b] px-4 text-[11px] font-semibold tracking-[0.12em] text-white uppercase hover:bg-black'
-              : 'fixed bottom-4 left-1/2 z-[70] inline-flex h-11 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-[#1c1b1b] px-4 text-[11px] font-semibold tracking-[0.12em] text-white uppercase shadow-lg hover:bg-black'
+              : 'absolute top-3 left-3 z-[70] inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#1c1b1b] text-white shadow-lg hover:bg-black'
           }
         >
-          <MessageCircleHeart className="h-4 w-4" />
-          Design Assistant
+          <MessageCircleHeart className="h-5 w-5" />
+          <span className={placement === 'mobile' ? 'sr-only' : undefined}>
+            Design Assistant
+          </span>
         </button>
       ) : (
         <div

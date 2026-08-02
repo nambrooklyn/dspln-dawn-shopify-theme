@@ -69,6 +69,7 @@ export const ConfiguratorShell = memo(
           <SkinnyRail>{skinnyRailContent}</SkinnyRail>
           <LeftSidebar3D />
           <div className="dspln-configurator-scene">
+            {showMobileFlow ? mobileOverlayContent : null}
             {sceneTopContent ? (
               <div className="dspln-configurator-scene-top pointer-events-auto z-20">
                 {sceneTopContent}
@@ -95,7 +96,6 @@ export const ConfiguratorShell = memo(
                 cartActionLoadingLabel={cartActionLoadingLabel}
               />
             </div>
-            {mobileOverlayContent}
           </>
         ) : null}
       </div>
