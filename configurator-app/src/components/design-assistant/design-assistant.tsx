@@ -3,9 +3,10 @@ import {
   useEffect,
   useRef,
   useState,
+  type ChangeEvent,
   type FormEvent,
 } from 'react';
-import { MessageCircleHeart, Send, X } from 'lucide-react';
+import { ImagePlus, LoaderCircle, MessageCircleHeart, Send, X } from 'lucide-react';
 
 import {
   BELT_COLOR_SWATCHES,
@@ -13,10 +14,13 @@ import {
   GI_PART_PRICES,
   type CameraView,
   type GiPart,
+  type KimonoLogoSlot,
   type KimonoSubPart,
+  type PantLogoSlot,
   type PantSubPart,
 } from '../configurators/gi/gi-config';
-import { useGiState } from '../configurators/gi/gi-state';
+import { useGiState, type KimonoLogo } from '../configurators/gi/gi-state';
+import { uploadArtworkImage } from '../configurators/shared/preview-upload';
 
 /**
  * DSPLN Design Assistant — customer-facing chat that designs the gi live.
@@ -32,6 +36,7 @@ import { useGiState } from '../configurators/gi/gi-state';
 const INVITE_DELAY_MS = 4500;
 const INVITE_DISMISSED_KEY = 'dspln:design-assistant:invite-dismissed';
 const MAX_TOOL_ROUNDS = 6;
+const MAX_ARTWORK_BYTES = 6_000_000;
 
 type ContentBlock =
   | { type: 'text'; text: string }
@@ -45,7 +50,39 @@ interface ApiMessage {
 interface ChatBubble {
   role: 'user' | 'assistant';
   text: string;
+  imageUrl?: string;
+  imageAlt?: string;
 }
+
+interface AttachedArtwork {
+  id: string;
+  url: string;
+  previewUrl: string;
+  filename: string;
+  width: number;
+  height: number;
+}
+
+const readArtworkFile = async (file: File) => {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(new Error('Artwork could not be read'));
+    reader.readAsDataURL(file);
+  });
+
+  const dimensions = await new Promise<{ width: number; height: number }>(
+    (resolve, reject) => {
+      const image = new Image();
+      image.onload = () =>
+        resolve({ width: image.naturalWidth, height: image.naturalHeight });
+      image.onerror = () => reject(new Error('Artwork is not a valid image'));
+      image.src = dataUrl;
+    },
+  );
+
+  return { dataUrl, dimensions };
+};
 
 export function shouldShowDesignAssistant(): boolean {
   if (typeof window === 'undefined') return false;
@@ -82,7 +119,12 @@ export function DesignAssistant() {
   const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [uploadingArtwork, setUploadingArtwork] = useState(false);
+  const [artworkError, setArtworkError] = useState('');
+  const [attachedArtwork, setAttachedArtwork] = useState<AttachedArtwork | null>(null);
   const conversationRef = useRef<ApiMessage[]>([]);
+  const artworkRef = useRef(new Map<string, AttachedArtwork>());
+  const artworkInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -124,6 +166,43 @@ export function DesignAssistant() {
           ],
     );
   }, [dismissInvite]);
+
+  const attachArtwork = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setArtworkError('');
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      setArtworkError('Please choose a PNG or JPEG image.');
+      return;
+    }
+    if (file.size > MAX_ARTWORK_BYTES) {
+      setArtworkError('Artwork must be under 6 MB.');
+      return;
+    }
+
+    setUploadingArtwork(true);
+    try {
+      const { dataUrl, dimensions } = await readArtworkFile(file);
+      const hostedUrl = await uploadArtworkImage(dataUrl);
+      if (!hostedUrl) throw new Error('Artwork upload failed');
+      const artwork: AttachedArtwork = {
+        id: crypto.randomUUID(),
+        url: hostedUrl,
+        previewUrl: dataUrl,
+        filename: file.name,
+        width: dimensions.width,
+        height: dimensions.height,
+      };
+      artworkRef.current.set(artwork.id, artwork);
+      setAttachedArtwork(artwork);
+    } catch {
+      setArtworkError('I could not upload that image. Please try another file.');
+    } finally {
+      setUploadingArtwork(false);
+    }
+  }, []);
 
   // ---- tool execution against live configurator state ----
 
@@ -211,6 +290,47 @@ export function DesignAssistant() {
           s.setCameraView(view);
           return JSON.stringify({ ok: true });
         }
+        case 'apply_uploaded_artwork': {
+          const artworkId = String(toolInput.artworkId ?? '');
+          const target = String(toolInput.target ?? '');
+          const artwork = artworkRef.current.get(artworkId);
+          if (!artwork) {
+            return JSON.stringify({ ok: false, error: 'Uploaded artwork not found.' });
+          }
+          const [part, slot] = target.split(':') as ['kimono' | 'pant', string];
+          const logo: KimonoLogo = {
+            imageUrl: artwork.url,
+            imageWidth: artwork.width,
+            imageHeight: artwork.height,
+            filename: artwork.filename,
+          };
+          if (
+            part === 'kimono' &&
+            ['left-chest', 'right-chest', 'left-sleeve', 'right-sleeve', 'back'].includes(slot)
+          ) {
+            s.setKimonoLogo(slot as KimonoLogoSlot, logo);
+            s.setCameraView(
+              slot === 'back'
+                ? 'back'
+                : slot === 'left-sleeve'
+                  ? 'left'
+                  : slot === 'right-sleeve'
+                    ? 'right'
+                    : 'front',
+            );
+            return JSON.stringify({
+              ok: true,
+              appliedTo: target,
+              addedPrice: slot === 'back' ? 25 : 10,
+            });
+          }
+          if (part === 'pant' && ['left-pant', 'right-pant'].includes(slot)) {
+            s.setPantLogo(slot as PantLogoSlot, logo);
+            s.setCameraView('front');
+            return JSON.stringify({ ok: true, appliedTo: target, addedPrice: 10 });
+          }
+          return JSON.stringify({ ok: false, error: `Unknown artwork target ${target}` });
+        }
         default:
           return JSON.stringify({ ok: false, error: `Unknown tool ${name}` });
       }
@@ -224,13 +344,39 @@ export function DesignAssistant() {
     async (event?: FormEvent) => {
       event?.preventDefault();
       const text = input.trim();
-      if (!text || busy) return;
+      const artwork = attachedArtwork;
+      if ((!text && !artwork) || busy || uploadingArtwork) return;
+      const userText =
+        text || 'Please inspect this artwork and ask me where I want it placed.';
       setInput('');
+      setAttachedArtwork(null);
+      setArtworkError('');
       setBusy(true);
-      setBubbles((prev) => [...prev, { role: 'user', text }]);
+      setBubbles((prev) => [
+        ...prev,
+        {
+          role: 'user',
+          text: userText,
+          imageUrl: artwork?.previewUrl,
+          imageAlt: artwork?.filename,
+        },
+      ]);
+      const content: ApiMessage['content'] = artwork
+        ? [
+            { type: 'text', text: userText },
+            {
+              type: 'image',
+              imageUrl: artwork.url,
+              artworkId: artwork.id,
+              filename: artwork.filename,
+              width: artwork.width,
+              height: artwork.height,
+            },
+          ]
+        : userText;
       conversationRef.current = [
         ...conversationRef.current,
-        { role: 'user', content: text },
+        { role: 'user', content },
       ];
 
       try {
@@ -302,7 +448,7 @@ export function DesignAssistant() {
         setBusy(false);
       }
     },
-    [busy, input, runTool],
+    [attachedArtwork, busy, input, runTool, uploadingArtwork],
   );
 
   // ---- UI ----
@@ -375,6 +521,13 @@ export function DesignAssistant() {
                     : 'mr-8 rounded-2xl rounded-bl-md bg-[#f4f1ec] px-3.5 py-2 text-[13px] leading-snug text-[#1c1b1b]'
                 }
               >
+                {bubble.imageUrl ? (
+                  <img
+                    src={bubble.imageUrl}
+                    alt={bubble.imageAlt ?? 'Uploaded artwork'}
+                    className="mb-2 max-h-32 w-full rounded-lg bg-white/90 object-contain"
+                  />
+                ) : null}
                 {bubble.text}
               </div>
             ))}
@@ -387,21 +540,71 @@ export function DesignAssistant() {
             ) : null}
           </div>
 
-          <form onSubmit={send} className="flex items-center gap-2 border-t border-[#eee9e2] p-2.5">
-            <input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="e.g. black gi with red stitching"
-              className="h-10 flex-1 rounded-full border border-[#e3ded7] bg-white px-3.5 text-[13px] outline-none focus:border-[#1c1b1b]"
-            />
-            <button
-              type="submit"
-              disabled={busy || !input.trim()}
-              aria-label="Send"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
-            >
-              <Send className="h-4 w-4" />
-            </button>
+          <form onSubmit={send} className="border-t border-[#eee9e2] p-2.5">
+            {attachedArtwork ? (
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#e3ded7] bg-[#faf8f5] p-2">
+                <img
+                  src={attachedArtwork.previewUrl}
+                  alt={attachedArtwork.filename}
+                  className="h-12 w-12 rounded-lg bg-white object-contain"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-medium text-[#1c1b1b]">
+                    {attachedArtwork.filename}
+                  </p>
+                  <p className="text-[10px] text-[#8a8580]">
+                    {attachedArtwork.width} × {attachedArtwork.height}px
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Remove attached artwork"
+                  onClick={() => setAttachedArtwork(null)}
+                  className="rounded-full p-1 text-[#8a8580] hover:bg-[#eee9e2]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : null}
+            {artworkError ? (
+              <p className="mb-2 px-1 text-[10px] text-[#8b1e1e]">{artworkError}</p>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <input
+                ref={artworkInputRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={attachArtwork}
+                className="hidden"
+              />
+              <button
+                type="button"
+                aria-label="Attach artwork"
+                disabled={busy || uploadingArtwork}
+                onClick={() => artworkInputRef.current?.click()}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e3ded7] text-[#5c0000] hover:bg-[#faf8f5] disabled:opacity-40"
+              >
+                {uploadingArtwork ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="h-4 w-4" />
+                )}
+              </button>
+              <input
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Describe a design or attach artwork"
+                className="h-10 min-w-0 flex-1 rounded-full border border-[#e3ded7] bg-white px-3.5 text-[13px] outline-none focus:border-[#1c1b1b]"
+              />
+              <button
+                type="submit"
+                disabled={busy || uploadingArtwork || (!input.trim() && !attachedArtwork)}
+                aria-label="Send"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
           </form>
         </div>
       )}

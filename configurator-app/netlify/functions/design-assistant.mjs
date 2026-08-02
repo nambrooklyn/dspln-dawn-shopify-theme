@@ -33,7 +33,8 @@ THE PRODUCT (mens custom gi):
 - Kimono panels: body, lapel, reinforcement, stitching. Pant panels: body, reinforcement, stitching, drawcord.
 - Belt colors (the ONLY belt choices): White, Blue, Purple, Brown, Black.
 - Belt text: left and/or right belt end, 18 characters max, renders UPPERCASE, +$10 per end. Fonts: Arial Black, Impact, Helvetica Bold, Georgia Bold, Courier Bold.
-- Logo slots (customer uploads the file themselves in the panel on the left — you cannot upload for them): left chest +$10, right chest +$10, left sleeve +$10, right sleeve +$10, big back logo +$25. Logos are PNG/JPG; transparent PNG is best; placement is fixed per slot.
+- Logo slots: left chest +$10, right chest +$10, left sleeve +$10, right sleeve +$10, big back logo +$25, and left/right pant thigh +$10 each. Customers can upload through the left panel or attach artwork in this chat. Logos are PNG/JPG; transparent PNG is best; placement is fixed per slot.
+- Customers can also attach one PNG/JPG in this chat. When an attached artwork is present, you can inspect it and use apply_uploaded_artwork to place that exact uploaded file on the 3D gi. If they name a placement, apply it immediately. If they do not, briefly assess whether it has an obvious solid background or other production concern, then ask which real slot they want. Do not claim to edit, remove a background, redraw, or improve the file; image editing is not available yet.
 - Sizes: kimono/pant A00–A6 each in S / regular / L (e.g. A1S, A1, A1L) plus "Custom Measurements" (+$25 once, with a notes box). Belt sizes A00–A6 only. There is a "Find my size" tool in the size section if they're unsure.
 - After ordering, DSPLN sends a 3D model for approval before production.
 
@@ -151,6 +152,33 @@ const TOOLS = [
       required: ['view'],
     },
   },
+  {
+    name: 'apply_uploaded_artwork',
+    description:
+      'Apply an artwork attached in this chat to one fixed logo slot on the live 3D design. Use the exact artworkId supplied with the image. Chest, sleeve, and pant slots add $10; the big back slot adds $25.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        artworkId: {
+          type: 'string',
+          description: 'Exact uploaded artwork id supplied in the user message.',
+        },
+        target: {
+          type: 'string',
+          enum: [
+            'kimono:left-chest',
+            'kimono:right-chest',
+            'kimono:left-sleeve',
+            'kimono:right-sleeve',
+            'kimono:back',
+            'pant:left-pant',
+            'pant:right-pant',
+          ],
+        },
+      },
+      required: ['artworkId', 'target'],
+    },
+  },
 ];
 
 const jsonResponse = (statusCode, body) => ({
@@ -170,7 +198,20 @@ const sanitizeMessages = (raw) => {
   return messages;
 };
 
-const toOpenAiInput = (messages) => {
+const isAllowedArtworkUrl = (rawUrl, allowedHost) => {
+  try {
+    const url = new URL(rawUrl);
+    return (
+      url.protocol === 'https:' &&
+      url.host === allowedHost &&
+      url.pathname === '/.netlify/functions/preview-image'
+    );
+  } catch {
+    return false;
+  }
+};
+
+const toOpenAiInput = (messages, allowedHost) => {
   const input = [];
 
   for (const message of messages) {
@@ -186,6 +227,28 @@ const toOpenAiInput = (messages) => {
 
       if (block.type === 'text' && typeof block.text === 'string') {
         input.push({ role: message.role, content: block.text });
+      } else if (
+        message.role === 'user' &&
+        block.type === 'image' &&
+        typeof block.imageUrl === 'string' &&
+        isAllowedArtworkUrl(block.imageUrl, allowedHost)
+      ) {
+        input.push({
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: `Uploaded artwork id: ${String(block.artworkId ?? '')}; filename: ${String(block.filename ?? 'artwork')}.`,
+            },
+            {
+              type: 'input_image',
+              image_url: block.imageUrl,
+              // High preserves enough detail to inspect logo text and edges
+              // without sending the original multi-megapixel file token-for-token.
+              detail: 'high',
+            },
+          ],
+        });
       } else if (
         message.role === 'assistant' &&
         block.type === 'tool_use' &&
@@ -299,7 +362,10 @@ export const handler = async (event) => {
           description,
           parameters,
         })),
-        input: toOpenAiInput(messages),
+        input: toOpenAiInput(
+          messages,
+          event.headers.host ?? event.headers.Host ?? '',
+        ),
       }),
     });
 
