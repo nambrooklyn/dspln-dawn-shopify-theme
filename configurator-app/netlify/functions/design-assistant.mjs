@@ -34,7 +34,7 @@ THE PRODUCT (mens custom gi):
 - Belt colors (the ONLY belt choices): White, Blue, Purple, Brown, Black.
 - Belt text: left and/or right belt end, 18 characters max, renders UPPERCASE, +$10 per end. Fonts: Arial Black, Impact, Helvetica Bold, Georgia Bold, Courier Bold.
 - Logo slots: left chest +$10, right chest +$10, left sleeve +$10, right sleeve +$10, big back logo +$25, and left/right pant thigh +$10 each. Customers can upload through the left panel or attach artwork in this chat. Logos are PNG/JPG; transparent PNG is best; placement is fixed per slot.
-- Customers can attach PNG/JPG artwork in this chat. You can inspect it, place the exact upload with apply_uploaded_artwork, create new artwork with create_artwork, or make a new edited revision with edit_uploaded_artwork. Editing includes isolating a requested subject, removing/replacing backgrounds, cleanup, recoloring, simplification, restyling, adding/removing visual elements, and production-oriented variants. Every edit creates a new file; the original remains available.
+- Customers can attach PNG/JPG artwork in this chat. You can inspect it, place the exact upload with apply_uploaded_artwork, move/copy/remove artwork already on the gi with manage_existing_artwork, create new artwork with create_artwork, or make a new edited revision with edit_uploaded_artwork. Editing includes isolating a requested subject, removing/replacing backgrounds, cleanup, recoloring, simplification, restyling, adding/removing visual elements, and production-oriented variants. Every image edit creates a new file; the original remains available.
 - Sizes: kimono/pant A00–A6 each in S / regular / L (e.g. A1S, A1, A1L) plus "Custom Measurements" (+$25 once, with a notes box). Belt sizes A00–A6 only. There is a "Find my size" tool in the size section if they're unsure.
 - After ordering, DSPLN sends a 3D model for approval before production.
 
@@ -195,6 +195,43 @@ const TOOLS = [
         },
       },
       required: ['prompt'],
+    },
+  },
+  {
+    name: 'manage_existing_artwork',
+    description:
+      'Move, copy, or remove artwork that is already placed on the live gi. Use this instead of asking the customer to remove and re-upload it. Move transfers the same artwork and clears the source; copy keeps both placements; remove clears the source.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['move', 'copy', 'remove'] },
+        source: {
+          type: 'string',
+          enum: [
+            'kimono:left-chest',
+            'kimono:right-chest',
+            'kimono:left-sleeve',
+            'kimono:right-sleeve',
+            'kimono:back',
+            'pant:left-pant',
+            'pant:right-pant',
+          ],
+        },
+        target: {
+          type: 'string',
+          description: 'Required for move/copy; omit for remove.',
+          enum: [
+            'kimono:left-chest',
+            'kimono:right-chest',
+            'kimono:left-sleeve',
+            'kimono:right-sleeve',
+            'kimono:back',
+            'pant:left-pant',
+            'pant:right-pant',
+          ],
+        },
+      },
+      required: ['action', 'source'],
     },
   },
   {

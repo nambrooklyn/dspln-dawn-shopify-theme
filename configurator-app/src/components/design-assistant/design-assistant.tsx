@@ -249,6 +249,14 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
               right: s.beltEmbroidery.rightEnd || null,
             },
             kimonoLogosPresent: logoCount,
+            artworkPlacements: {
+              kimono: Object.entries(s.kimonoLogos)
+                .filter(([, logo]) => Boolean(logo))
+                .map(([slot, logo]) => ({ slot, filename: logo?.filename })),
+              pant: Object.entries(s.pantLogos)
+                .filter(([, logo]) => Boolean(logo))
+                .map(([slot, logo]) => ({ slot, filename: logo?.filename })),
+            },
           });
         }
         case 'set_panel_color': {
@@ -348,6 +356,82 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
             return JSON.stringify({ ok: true, appliedTo: target, addedPrice: 10 });
           }
           return JSON.stringify({ ok: false, error: `Unknown artwork target ${target}` });
+        }
+        case 'manage_existing_artwork': {
+          const action = String(toolInput.action ?? '');
+          const source = String(toolInput.source ?? '');
+          const target = String(toolInput.target ?? '');
+          const validKimonoSlots = ['left-chest', 'right-chest', 'left-sleeve', 'right-sleeve', 'back'];
+          const validPantSlots = ['left-pant', 'right-pant'];
+
+          const readPlacement = (placement: string) => {
+            const [part, slot] = placement.split(':');
+            if (part === 'kimono' && validKimonoSlots.includes(slot)) {
+              return s.kimonoLogos[slot as KimonoLogoSlot];
+            }
+            if (part === 'pant' && validPantSlots.includes(slot)) {
+              return s.pantLogos[slot as PantLogoSlot];
+            }
+            return undefined;
+          };
+          const removePlacement = (placement: string) => {
+            const [part, slot] = placement.split(':');
+            if (part === 'kimono' && validKimonoSlots.includes(slot)) {
+              s.removeKimonoLogo(slot as KimonoLogoSlot);
+              return true;
+            }
+            if (part === 'pant' && validPantSlots.includes(slot)) {
+              s.removePantLogo(slot as PantLogoSlot);
+              return true;
+            }
+            return false;
+          };
+          const writePlacement = (placement: string, logo: KimonoLogo) => {
+            const [part, slot] = placement.split(':');
+            if (part === 'kimono' && validKimonoSlots.includes(slot)) {
+              s.setKimonoLogo(slot as KimonoLogoSlot, logo);
+              s.setCameraView(slot === 'back' ? 'back' : slot === 'left-sleeve' ? 'left' : slot === 'right-sleeve' ? 'right' : 'front');
+              return true;
+            }
+            if (part === 'pant' && validPantSlots.includes(slot)) {
+              s.setPantLogo(slot as PantLogoSlot, logo);
+              s.setCameraView('front');
+              return true;
+            }
+            return false;
+          };
+          const priceForPlacement = (placement: string) =>
+            placement === 'kimono:back' ? 25 : 10;
+
+          const logo = readPlacement(source);
+          if (!logo) {
+            return JSON.stringify({ ok: false, error: `No artwork is placed at ${source}.` });
+          }
+          if (action === 'remove') {
+            removePlacement(source);
+            return JSON.stringify({ ok: true, action, source, removedPrice: priceForPlacement(source) });
+          }
+          if (action !== 'move' && action !== 'copy') {
+            return JSON.stringify({ ok: false, error: 'Action must be move, copy, or remove.' });
+          }
+          if (!target || target === source) {
+            return JSON.stringify({ ok: false, error: 'Choose a different valid target placement.' });
+          }
+          const replacedExisting = Boolean(readPlacement(target));
+          if (!writePlacement(target, logo)) {
+            return JSON.stringify({ ok: false, error: `Unknown artwork target ${target}.` });
+          }
+          if (action === 'move') removePlacement(source);
+          return JSON.stringify({
+            ok: true,
+            action,
+            source,
+            target,
+            filename: logo.filename,
+            replacedExisting,
+            sourcePrice: priceForPlacement(source),
+            targetPrice: priceForPlacement(target),
+          });
         }
         case 'create_artwork': {
           const prompt = String(toolInput.prompt ?? '').trim();
