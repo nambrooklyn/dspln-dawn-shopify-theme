@@ -52,6 +52,10 @@ import type { GiTextLayer } from './gi-state';
 const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
 const MOBILE_CAMERA_MAX_DISTANCE = 3.35;
+const CAMERA_VERTICAL_PAN_EVENT = 'dspln:configurator-camera:vertical-pan';
+const CAMERA_VERTICAL_PAN_STEP = 0.18;
+const CAMERA_TARGET_MIN_Y = 0.35;
+const CAMERA_TARGET_MAX_Y = 1.7;
 
 // Surface normal for each slot — derived from the slot's plane
 // rotation (Y axis only, for our four anchors). Used to push the
@@ -588,6 +592,41 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     };
   }, [camera, useMobileCamera]);
 
+  // The full gi can extend beyond the viewport at close zoom levels. Keep the
+  // camera and orbit target moving together so customers can inspect the
+  // collar, chest, belt, and pants without changing their zoom.
+  useEffect(() => {
+    const handleVerticalPan = (event: Event) => {
+      const controls = controlsRef.current;
+      if (!controls) return;
+
+      const { direction } = (
+        event as CustomEvent<{ direction?: 'up' | 'down' }>
+      ).detail ?? {};
+      if (direction !== 'up' && direction !== 'down') return;
+
+      const requestedDelta =
+        direction === 'up'
+          ? CAMERA_VERTICAL_PAN_STEP
+          : -CAMERA_VERTICAL_PAN_STEP;
+      const nextTargetY = Math.min(
+        CAMERA_TARGET_MAX_Y,
+        Math.max(CAMERA_TARGET_MIN_Y, controls.target.y + requestedDelta),
+      );
+      const appliedDelta = nextTargetY - controls.target.y;
+      if (Math.abs(appliedDelta) < 0.001) return;
+
+      controls.target.y = nextTargetY;
+      camera.position.y += appliedDelta;
+      controls.update();
+    };
+
+    window.addEventListener(CAMERA_VERTICAL_PAN_EVENT, handleVerticalPan);
+    return () => {
+      window.removeEventListener(CAMERA_VERTICAL_PAN_EVENT, handleVerticalPan);
+    };
+  }, [camera]);
+
   // ——— Studio drag-to-move for kimono artwork ———
   // Grab a logo/text decal and slide it along the jacket: the pointer is
   // raycast onto the body mesh and the decal's anchor + orientation
@@ -960,7 +999,8 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       <OrbitControls
         ref={controlsRef}
         target={CAMERA_TARGET}
-        enablePan={false}
+        enablePan
+        screenSpacePanning
         enableDamping
         dampingFactor={0.08}
         rotateSpeed={0.7}
@@ -992,6 +1032,11 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
   const [useMobileCamera, setUseMobileCamera] = useState(false);
   const initialPosition = cameraViewToPosition(cameraView, useMobileCamera);
   const touchHandlers = useDirectionalCanvasTouch();
+  const panVertically = useCallback((direction: 'up' | 'down') => {
+    window.dispatchEvent(
+      new CustomEvent(CAMERA_VERTICAL_PAN_EVENT, { detail: { direction } }),
+    );
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1046,6 +1091,29 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
         <Scene useMobileCamera={useMobileCamera} />
       </Canvas>
       <ModelLoadingOverlay />
+      <div
+        className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col overflow-hidden rounded-full border border-black/15 bg-white/90 shadow-md backdrop-blur-sm"
+        aria-label="Move model vertically"
+      >
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center border-b border-black/10 text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          aria-label="Move view up"
+          title="Move view up"
+          onClick={() => panVertically('up')}
+        >
+          <span aria-hidden="true">&#8593;</span>
+        </button>
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          aria-label="Move view down"
+          title="Move view down"
+          onClick={() => panVertically('down')}
+        >
+          <span aria-hidden="true">&#8595;</span>
+        </button>
+      </div>
     </div>
   );
 });
