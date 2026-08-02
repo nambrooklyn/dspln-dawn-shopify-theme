@@ -33,8 +33,6 @@ import { uploadArtworkImage } from '../configurators/shared/preview-upload';
  * ?assistant=1. Production customers see nothing until the flag is opened up.
  */
 
-const INVITE_DELAY_MS = 4500;
-const INVITE_DISMISSED_KEY = 'dspln:design-assistant:invite-dismissed';
 const MAX_TOOL_ROUNDS = 6;
 const MAX_ARTWORK_BYTES = 6_000_000;
 
@@ -156,7 +154,6 @@ interface DesignAssistantProps {
 export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) {
   const state = useGiState();
   const [open, setOpen] = useState(false);
-  const [inviteVisible, setInviteVisible] = useState(false);
   const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -171,31 +168,10 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
   stateRef.current = state;
 
   useEffect(() => {
-    if (placement === 'desktop') return;
-    try {
-      if (window.sessionStorage.getItem(INVITE_DISMISSED_KEY) === '1') return;
-    } catch {
-      /* private mode */
-    }
-    const timer = window.setTimeout(() => setInviteVisible(true), INVITE_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [placement]);
-
-  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [bubbles, busy]);
 
-  const dismissInvite = useCallback(() => {
-    setInviteVisible(false);
-    try {
-      window.sessionStorage.setItem(INVITE_DISMISSED_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
   const openChat = useCallback(() => {
-    dismissInvite();
     setOpen(true);
     setBubbles((prev) =>
       prev.length > 0
@@ -207,7 +183,7 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
             },
           ],
     );
-  }, [dismissInvite]);
+  }, []);
 
   const attachArtwork = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -575,31 +551,6 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
 
   return (
     <>
-      {placement === 'mobile' && inviteVisible && !open ? (
-        <div className="absolute top-16 left-3 z-[70] max-w-[15.5rem] rounded-2xl border border-[#e3ded7] bg-white p-3.5 shadow-xl">
-          <button
-            type="button"
-            aria-label="Dismiss"
-            onClick={dismissInvite}
-            className="absolute top-1.5 right-1.5 rounded-full p-1 text-[#8a8580] hover:bg-[#f4f1ec]"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-          <p className="text-[13px] leading-snug text-[#1c1b1b]">
-            👋 Want a hand designing your gi? Tell me your team colors or the
-            look you want — I&apos;ll build it for you right here.
-          </p>
-          <button
-            type="button"
-            onClick={openChat}
-            className="mt-2.5 inline-flex h-8 items-center gap-1.5 rounded-full bg-[#5c0000] px-3.5 text-[11px] font-semibold tracking-[0.1em] text-white uppercase hover:bg-[#4a0000]"
-          >
-            <MessageCircleHeart className="h-3.5 w-3.5" />
-            Design with me
-          </button>
-        </div>
-      ) : null}
-
       {!open ? (
         <button
           type="button"
@@ -608,13 +559,16 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
           className={
             placement === 'desktop'
               ? 'flex h-12 w-full items-center justify-center gap-2 border-t border-[#e3ded7] bg-[#1c1b1b] px-4 text-[11px] font-semibold tracking-[0.12em] text-white uppercase hover:bg-black'
-              : 'absolute top-3 left-3 z-[70] inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#1c1b1b] text-white shadow-lg hover:bg-black'
+              : 'flex h-12 w-full items-center justify-between gap-3 bg-white px-4 text-[11px] font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase hover:bg-[#faf8f5]'
           }
         >
-          <MessageCircleHeart className="h-5 w-5" />
-          <span className={placement === 'mobile' ? 'sr-only' : undefined}>
+          <span className="inline-flex items-center gap-2">
+            <MessageCircleHeart className="h-5 w-5 text-[#5c0000]" />
             Design Assistant
           </span>
+          {placement === 'mobile' ? (
+            <span className="text-lg text-[#8a8580]" aria-hidden="true">+</span>
+          ) : null}
         </button>
       ) : (
         <div

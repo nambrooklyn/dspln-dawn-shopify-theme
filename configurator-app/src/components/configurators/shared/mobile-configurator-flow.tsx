@@ -205,11 +205,13 @@ export const MobileConfiguratorFlow = memo(
     isAddingToCart,
     cartActionLabel = 'Add to Cart',
     cartActionLoadingLabel = 'Adding...',
+    assistantContent,
   }: {
     onAddToCart: () => void;
     isAddingToCart?: boolean;
     cartActionLabel?: string;
     cartActionLoadingLabel?: string;
+    assistantContent?: ReactNode;
   }) => {
     const {
       selectedPart,
@@ -598,6 +600,11 @@ export const MobileConfiguratorFlow = memo(
         </MobileStepFrame>
         <div className="bg-background border-border sticky bottom-0 z-20 border-t px-5 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
           <div className="mx-auto grid max-w-[44rem] gap-3">
+            {assistantContent ? (
+              <section className="overflow-hidden rounded-xl border border-[#e3ded7] bg-white">
+                {assistantContent}
+              </section>
+            ) : null}
             <div className="flex items-baseline justify-between gap-4">
               <p className="text-foreground min-w-0 truncate text-left text-base font-semibold tracking-[0.08em] uppercase">
                 Mens Custom Gi Suit
