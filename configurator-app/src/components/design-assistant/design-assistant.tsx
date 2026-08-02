@@ -179,7 +179,7 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
         : [
             {
               role: 'assistant',
-              text: "Hey! I'm the DSPLN design assistant. Tell me what you're going for — team colors, a competition gi, something bold — and I'll set it up right here on the 3D model.",
+              text: "Tell me how you want your gi to look. I can change the body, lapel, stitching, and reinforcement colors; personalize your belt; create a new logo; clean up an uploaded image or remove its background; and place artwork on the chest, sleeves, back, or pants. Try: ‘Make my gi black with gold stitching and create a matching lion logo for the left chest.’",
             },
           ],
     );
