@@ -1,8 +1,8 @@
 /**
- * Design Assistant — server side. (rev 2: env pickup)
+ * Design Assistant — server side.
  *
- * Thin proxy between the in-configurator chat UI and the Anthropic API.
- * Exists so the API key stays in Netlify env (ANTHROPIC_API_KEY) and so the
+ * Thin proxy between the in-configurator chat UI and the OpenAI Responses API.
+ * Exists so the API key stays in Netlify env (OPENAI_API_KEY) and so the
  * system prompt / tool schema are versioned here, not in the browser bundle.
  *
  * The tools are executed CLIENT-side against the live configurator state —
@@ -10,7 +10,7 @@
  * continues the loop when the browser posts the tool results.
  */
 
-const MODEL = process.env.DSPLN_ASSISTANT_MODEL || 'claude-sonnet-5';
+const MODEL = process.env.DSPLN_ASSISTANT_MODEL || 'gpt-5.6-sol';
 const MAX_TOKENS = 1600;
 const MAX_MESSAGES = 40; // hard cap per conversation request
 const MAX_BODY_BYTES = 200_000;
@@ -170,6 +170,87 @@ const sanitizeMessages = (raw) => {
   return messages;
 };
 
+const toOpenAiInput = (messages) => {
+  const input = [];
+
+  for (const message of messages) {
+    if (typeof message.content === 'string') {
+      input.push({ role: message.role, content: message.content });
+      continue;
+    }
+
+    if (!Array.isArray(message.content)) continue;
+
+    for (const block of message.content) {
+      if (!block || typeof block !== 'object') continue;
+
+      if (block.type === 'text' && typeof block.text === 'string') {
+        input.push({ role: message.role, content: block.text });
+      } else if (
+        message.role === 'assistant' &&
+        block.type === 'tool_use' &&
+        typeof block.id === 'string' &&
+        typeof block.name === 'string'
+      ) {
+        input.push({
+          type: 'function_call',
+          call_id: block.id,
+          name: block.name,
+          arguments: JSON.stringify(block.input ?? {}),
+        });
+      } else if (
+        message.role === 'user' &&
+        block.type === 'tool_result' &&
+        typeof block.tool_use_id === 'string'
+      ) {
+        input.push({
+          type: 'function_call_output',
+          call_id: block.tool_use_id,
+          output:
+            typeof block.content === 'string'
+              ? block.content
+              : JSON.stringify(block.content ?? ''),
+        });
+      }
+    }
+  }
+
+  return input;
+};
+
+const fromOpenAiOutput = (output) => {
+  const content = [];
+
+  for (const item of Array.isArray(output) ? output : []) {
+    if (item?.type === 'message' && Array.isArray(item.content)) {
+      for (const part of item.content) {
+        if (part?.type === 'output_text' && typeof part.text === 'string') {
+          content.push({ type: 'text', text: part.text });
+        }
+      }
+    } else if (
+      item?.type === 'function_call' &&
+      typeof item.call_id === 'string' &&
+      typeof item.name === 'string'
+    ) {
+      let toolInput = {};
+      try {
+        toolInput = JSON.parse(item.arguments || '{}');
+      } catch {
+        toolInput = {};
+      }
+      content.push({
+        type: 'tool_use',
+        id: item.call_id,
+        name: item.name,
+        input: toolInput,
+      });
+    }
+  }
+
+  return content;
+};
+
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: JSON_HEADERS, body: '' };
@@ -177,7 +258,7 @@ export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return jsonResponse(405, { error: 'Method not allowed' });
   }
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return jsonResponse(503, {
       error: 'assistant_unconfigured',
@@ -201,19 +282,24 @@ export const handler = async (event) => {
   }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        Authorization: `Bearer ${apiKey}`,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: SYSTEM_PROMPT,
-        tools: TOOLS,
-        messages,
+        max_output_tokens: MAX_TOKENS,
+        reasoning: { effort: 'none' },
+        instructions: SYSTEM_PROMPT,
+        tools: TOOLS.map(({ name, description, input_schema: parameters }) => ({
+          type: 'function',
+          name,
+          description,
+          parameters,
+        })),
+        input: toOpenAiInput(messages),
       }),
     });
 
@@ -226,10 +312,13 @@ export const handler = async (event) => {
       });
     }
 
+    const content = fromOpenAiOutput(data.output);
     return jsonResponse(200, {
       data: {
-        content: data.content,
-        stopReason: data.stop_reason,
+        content,
+        stopReason: content.some((block) => block.type === 'tool_use')
+          ? 'tool_use'
+          : 'end_turn',
       },
     });
   } catch (error) {
