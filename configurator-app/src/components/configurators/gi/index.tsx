@@ -959,7 +959,7 @@ const GiConfiguratorInner = memo(() => {
             null
           )
         }
-        sidebarBottomContent={
+        desktopSceneOverlayContent={
           showDesignAssistant ? <DesignAssistant placement="desktop" /> : null
         }
         mobileOverlayContent={

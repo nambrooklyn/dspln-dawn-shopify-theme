@@ -74,7 +74,6 @@ interface PriceSidebarProps {
   cartActionLabel?: string;
   cartActionLoadingLabel?: string;
   headerContent?: ReactNode;
-  bottomContent?: ReactNode;
 }
 
 export const PriceSidebar = memo(
@@ -84,7 +83,6 @@ export const PriceSidebar = memo(
     cartActionLabel = 'Add to Cart',
     cartActionLoadingLabel = 'Adding...',
     headerContent,
-    bottomContent,
   }: PriceSidebarProps) => {
     const {
       partColors,
@@ -253,7 +251,6 @@ export const PriceSidebar = memo(
             {headerContent}
           </div>
         ) : null}
-        {bottomContent ? <div className="shrink-0">{bottomContent}</div> : null}
         <div className="flex min-h-0 flex-1 flex-col p-3 xl:p-4">
           <section className="min-h-0 flex-1 overflow-y-auto pr-1">
             <ul className="divide-border divide-y">

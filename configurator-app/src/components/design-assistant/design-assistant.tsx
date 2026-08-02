@@ -558,7 +558,7 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
           aria-label="Open design assistant"
           className={
             placement === 'desktop'
-              ? 'flex h-12 w-full items-center justify-center gap-2 border-t border-[#e3ded7] bg-[#1c1b1b] px-4 text-[11px] font-semibold tracking-[0.12em] text-white uppercase hover:bg-black'
+              ? 'absolute top-3 left-3 z-[70] flex h-12 w-[min(21rem,calc(100%-1.5rem))] items-center justify-between gap-3 rounded-xl border border-[#e3ded7] bg-white px-4 text-[11px] font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase shadow-md hover:bg-[#faf8f5]'
               : 'flex h-12 w-full items-center justify-between gap-3 bg-white px-4 text-[11px] font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase hover:bg-[#faf8f5]'
           }
         >
@@ -568,14 +568,16 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
           </span>
           {placement === 'mobile' ? (
             <span className="text-lg text-[#8a8580]" aria-hidden="true">+</span>
-          ) : null}
+          ) : (
+            <span className="text-lg text-[#8a8580]" aria-hidden="true">&#8964;</span>
+          )}
         </button>
       ) : (
         <div
           className={
             placement === 'desktop'
-              ? 'flex h-[min(24rem,45vh)] w-full flex-col overflow-hidden border-t border-[#e3ded7] bg-white'
-              : 'fixed inset-x-0 bottom-0 z-[80] flex h-[min(72dvh,38rem)] w-full flex-col overflow-hidden rounded-t-3xl border border-[#e3ded7] bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl'
+              ? 'absolute top-3 left-3 z-[70] flex h-[min(28rem,calc(100%-1.5rem))] w-[min(21rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border border-[#e3ded7] bg-white shadow-2xl'
+              : 'fixed inset-x-0 bottom-0 z-[80] flex h-[min(52dvh,30rem)] w-full flex-col overflow-hidden rounded-t-3xl border border-[#e3ded7] bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl'
           }
         >
           {placement === 'mobile' ? (
