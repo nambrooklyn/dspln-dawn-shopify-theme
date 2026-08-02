@@ -959,6 +959,12 @@ const GiConfiguratorInner = memo(() => {
             null
           )
         }
+        sidebarBottomContent={
+          showDesignAssistant ? <DesignAssistant placement="desktop" /> : null
+        }
+        mobileOverlayContent={
+          showDesignAssistant ? <DesignAssistant placement="mobile" /> : null
+        }
         sceneTopContent={
           <DesignCommandBar
             designId={currentDesignId}
@@ -989,7 +995,6 @@ const GiConfiguratorInner = memo(() => {
           setCartLines([]);
         }}
       />
-      {showDesignAssistant ? <DesignAssistant /> : null}
     </UploadedLogosProvider>
   );
 });

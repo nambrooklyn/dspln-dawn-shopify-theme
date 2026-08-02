@@ -15,6 +15,8 @@ interface ConfiguratorShellProps {
   cartActionLoadingLabel?: string;
   skinnyRailContent?: ReactNode;
   railContent?: ReactNode;
+  sidebarBottomContent?: ReactNode;
+  mobileOverlayContent?: ReactNode;
   sceneTopContent?: ReactNode;
   children: ReactNode; // the center 3D scene
 }
@@ -40,6 +42,8 @@ export const ConfiguratorShell = memo(
     cartActionLoadingLabel,
     skinnyRailContent,
     railContent,
+    sidebarBottomContent,
+    mobileOverlayContent,
     sceneTopContent,
     children,
   }: ConfiguratorShellProps) => {
@@ -78,17 +82,21 @@ export const ConfiguratorShell = memo(
             cartActionLabel={cartActionLabel}
             cartActionLoadingLabel={cartActionLoadingLabel}
             headerContent={railContent}
+            bottomContent={sidebarBottomContent}
           />
         </div>
         {showMobileFlow ? (
-          <div className="lg:hidden">
-            <MobileConfiguratorFlow
-              onAddToCart={onAddToCart}
-              isAddingToCart={isAddingToCart}
-              cartActionLabel={cartActionLabel}
-              cartActionLoadingLabel={cartActionLoadingLabel}
-            />
-          </div>
+          <>
+            <div className="lg:hidden">
+              <MobileConfiguratorFlow
+                onAddToCart={onAddToCart}
+                isAddingToCart={isAddingToCart}
+                cartActionLabel={cartActionLabel}
+                cartActionLoadingLabel={cartActionLoadingLabel}
+              />
+            </div>
+            {mobileOverlayContent}
+          </>
         ) : null}
       </div>
     );

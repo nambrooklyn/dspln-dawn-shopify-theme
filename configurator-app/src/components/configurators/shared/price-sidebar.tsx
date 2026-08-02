@@ -74,6 +74,7 @@ interface PriceSidebarProps {
   cartActionLabel?: string;
   cartActionLoadingLabel?: string;
   headerContent?: ReactNode;
+  bottomContent?: ReactNode;
 }
 
 export const PriceSidebar = memo(
@@ -83,6 +84,7 @@ export const PriceSidebar = memo(
     cartActionLabel = 'Add to Cart',
     cartActionLoadingLabel = 'Adding...',
     headerContent,
+    bottomContent,
   }: PriceSidebarProps) => {
     const {
       partColors,
@@ -348,6 +350,7 @@ export const PriceSidebar = memo(
             </span>
           </div>
         </div>
+        {bottomContent ? <div className="shrink-0">{bottomContent}</div> : null}
       </aside>
     );
   },

@@ -149,7 +149,11 @@ const nameOfHex = (hex: string) =>
     (swatch) => swatch.hex.toLowerCase() === hex.toLowerCase(),
   )?.name ?? hex;
 
-export function DesignAssistant() {
+interface DesignAssistantProps {
+  placement?: 'desktop' | 'mobile';
+}
+
+export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) {
   const state = useGiState();
   const [open, setOpen] = useState(false);
   const [inviteVisible, setInviteVisible] = useState(false);
@@ -167,6 +171,7 @@ export function DesignAssistant() {
   stateRef.current = state;
 
   useEffect(() => {
+    if (placement === 'desktop') return;
     try {
       if (window.sessionStorage.getItem(INVITE_DISMISSED_KEY) === '1') return;
     } catch {
@@ -174,7 +179,7 @@ export function DesignAssistant() {
     }
     const timer = window.setTimeout(() => setInviteVisible(true), INVITE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [placement]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -570,7 +575,7 @@ export function DesignAssistant() {
 
   return (
     <>
-      {inviteVisible && !open ? (
+      {placement === 'mobile' && inviteVisible && !open ? (
         <div className="fixed bottom-20 left-4 z-[70] max-w-[15.5rem] rounded-2xl border border-[#e3ded7] bg-white p-3.5 shadow-xl">
           <button
             type="button"
@@ -600,13 +605,28 @@ export function DesignAssistant() {
           type="button"
           onClick={openChat}
           aria-label="Open design assistant"
-          className="fixed bottom-4 left-4 z-[70] inline-flex h-11 items-center gap-2 rounded-full bg-[#1c1b1b] px-4 text-[11px] font-semibold tracking-[0.12em] text-white uppercase shadow-lg hover:bg-black"
+          className={
+            placement === 'desktop'
+              ? 'flex h-12 w-full items-center justify-center gap-2 border-t border-[#e3ded7] bg-[#1c1b1b] px-4 text-[11px] font-semibold tracking-[0.12em] text-white uppercase hover:bg-black'
+              : 'fixed bottom-4 left-1/2 z-[70] inline-flex h-11 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-[#1c1b1b] px-4 text-[11px] font-semibold tracking-[0.12em] text-white uppercase shadow-lg hover:bg-black'
+          }
         >
           <MessageCircleHeart className="h-4 w-4" />
           Design Assistant
         </button>
       ) : (
-        <div className="fixed bottom-4 left-4 z-[70] flex h-[min(30rem,calc(100dvh-6rem))] w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-[#e3ded7] bg-white shadow-2xl">
+        <div
+          className={
+            placement === 'desktop'
+              ? 'flex h-[min(24rem,45vh)] w-full flex-col overflow-hidden border-t border-[#e3ded7] bg-white'
+              : 'fixed inset-x-0 bottom-0 z-[80] flex h-[min(72dvh,38rem)] w-full flex-col overflow-hidden rounded-t-3xl border border-[#e3ded7] bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl'
+          }
+        >
+          {placement === 'mobile' ? (
+            <div className="flex h-6 shrink-0 items-center justify-center bg-[#faf8f5]">
+              <span className="h-1 w-10 rounded-full bg-[#c9c3bc]" />
+            </div>
+          ) : null}
           <div className="flex items-center justify-between border-b border-[#eee9e2] bg-[#faf8f5] px-4 py-3">
             <div>
               <p className="text-[11px] font-semibold tracking-[0.14em] text-[#1c1b1b] uppercase">
