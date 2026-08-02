@@ -568,7 +568,10 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       const { factor } = (event as CustomEvent<{ factor?: number }>).detail ?? {};
       if (!factor || !Number.isFinite(factor)) return;
 
-      const target = new Vector3(...CAMERA_TARGET);
+      // Zoom around the customer's current pan target. Resetting to the
+      // default CAMERA_TARGET here made a pinch snap the model back to its
+      // full centered view after the customer had moved up or down.
+      const target = controls.target.clone();
       const offset = camera.position.clone().sub(target);
       const currentDistance = offset.length();
       const maxDistance = useMobileCamera
@@ -581,7 +584,6 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       if (currentDistance <= 0) return;
 
       camera.position.copy(target.clone().add(offset.setLength(nextDistance)));
-      controls.target.copy(target);
       controls.update();
     };
 
