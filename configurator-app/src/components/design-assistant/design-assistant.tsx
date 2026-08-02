@@ -7,7 +7,7 @@ import {
   type DragEvent,
   type FormEvent,
 } from 'react';
-import { ImagePlus, LoaderCircle, MessageCircleHeart, Send, X } from 'lucide-react';
+import { ImagePlus, LoaderCircle, Send, X } from 'lucide-react';
 
 import {
   BELT_COLOR_SWATCHES,
@@ -687,7 +687,12 @@ export function DesignAssistant({ placement = 'mobile' }: DesignAssistantProps) 
           }
         >
           <span className="inline-flex items-center gap-2">
-            <MessageCircleHeart className="h-5 w-5 text-[#5c0000]" />
+            <span
+              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#5c0000] text-[8px] font-bold tracking-[-0.04em] text-white"
+              aria-hidden="true"
+            >
+              AI
+            </span>
             {placement === 'desktop' && dragActive
               ? 'Drop image to upload'
               : 'Design Assistant'}
