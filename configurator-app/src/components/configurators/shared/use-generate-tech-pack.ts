@@ -11,18 +11,23 @@ export function useGenerateTechPack(
   return useCallback(() => {
     if (!isStudioMode() || typeof window === 'undefined') return;
 
+    const isRashguard =
+      garmentType.includes('rashguard') || garmentType === 'adult-grappling-short';
+    // The tech pack pages route to the right 3D model by configData.source.
+    const source = isRashguard ? garmentType : `dspln-${garmentType}-configurator`;
+
     const designRecord = {
       id: currentDesignId || 'studio-design',
       name: (currentDesignName ?? undefined) || 'Design',
       orderName: `#studio-${Date.now()}`,
       configData: {
-        source: 'studio',
+        source,
         spec: serialize(),
       },
     };
 
     const encoded = btoa(JSON.stringify(designRecord));
-    const techPackPath = garmentType.includes('rashguard') ? 'rashguard' : 'gi';
+    const techPackPath = isRashguard ? 'rashguard' : 'gi';
     window.open(`/tech-pack/${techPackPath}?design=${encoded}&silent=1`, '_blank', 'width=1200,height=800');
   }, [garmentType, serialize, uploadedLogos, currentDesignId, currentDesignName]);
 }

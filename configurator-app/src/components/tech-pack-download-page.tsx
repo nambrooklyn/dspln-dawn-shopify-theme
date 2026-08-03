@@ -610,12 +610,23 @@ function StatusScreen({ message }: { message: string }) {
   );
 }
 
+function readInlineDesign(): SavedDesignRecord | null {
+  if (typeof window === 'undefined') return null;
+  const encoded = new URLSearchParams(window.location.search).get('design');
+  if (!encoded) return null;
+  try {
+    return JSON.parse(atob(encoded)) as SavedDesignRecord;
+  } catch {
+    return null;
+  }
+}
+
 export function TechPackDownloadPage() {
   const id =
     typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('id')
       : null;
-  const [design, setDesign] = useState<SavedDesignRecord | null>(null);
+  const [design, setDesign] = useState<SavedDesignRecord | null>(readInlineDesign);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -663,7 +674,7 @@ export function TechPackDownloadPage() {
     };
   }, [id]);
 
-  if (!id) return <StatusScreen message="Missing design id." />;
+  if (!id && !design) return <StatusScreen message="Missing design id." />;
   if (error) return <StatusScreen message={error} />;
   if (!design) return <StatusScreen message="Loading saved design..." />;
 

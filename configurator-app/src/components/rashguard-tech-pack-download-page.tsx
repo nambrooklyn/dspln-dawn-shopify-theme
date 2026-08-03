@@ -174,33 +174,43 @@ export function RashguardTechPackDownloadPage() {
     let cancelled = false;
 
     async function run() {
-      const id = new URLSearchParams(window.location.search).get('id');
-      if (!id) {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      const inline = params.get('design');
+      if (!id && !inline) {
         setError('Missing design id.');
         return;
       }
 
       try {
-        // Retry a few times so a freshly placed order picks up its stamped
-        // order number (storage is eventually consistent — see the gi page).
-        const MAX_ATTEMPTS = 4;
-        const RETRY_MS = 2000;
         let design: SavedDesignRecord | undefined;
-        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-          const response = await fetch(apiDesignUrl(id), {
-            headers: { Accept: 'application/json' },
-          });
-          if (!response.ok) throw new Error(await response.text());
-          const payload = (await response.json()) as {
-            data?: { design?: SavedDesignRecord };
-          };
-          design = payload.data?.design;
-          if (!design?.configData?.spec) {
-            throw new Error('Saved design record is incomplete.');
+        if (inline) {
+          try {
+            design = JSON.parse(atob(inline)) as SavedDesignRecord;
+          } catch {
+            throw new Error('Unable to read inline design data.');
           }
-          if (design.orderName || attempt === MAX_ATTEMPTS - 1) break;
-          await new Promise((r) => setTimeout(r, RETRY_MS));
-          if (cancelled) return;
+        } else if (id) {
+          // Retry a few times so a freshly placed order picks up its stamped
+          // order number (storage is eventually consistent — see the gi page).
+          const MAX_ATTEMPTS = 4;
+          const RETRY_MS = 2000;
+          for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+            const response = await fetch(apiDesignUrl(id), {
+              headers: { Accept: 'application/json' },
+            });
+            if (!response.ok) throw new Error(await response.text());
+            const payload = (await response.json()) as {
+              data?: { design?: SavedDesignRecord };
+            };
+            design = payload.data?.design;
+            if (!design?.configData?.spec) {
+              throw new Error('Saved design record is incomplete.');
+            }
+            if (design.orderName || attempt === MAX_ATTEMPTS - 1) break;
+            await new Promise((r) => setTimeout(r, RETRY_MS));
+            if (cancelled) return;
+          }
         }
 
         const spec = design?.configData?.spec;
