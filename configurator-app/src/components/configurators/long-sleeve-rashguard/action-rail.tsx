@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { FolderHeart, HelpCircle, ImageIcon, LogIn } from 'lucide-react';
+import { FileText, FolderHeart, HelpCircle, ImageIcon, LogIn } from 'lucide-react';
 import { isStudioMode } from '../shared/studio-mode';
 
 import { openStorefrontPage } from '../shared/storefront-links';
@@ -18,7 +18,7 @@ const railButtonClass =
   'group flex w-full flex-col items-center justify-center gap-1 rounded-r-2xl px-1 py-3 text-[#3f4447] transition-colors hover:bg-white hover:text-[#171717]';
 
 export const RashguardActionRail = memo(
-  ({ onLoginToSave }: { onLoginToSave?: () => void }) => (
+  ({ onLoginToSave, onGenerateTechPack }: { onLoginToSave?: () => void; onGenerateTechPack?: () => void }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
         <LockerRailButton className={railButtonClass} />
@@ -48,6 +48,18 @@ export const RashguardActionRail = memo(
           <ImageIcon className="h-6 w-6 stroke-[1.7]" />
           <span className="text-[11px] font-medium leading-none">Uploads</span>
         </button>
+
+        {onGenerateTechPack ? (
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={onGenerateTechPack}
+            title="Generate tech pack"
+          >
+            <FileText className="h-6 w-6 stroke-[1.7]" />
+            <span className="text-[11px] font-medium leading-none">Tech</span>
+          </button>
+        ) : null}
 
       </div>
 

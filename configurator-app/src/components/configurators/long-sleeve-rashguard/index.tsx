@@ -57,6 +57,7 @@ import {
   writeActiveDesignLink,
 } from '../shared/active-design-link';
 import { DesignCommandBar } from '../shared/design-command-bar';
+import { useGenerateTechPack } from '../shared/use-generate-tech-pack';
 import {
   APPLY_TARGETS,
   uploadedArtworkToFile,
@@ -903,6 +904,13 @@ const RashguardConfiguratorInner = memo(() => {
     uploadArtworkLayerUrls,
   ]);
 
+  const handleGenerateTechPack = useGenerateTechPack('long-sleeve-rashguard', serialize, { logoMap: { kimono: {}, pant: {} } }, uploadArtworkLayerUrls.reduce<Record<string, any>>((acc, layer) => {
+    if (layer.imageUrl && layer.filename) {
+      acc[layer.filename] = { imageUrl: layer.imageUrl, filename: layer.filename };
+    }
+    return acc;
+  }, {}), currentDesignId, currentDesignName);
+
   return (
     <UploadedArtworkProvider value={uploadedArtwork}>
       {isAdminEdit ? (
@@ -937,7 +945,7 @@ const RashguardConfiguratorInner = memo(() => {
         cartActionLabel={isCartEditMode ? 'Update Cart' : 'Add to Cart'}
         cartActionLoadingLabel={isCartEditMode ? 'Updating...' : 'Adding...'}
         skinnyRailContent={
-          <RashguardActionRail onLoginToSave={handleLoginToSave} />
+          <RashguardActionRail onLoginToSave={handleLoginToSave} onGenerateTechPack={isStudioMode() ? handleGenerateTechPack : undefined} />
         }
         railContent={!isStudioMode() ? undefined :
           <RashguardSavedDesignsPanel

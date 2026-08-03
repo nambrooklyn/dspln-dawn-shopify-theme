@@ -61,6 +61,7 @@ import {
 } from '../shared/active-design-link';
 import { isStudioMode } from '../shared/studio-mode';
 import { DesignCommandBar } from '../shared/design-command-bar';
+import { useGenerateTechPack } from '../shared/use-generate-tech-pack';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS['kids-pant'];
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
@@ -743,6 +744,11 @@ const GiConfiguratorInner = memo(() => {
     setCameraView,
   ]);
 
+  const handleGenerateTechPack = useGenerateTechPack('kids-pant', serialize, { logoMap: { kimono: kimonoLogos, pant: pantLogos } }, uploadedLogos.reduce<Record<string, any>>((acc, logo) => {
+    acc[logo.filename] = { imageUrl: logo.url, filename: logo.filename };
+    return acc;
+  }, {}), currentDesignId, currentDesignName);
+
   return (
     <UploadedLogosProvider value={uploadedLogos}>
       {isAdminEdit ? (
@@ -782,6 +788,7 @@ const GiConfiguratorInner = memo(() => {
           <ConfiguratorActionRail
             isCustomer={cloudOwnerContext?.isCustomer}
             onLoginToSave={handleLoginToSave}
+            onGenerateTechPack={isStudioMode() ? handleGenerateTechPack : undefined}
           />
         }
         sceneTopContent={

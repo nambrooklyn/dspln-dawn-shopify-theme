@@ -64,6 +64,7 @@ import {
   writeActiveDesignLink,
 } from '../shared/active-design-link';
 import { DesignCommandBar } from '../shared/design-command-bar';
+import { useGenerateTechPack } from '../shared/use-generate-tech-pack';
 
 const PRODUCT_CONFIG = currentGiProductConfig();
 const PRODUCT_NAME = PRODUCT_CONFIG.productName;
@@ -881,6 +882,8 @@ const GiConfiguratorInner = memo(() => {
     setCameraView,
   ]);
 
+  const handleGenerateTechPack = useGenerateTechPack('gi', serialize, state, uploadedLogos.logos ?? {}, currentDesignId, currentDesignName);
+
   return (
     <UploadedLogosProvider value={uploadedLogos}>
       {isAdminEdit ? (
@@ -920,6 +923,7 @@ const GiConfiguratorInner = memo(() => {
           <ConfiguratorActionRail
             isCustomer={cloudOwnerContext?.isCustomer}
             onLoginToSave={handleLoginToSave}
+            onGenerateTechPack={isStudioMode() ? handleGenerateTechPack : undefined}
           />
         }
         railContent={
