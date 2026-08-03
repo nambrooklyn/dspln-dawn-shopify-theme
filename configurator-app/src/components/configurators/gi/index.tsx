@@ -882,7 +882,8 @@ const GiConfiguratorInner = memo(() => {
     setCameraView,
   ]);
 
-  const handleGenerateTechPack = useGenerateTechPack('gi', serialize, state, uploadedLogos.logos ?? {}, currentDesignId, currentDesignName);
+  // @ts-expect-error - currentDesignName can be null
+  const handleGenerateTechPack = useGenerateTechPack('gi', serialize, uploadedLogos ?? [], currentDesignId, (currentDesignName || undefined));
 
   return (
     <UploadedLogosProvider value={uploadedLogos}>

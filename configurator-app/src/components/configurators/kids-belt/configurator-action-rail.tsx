@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import {
+  FileText,
   FolderHeart,
   HelpCircle,
   ImageIcon,
@@ -30,9 +31,11 @@ const railButtonClass =
 export const ConfiguratorActionRail = memo(
   ({
     onLoginToSave,
+    onGenerateTechPack,
   }: {
     isCustomer?: boolean;
     onLoginToSave?: () => void;
+    onGenerateTechPack?: () => void;
   }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
@@ -63,6 +66,18 @@ export const ConfiguratorActionRail = memo(
             <span className="text-[11px] font-medium leading-none">Uploads</span>
           </button>
           </>
+        ) : null}
+
+        {onGenerateTechPack ? (
+          <button
+            type="button"
+            className={railButtonClass}
+            onClick={onGenerateTechPack}
+            title="Generate tech pack"
+          >
+            <FileText className="h-6 w-6 stroke-[1.7]" />
+            <span className="text-[11px] font-medium leading-none">Tech</span>
+          </button>
         ) : null}
       </div>
 

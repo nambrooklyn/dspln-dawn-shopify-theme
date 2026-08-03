@@ -36,6 +36,7 @@ const railButtonClass =
 
 export const ConfiguratorActionRail = memo(
   ({
+    onLoginToSave,
     onGenerateTechPack,
   }: {
     isCustomer?: boolean;

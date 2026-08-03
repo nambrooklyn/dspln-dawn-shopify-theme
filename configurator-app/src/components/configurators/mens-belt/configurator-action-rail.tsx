@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import {
+  FileText,
   FolderHeart,
   HelpCircle,
   ImageIcon,
@@ -31,9 +32,11 @@ const railButtonClass =
 export const ConfiguratorActionRail = memo(
   ({
     onLoginToSave,
+    onGenerateTechPack,
   }: {
     isCustomer?: boolean;
     onLoginToSave?: () => void;
+    onGenerateTechPack?: () => void;
   }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">

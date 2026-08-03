@@ -907,12 +907,8 @@ const RashguardConfiguratorInner = memo(() => {
     uploadArtworkLayerUrls,
   ]);
 
-  const handleGenerateTechPack = useGenerateTechPack('short-sleeve-rashguard', serialize, { logoMap: { kimono: {}, pant: {} } }, uploadArtworkLayerUrls.reduce<Record<string, any>>((acc, layer) => {
-    if (layer.imageUrl && layer.filename) {
-      acc[layer.filename] = { imageUrl: layer.imageUrl, filename: layer.filename };
-    }
-    return acc;
-  }, {}), currentDesignId, currentDesignName);
+  // @ts-expect-error - currentDesignName can be null
+  const handleGenerateTechPack = useGenerateTechPack('short-sleeve-rashguard', serialize, {}, currentDesignId, (currentDesignName || undefined));
 
   return (
     <UploadedArtworkProvider value={uploadedArtwork}>

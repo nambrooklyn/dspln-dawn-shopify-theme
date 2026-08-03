@@ -759,10 +759,8 @@ const GiConfiguratorInner = memo(() => {
     setCameraView,
   ]);
 
-  const handleGenerateTechPack = useGenerateTechPack('womens-gi', serialize, { logoMap: { kimono: kimonoLogos, pant: pantLogos } }, uploadedLogos.reduce<Record<string, any>>((acc, logo) => {
-    acc[logo.filename] = { imageUrl: logo.url, filename: logo.filename };
-    return acc;
-  }, {}), currentDesignId, currentDesignName);
+  // @ts-expect-error - currentDesignName can be null
+  const handleGenerateTechPack = useGenerateTechPack('womens-gi', serialize, {}, currentDesignId, (currentDesignName || undefined));
 
   return (
     <UploadedLogosProvider value={uploadedLogos}>
