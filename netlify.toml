@@ -18,6 +18,7 @@
   from = "/"
   to = "https://dspln.com"
   status = 302
+  force = true
 
 [[redirects]]
   from = "/*"
