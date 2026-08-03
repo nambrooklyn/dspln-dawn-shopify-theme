@@ -177,14 +177,23 @@ export function RashguardTechPackDownloadPage() {
       const params = new URLSearchParams(window.location.search);
       const id = params.get('id');
       const inline = params.get('design');
-      if (!id && !inline) {
+      const inlineKey = params.get('inline');
+      if (!id && !inline && !inlineKey) {
         setError('Missing design id.');
         return;
       }
 
       try {
         let design: SavedDesignRecord | undefined;
-        if (inline) {
+        if (inlineKey) {
+          try {
+            const raw = window.localStorage.getItem(inlineKey);
+            if (raw) design = JSON.parse(raw) as SavedDesignRecord;
+          } catch {
+            // fall through to the error below
+          }
+          if (!design) throw new Error('Unable to read inline design data.');
+        } else if (inline) {
           try {
             design = JSON.parse(atob(inline)) as SavedDesignRecord;
           } catch {

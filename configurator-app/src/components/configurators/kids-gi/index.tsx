@@ -746,7 +746,7 @@ const GiConfiguratorInner = memo(() => {
   ]);
 
   // @ts-expect-error - currentDesignName can be null
-  const handleGenerateTechPack = useGenerateTechPack('kids-gi', serialize, {}, currentDesignId, (currentDesignName || undefined));
+  const handleGenerateTechPack = useGenerateTechPack('kids-gi', serialize, { kimono: kimonoLogos, pant: pantLogos }, currentDesignId, (currentDesignName || undefined));
 
   return (
     <UploadedLogosProvider value={uploadedLogos}>

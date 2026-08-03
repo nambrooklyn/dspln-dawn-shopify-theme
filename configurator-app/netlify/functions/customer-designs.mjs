@@ -61,6 +61,11 @@ const designKey = ({ ownerKey, productHandle, id }) =>
   `designs/${cleanPathPart(ownerKey)}/${cleanPathPart(productHandle || 'customgi')}/${id}.json`;
 
 const lookupKey = (id) => `lookup/${id}.json`;
+
+// Studio designs get a lightweight index entry so the portal's Studio tab can
+// page through ONLY studio designs. Filtering the main listing after
+// pagination hides studio saves behind pages of customer records.
+const studioIndexKey = (id) => `studio-index/${id}.json`;
 const LEGACY_SHOPIFY_PRODUCT_HANDLE_ALIASES = {
   'mens-custom-gi-suit-configurator-test': 'customgi',
 };
@@ -702,15 +707,39 @@ export const handler = async (event) => {
         if (!adminKeyOk(event)) return jsonResponse(403, { error: 'Admin key required' });
         const limit = Math.min(60, Math.max(1, Number(query.limit) || 24));
         const offset = Math.max(0, Number(query.offset) || 0);
-        const keys = [];
-        let cursor;
-        do {
-          const page = await store.list({ prefix: 'designs/', cursor });
-          keys.push(...page.blobs.map((blob) => blob.key));
-          cursor = page.cursor;
-        } while (cursor);
-        keys.sort().reverse();
-        const pageKeys = keys.slice(offset, offset + limit);
+        const studioOnly = query.studio === '1';
+        let pageKeys;
+        let totalKeys;
+        if (studioOnly) {
+          // Page over the studio index so studio designs are never hidden
+          // behind pages of customer records.
+          const indexKeys = [];
+          let cursor;
+          do {
+            const page = await store.list({ prefix: 'studio-index/', cursor });
+            indexKeys.push(...page.blobs.map((blob) => blob.key));
+            cursor = page.cursor;
+          } while (cursor);
+          indexKeys.sort().reverse();
+          totalKeys = indexKeys.length;
+          const pointers = await Promise.all(
+            indexKeys
+              .slice(offset, offset + limit)
+              .map((key) => store.get(key, { type: 'json' }).catch(() => null)),
+          );
+          pageKeys = pointers.filter((p) => p?.key).map((p) => p.key);
+        } else {
+          const keys = [];
+          let cursor;
+          do {
+            const page = await store.list({ prefix: 'designs/', cursor });
+            keys.push(...page.blobs.map((blob) => blob.key));
+            cursor = page.cursor;
+          } while (cursor);
+          keys.sort().reverse();
+          totalKeys = keys.length;
+          pageKeys = keys.slice(offset, offset + limit);
+        }
         const records = await Promise.all(
           pageKeys.map((key) => store.get(key, { type: 'json' }).catch(() => null)),
         );
@@ -743,8 +772,8 @@ export const handler = async (event) => {
         return jsonResponse(200, {
           data: {
             designs,
-            total: keys.length,
-            nextOffset: offset + limit < keys.length ? offset + limit : null,
+            total: totalKeys,
+            nextOffset: offset + limit < totalKeys ? offset + limit : null,
           },
         });
       }
@@ -811,6 +840,9 @@ export const handler = async (event) => {
       const key = designKey(record);
       await store.setJSON(key, record);
       await store.setJSON(lookupKey(id), { key });
+      if (record.configData?.studio === true) {
+        await store.setJSON(studioIndexKey(id), { key });
+      }
 
       return jsonResponse(200, { data: { design: withLinks(event, record) } });
     }
@@ -825,6 +857,7 @@ export const handler = async (event) => {
       const lookup = await store.get(lookupKey(id), { type: 'json' });
       if (lookup?.key) await store.delete(lookup.key);
       await store.delete(lookupKey(id));
+      await store.delete(studioIndexKey(id)).catch(() => {});
       return jsonResponse(200, { data: { deleted: true } });
     }
 

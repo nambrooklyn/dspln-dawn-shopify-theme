@@ -612,7 +612,19 @@ function StatusScreen({ message }: { message: string }) {
 
 function readInlineDesign(): SavedDesignRecord | null {
   if (typeof window === 'undefined') return null;
-  const encoded = new URLSearchParams(window.location.search).get('design');
+  const params = new URLSearchParams(window.location.search);
+  // Studio hands large payloads (logo images) over via localStorage — the
+  // opener writes the record under ?inline=<key> before window.open.
+  const inlineKey = params.get('inline');
+  if (inlineKey) {
+    try {
+      const raw = window.localStorage.getItem(inlineKey);
+      if (raw) return JSON.parse(raw) as SavedDesignRecord;
+    } catch {
+      return null;
+    }
+  }
+  const encoded = params.get('design');
   if (!encoded) return null;
   try {
     return JSON.parse(atob(encoded)) as SavedDesignRecord;
