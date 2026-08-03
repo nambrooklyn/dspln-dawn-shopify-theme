@@ -829,7 +829,9 @@ const GiConfiguratorInner = memo(() => {
             storageLabel={
               cloudOwnerContext?.isCustomer
                 ? 'Saved to your account'
-                : 'Saved for this browser only'
+                : isStudioMode()
+                  ? 'Saved to DSPLN Studio'
+                  : 'Saved for this browser only'
             }
             isSaving={isSavingDesign}
             hasUnsavedChanges={hasUnsavedChanges}

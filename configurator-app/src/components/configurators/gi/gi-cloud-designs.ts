@@ -1,4 +1,5 @@
 import type { KimonoLogo } from './gi-state';
+import { isStudioMode } from '../shared/studio-mode';
 import type { GiDraftDocument, GiDraftLogoImage } from './gi-draft-storage';
 import type { KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { currentGiProductConfig } from '../shared/gi-product-config';
@@ -19,6 +20,7 @@ type CloudLogoImage = Omit<GiDraftLogoImage, 'blob'> & {
 
 interface CloudDesignConfigData {
   source: string;
+  studio?: boolean;
   version: 1;
   spec: GiDraftDocument['spec'];
   renders?: GiDraftDocument['renders'];
@@ -243,6 +245,7 @@ async function draftToCloudConfigData(
 ): Promise<CloudDesignConfigData> {
   return {
     source: PRODUCT_CONFIG.cloudConfigSource,
+    studio: isStudioMode() || undefined,
     version: 1,
     spec: draft.spec,
     renders: draft.renders,

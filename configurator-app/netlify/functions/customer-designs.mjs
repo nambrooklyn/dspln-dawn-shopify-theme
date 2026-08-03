@@ -730,6 +730,7 @@ export const handler = async (event) => {
             customerEmail: record.customerEmail ?? null,
             orderName: record.orderName ?? null,
             source: record.configData?.source ?? null,
+            studio: record.configData?.studio === true,
             thumbnailUrl,
             createdAt: record.createdAt ?? null,
             updatedAt: record.updatedAt ?? null,
