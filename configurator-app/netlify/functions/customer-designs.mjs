@@ -103,6 +103,19 @@ const absoluteAppUrl = (event, path, params = {}) => {
   return url.toString();
 };
 
+// The storefront only mounts the configurator on the product's alternate
+// template (?view=...). Template names follow the design source:
+// dspln-<garment>-configurator -> <garment>-configurator-product-page,
+// and rashguard sources are already the bare garment name.
+const designViewTemplate = (record) => {
+  const source = record?.configData?.source;
+  if (!source) return 'gi-configurator-product-page';
+  const garment = String(source)
+    .replace(/^dspln-/, '')
+    .replace(/-configurator$/, '');
+  return `${garment}-configurator-product-page`;
+};
+
 const shopifyDesignUrl = (record) => {
   const shopHost =
     record.shopDomain && !record.shopDomain.endsWith('.myshopify.com')
@@ -115,6 +128,7 @@ const shopifyDesignUrl = (record) => {
     : SHOPIFY_GI_PRODUCT_PATH;
   const url = new URL(`https://${shopHost}${productPath}`);
   url.searchParams.set('design', record.id);
+  url.searchParams.set('view', designViewTemplate(record));
   return url.toString();
 };
 
