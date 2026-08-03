@@ -34,6 +34,10 @@ import { StudioTextTool } from './studio-text-tool';
 import { CameraTuner } from './camera-tuner';
 import { ConfiguratorShell } from '../shared/configurator-shell';
 import {
+  DesignAssistant,
+  shouldShowDesignAssistant,
+} from '../../design-assistant/design-assistant';
+import {
   exportGiPdf,
   snapshotCanvas,
   snapshotCanvasCenteredThumbnail,
@@ -298,6 +302,7 @@ const GiConfiguratorInner = memo(() => {
   // load in admin mode so a save overwrites that record, not a guest copy.
   const [adminEditOwner, setAdminEditOwner] = useState<GiCloudOwnerContext | null>(null);
   const [isStudio] = useState(isStudioMode);
+  const [showDesignAssistant] = useState(shouldShowDesignAssistant);
   const draftReadyRef = useRef(false);
   const savingDesignRef = useRef(false);
   const markCleanRef = useRef(false);
@@ -960,6 +965,12 @@ const GiConfiguratorInner = memo(() => {
             // configurator's own saved-designs rail is studio-only.
             null
           )
+        }
+        desktopSceneOverlayContent={
+          showDesignAssistant ? <DesignAssistant placement="desktop" /> : null
+        }
+        mobileOverlayContent={
+          showDesignAssistant ? <DesignAssistant placement="mobile" /> : null
         }
         sceneTopContent={
           <DesignCommandBar

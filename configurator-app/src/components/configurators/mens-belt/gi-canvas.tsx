@@ -38,6 +38,10 @@ import { useDirectionalCanvasTouch } from '../shared/use-directional-canvas-touc
 import { LayerDecal } from '../shared/layer-decal';
 import { FrameTicker } from '../shared/frame-ticker';
 import {
+  VerticalCameraControls,
+  useVerticalCameraPan,
+} from '../shared/vertical-camera-controls';
+import {
   IN_TO_WORLD,
   ProjectedDecal,
   decalLoadStarted,
@@ -640,6 +644,11 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   // pull it from the ref's runtime value when we need methods on it.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controlsRef = useRef<any>(null);
+  useVerticalCameraPan(controlsRef, {
+    centerTarget: CAMERA_TARGET,
+    minTargetY: -0.1,
+    maxTargetY: 2.75,
+  });
 
   // Expose the controls instance for the studio camera tuner (reads
   // controls.target live, same pattern as __giCamera in CanvasBridge).
@@ -736,7 +745,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       const { factor } = (event as CustomEvent<{ factor?: number }>).detail ?? {};
       if (!factor || !Number.isFinite(factor)) return;
 
-      const target = new Vector3(...CAMERA_TARGET);
+      const target = controls.target.clone();
       const offset = camera.position.clone().sub(target);
       const currentDistance = offset.length();
       const maxDistance = useMobileCamera
@@ -751,7 +760,6 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       camera.position.copy(
         target.clone().add(offset.setLength(nextDistance)),
       );
-      controls.target.copy(target);
       controls.update();
     };
 
@@ -1054,6 +1062,7 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
         <Scene useMobileCamera={useMobileCamera} />
       </Canvas>
       <ModelLoadingOverlay />
+      <VerticalCameraControls />
     </div>
   );
 });

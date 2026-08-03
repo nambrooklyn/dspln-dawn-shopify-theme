@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Loader2, ShoppingCart } from 'lucide-react';
 
 import { useRashguardState } from './rashguard-state';
@@ -18,11 +18,13 @@ export const RashguardMobileConfiguratorFlow = memo(
     isAddingToCart,
     cartActionLabel = 'Add',
     cartActionLoadingLabel = 'Adding...',
+    assistantContent,
   }: {
     onAddToCart: () => void;
     isAddingToCart?: boolean;
     cartActionLabel?: string;
     cartActionLoadingLabel?: string;
+    assistantContent?: ReactNode;
   }) => {
     const { selectedPanel, setSelectedPanel, calculateTotal } =
       useRashguardState();
@@ -54,7 +56,13 @@ export const RashguardMobileConfiguratorFlow = memo(
           )}
         </div>
 
-        <div className="border-border mt-5 flex items-center justify-between border-t pt-4">
+        {assistantContent ? (
+          <section className="mt-5 overflow-hidden rounded-xl border border-[#e3ded7] bg-white">
+            {assistantContent}
+          </section>
+        ) : null}
+
+        <div className="border-border mt-3 flex items-center justify-between border-t pt-4">
           <div>
             <p className="text-[10px] font-semibold tracking-[0.16em] uppercase">
               Total

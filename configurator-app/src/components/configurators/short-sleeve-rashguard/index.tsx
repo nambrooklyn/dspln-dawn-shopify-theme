@@ -27,7 +27,17 @@ import {
   type ArtFileOrderInfo,
 } from './rashguard-artfile';
 import type { GarmentViews } from './rashguard-canvas';
-import { RASHGUARD_PRODUCT_CONFIG } from './rashguard-config';
+import {
+  RASHGUARD_ARTWORK_TARGETS,
+  RASHGUARD_COLOR_SWATCHES,
+  RASHGUARD_PARTS,
+  RASHGUARD_PRODUCT_CONFIG,
+} from './rashguard-config';
+import { shouldShowDesignAssistant } from '../../design-assistant/design-assistant';
+import {
+  RashguardDesignAssistant,
+  type RashguardAssistantConfig,
+} from '../../design-assistant/rashguard-design-assistant';
 import { RashguardSavedDesignsPanel, type DraftStatus } from './saved-designs-panel';
 import {
   AUTO_RASHGUARD_DRAFT_ID,
@@ -66,6 +76,19 @@ const SHOPIFY_CART_ADDED_MESSAGE = 'dspln:shopify-cart:added';
 const SHOPIFY_CART_ERROR_MESSAGE = 'dspln:shopify-cart:error';
 const AUTO_SAVE_DELAY_MS = 800;
 const CART_PREVIEW_CAMERA_SETTLE_MS = 850;
+
+const ASSISTANT_CONFIG: RashguardAssistantConfig = {
+  id: 'short-sleeve-rashguard',
+  name: RASHGUARD_PRODUCT_CONFIG.productTitle,
+  parts: [...RASHGUARD_PARTS],
+  artworkTargets: [...RASHGUARD_ARTWORK_TARGETS],
+  colorHexByName: Object.fromEntries(
+    RASHGUARD_COLOR_SWATCHES.map((swatch) => [swatch.name.toLowerCase(), swatch.hex]),
+  ),
+  colorNameByHex: Object.fromEntries(
+    RASHGUARD_COLOR_SWATCHES.map((swatch) => [swatch.hex.toLowerCase(), swatch.name]),
+  ),
+};
 
 interface RashguardCartConfigData {
   kind: 'rashguard-cart-config';
@@ -192,6 +215,7 @@ function captureGarmentViewsSafe(): GarmentViews | null {
 }
 
 const RashguardConfiguratorInner = memo(() => {
+  const [showDesignAssistant] = useState(shouldShowDesignAssistant);
   const {
     setCameraView,
     getCanvasEl,
@@ -958,6 +982,24 @@ const RashguardConfiguratorInner = memo(() => {
             onDeleteDesign={handleDeleteDesign}
             onCopyCustomerLink={handleCopyCustomerLink}
           />
+        }
+        desktopSceneOverlayContent={
+          showDesignAssistant ? (
+            <RashguardDesignAssistant
+              placement="desktop"
+              useProductState={useRashguardState}
+              config={ASSISTANT_CONFIG}
+            />
+          ) : null
+        }
+        mobileOverlayContent={
+          showDesignAssistant ? (
+            <RashguardDesignAssistant
+              placement="mobile"
+              useProductState={useRashguardState}
+              config={ASSISTANT_CONFIG}
+            />
+          ) : null
         }
         sceneTopContent={
           <DesignCommandBar

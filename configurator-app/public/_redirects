@@ -3,4 +3,5 @@
 # SPA rule below. This file wins over netlify.toml redirects.
 /  https://dspln.com  302!
 /api/customer-designs /.netlify/functions/customer-designs 200
+/api/design-assistant /.netlify/functions/design-assistant 200
 /* /index.html 200

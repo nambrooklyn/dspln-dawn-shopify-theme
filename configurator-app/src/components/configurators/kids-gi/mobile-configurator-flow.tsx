@@ -15,6 +15,7 @@ import {
   GI_PART_PRICES,
   KIMONO_LOGO_SLOT_LABEL,
   KIMONO_LOGO_SLOTS,
+  STUDIO_ONLY_KIMONO_LOGO_SLOTS,
   KIMONO_SUBPART_LABEL,
   KIMONO_SUBPARTS,
   PANT_LOGO_SLOT_LABEL,
@@ -30,6 +31,7 @@ import {
   type CameraView,
   type GiPart,
 } from './gi-config';
+import { isStudioMode } from '../shared/studio-mode';
 import { SectionAddRemove } from './part-sections/section-add-remove';
 import { SectionColorSwatches } from './part-sections/section-color-swatches';
 import { SectionKimonoSize } from './part-sections/section-kimono-size';
@@ -47,6 +49,7 @@ const KIMONO_LOGO_PRICE_LABEL: Record<
   'left-sleeve': '+$10',
   'right-sleeve': '+$10',
   back: '+$25',
+  'back-skirt': '+$25',
 };
 
 const ADD_ON_PRICE = 10;
@@ -192,11 +195,13 @@ export const MobileConfiguratorFlow = memo(
     isAddingToCart,
     cartActionLabel = 'Add to Cart',
     cartActionLoadingLabel = 'Adding...',
+    assistantContent,
   }: {
     onAddToCart: () => void;
     isAddingToCart?: boolean;
     cartActionLabel?: string;
     cartActionLoadingLabel?: string;
+    assistantContent?: ReactNode;
   }) => {
     const {
       selectedPart,
@@ -273,7 +278,10 @@ export const MobileConfiguratorFlow = memo(
             />
           ),
         })),
-        ...KIMONO_LOGO_SLOTS.map<MobileStep>((slot) => {
+        ...KIMONO_LOGO_SLOTS.filter(
+          (slot) =>
+            isStudioMode() || !STUDIO_ONLY_KIMONO_LOGO_SLOTS.includes(slot),
+        ).map<MobileStep>((slot) => {
           const logo = kimonoLogos[slot];
           return {
             key: `kimono-logo-${slot}`,
@@ -618,6 +626,11 @@ export const MobileConfiguratorFlow = memo(
         </MobileStepFrame>
         <div className="bg-background border-border sticky bottom-0 z-20 border-t px-5 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
           <div className="mx-auto grid max-w-[44rem] gap-3">
+            {assistantContent ? (
+              <section className="overflow-hidden rounded-xl border border-[#e3ded7] bg-white">
+                {assistantContent}
+              </section>
+            ) : null}
             <div className="flex items-baseline justify-between gap-4">
               <p className="text-foreground min-w-0 truncate text-left text-base font-semibold tracking-[0.08em] uppercase">
                 Kids Custom Gi

@@ -31,6 +31,10 @@ import {
 import { SavedDesignsRail, type DraftStatus } from './saved-designs-rail';
 import { ConfiguratorShell } from './configurator-shell';
 import {
+  DesignAssistant,
+  shouldShowDesignAssistant,
+} from '../../design-assistant/design-assistant';
+import {
   exportGiPdf,
   snapshotCanvas,
   snapshotCanvasCenteredThumbnail,
@@ -53,6 +57,7 @@ import type { KimonoLogo } from './gi-state';
 import { APPLY_TARGETS, useUploadedLogos } from './use-uploaded-logos';
 import { UploadedLogosProvider } from './uploaded-logos-context';
 import { CameraTuner } from './camera-tuner';
+import { StudioTextTool } from './studio-text-tool';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
 import { storefrontOrigin, storefrontUrl } from '../shared/storefront-links';
 import {
@@ -196,6 +201,7 @@ function getAdminEditMode() {
 
 
 const GiConfiguratorInner = memo(() => {
+  const [showDesignAssistant] = useState(shouldShowDesignAssistant);
   const {
     layers,
     cameraView,
@@ -790,6 +796,24 @@ const GiConfiguratorInner = memo(() => {
             onGenerateTechPack={isStudioMode() ? handleGenerateTechPack : undefined}
           />
         }
+        desktopSceneOverlayContent={
+          showDesignAssistant ? (
+            <DesignAssistant
+              placement="desktop"
+              productKey="kids"
+              useProductState={useGiState}
+            />
+          ) : null
+        }
+        mobileOverlayContent={
+          showDesignAssistant ? (
+            <DesignAssistant
+              placement="mobile"
+              productKey="kids"
+              useProductState={useGiState}
+            />
+          ) : null
+        }
         sceneTopContent={
           <div className="flex w-full items-start gap-4">
             {cloudOwnerContext?.isCustomer ? (
@@ -831,6 +855,7 @@ const GiConfiguratorInner = memo(() => {
         railContent={!isStudioMode() ? undefined :
           <>
           <CameraTuner />
+          <StudioTextTool />
           <SavedDesignsRail
             status={draftStatus}
             savedDesigns={savedDesigns}

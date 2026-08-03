@@ -211,7 +211,11 @@ export const KIMONO_LOGO_SLOTS = [
   'left-sleeve',
   'right-sleeve',
   'back',
+  'back-skirt',
 ] as const;
+export const STUDIO_ONLY_KIMONO_LOGO_SLOTS: readonly KimonoLogoSlot[] = [
+  'back-skirt',
+];
 export type KimonoLogoSlot = (typeof KIMONO_LOGO_SLOTS)[number];
 
 export const KIMONO_LOGO_SLOT_LABEL: Record<KimonoLogoSlot, string> = {
@@ -219,6 +223,7 @@ export const KIMONO_LOGO_SLOT_LABEL: Record<KimonoLogoSlot, string> = {
   'left-sleeve': 'Logo on Left Sleeve',
   'right-sleeve': 'Logo on Right Sleeve',
   back: 'Big Logo on Back',
+  'back-skirt': 'Logo Below Belt (Back)',
 };
 
 export interface KimonoLogoAnchor {
@@ -259,6 +264,11 @@ export const KIMONO_LOGO_ANCHORS: Record<KimonoLogoSlot, KimonoLogoAnchor> = {
     position: [0, 1.73, -0.42],
     rotation: [0, Math.PI, 0],
     defaultSizeIn: { w: 3.7, h: 3.7 },
+  },
+  'back-skirt': {
+    position: [0, 1.43, -0.46],
+    rotation: [0, Math.PI, 0],
+    defaultSizeIn: { w: 4.2, h: 1.6 },
   },
 };
 
@@ -374,6 +384,7 @@ export type CameraView =
   | 'left-sleeve-close'
   | 'right-sleeve-close'
   | 'back-close'
+  | 'back-skirt-close'
   | 'left-thigh-close'
   | 'right-thigh-close'
   | 'body-close'
@@ -405,6 +416,7 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   'left-sleeve-close': [2.35, 2.01, 0.02],
   'right-sleeve-close': [-2.89, 2.2, 0.82],
   'back-close': [-0.07, 2.05, -1.92],
+  'back-skirt-close': [0, 1, -2.1],
   'left-thigh-close': [1.3, 0.85, 1.7],
   'right-thigh-close': [-1.3, 0.85, 1.7],
   'body-close': [0.59, 1.78, 2.5],
@@ -432,6 +444,7 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   'left-sleeve-close': [2.35, 2.01, 0.02],
   'right-sleeve-close': [-2.89, 2.2, 0.82],
   'back-close': [-0.07, 2.05, -1.92],
+  'back-skirt-close': [0, 1, -2.1],
   'left-thigh-close': [1.3, 0.85, 1.7],
   'right-thigh-close': [-1.3, 0.85, 1.7],
   'body-close': [0.59, 1.78, 2.5],
@@ -463,6 +476,7 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   'left-sleeve-close': [0.4, 1.45, 0],
   'right-sleeve-close': [-0.4, 1.45, 0],
   'back-close': [0, 1.5, 0],
+  'back-skirt-close': [0, 0.98, 0],
   'left-thigh-close': [0.22, 0.8, 0],
   'right-thigh-close': [-0.22, 0.8, 0],
   'body-close': [0, 1.4, 0],
@@ -496,6 +510,7 @@ export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = 
   'left-sleeve': 'left-sleeve-close',
   'right-sleeve': 'right-sleeve-close',
   back: 'back-close',
+  'back-skirt': 'back-skirt-close',
 };
 
 export const PANT_SUBPART_CAMERA_VIEW: Record<PantSubPart, CameraView> = {

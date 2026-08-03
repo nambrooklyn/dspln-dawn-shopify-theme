@@ -5,10 +5,12 @@ import {
   KIMONO_LOGO_SLOT_CAMERA_VIEW,
   KIMONO_LOGO_SLOT_LABEL,
   KIMONO_LOGO_SLOTS,
+  STUDIO_ONLY_KIMONO_LOGO_SLOTS,
   KIMONO_SUBPART_CAMERA_VIEW,
   KIMONO_SUBPART_LABEL,
   KIMONO_SUBPARTS,
 } from '../gi-config';
+import { isStudioMode } from '../../shared/studio-mode';
 import { SectionAddRemove } from './section-add-remove';
 import { SectionColorSwatches } from './section-color-swatches';
 import { SectionKimonoSize } from './section-kimono-size';
@@ -22,6 +24,7 @@ const KIMONO_LOGO_PRICE_LABEL: Record<
   'left-sleeve': '+$10',
   'right-sleeve': '+$10',
   back: '+$25',
+  'back-skirt': '+$25',
 };
 
 /**
@@ -80,7 +83,10 @@ export const KimonoSections = memo(() => {
 
       {/* SECTIONS 7–10 — Logo uploads for fixed anchor positions on
           the kimono. Each slot is independent (own upload + remove). */}
-      {KIMONO_LOGO_SLOTS.map((slot) => {
+      {KIMONO_LOGO_SLOTS.filter(
+        (slot) =>
+          isStudioMode() || !STUDIO_ONLY_KIMONO_LOGO_SLOTS.includes(slot),
+      ).map((slot) => {
         const logo = kimonoLogos[slot];
         return (
           <SectionLogoUpload

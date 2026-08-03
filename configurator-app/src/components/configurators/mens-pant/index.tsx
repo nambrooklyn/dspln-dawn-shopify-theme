@@ -33,6 +33,10 @@ import { StudioTextTool } from './studio-text-tool';
 import { CameraTuner } from './camera-tuner';
 import { ConfiguratorShell } from './configurator-shell';
 import {
+  DesignAssistant,
+  shouldShowDesignAssistant,
+} from '../../design-assistant/design-assistant';
+import {
   exportGiPdf,
   snapshotCanvas,
   snapshotCanvasCenteredThumbnail,
@@ -254,6 +258,7 @@ function readLocalCartDesignDraft(designId: string | null): GiDraftDocument | nu
 }
 
 const GiConfiguratorInner = memo(() => {
+  const [showDesignAssistant] = useState(shouldShowDesignAssistant);
   const {
     layers,
     cameraView,
@@ -958,6 +963,24 @@ const GiConfiguratorInner = memo(() => {
             // flow ships (matches the womens/kids configurators).
             null
           )
+        }
+        desktopSceneOverlayContent={
+          showDesignAssistant ? (
+            <DesignAssistant
+              placement="desktop"
+              productKey="mens-pant"
+              useProductState={useGiState}
+            />
+          ) : null
+        }
+        mobileOverlayContent={
+          showDesignAssistant ? (
+            <DesignAssistant
+              placement="mobile"
+              productKey="mens-pant"
+              useProductState={useGiState}
+            />
+          ) : null
         }
         sceneTopContent={
           <DesignCommandBar

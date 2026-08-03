@@ -52,6 +52,12 @@ import type { GiTextLayer } from './gi-state';
 const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
 const MOBILE_CAMERA_MAX_DISTANCE = 3.35;
+const CAMERA_PAN_EVENT = 'dspln:configurator-camera:pan';
+const CAMERA_VERTICAL_PAN_STEP = 0.22;
+// The model spans roughly floor-to-head in this range. These wider limits
+// keep every part reachable even at the closest allowed zoom.
+const CAMERA_TARGET_MIN_Y = -0.1;
+const CAMERA_TARGET_MAX_Y = 2.75;
 
 // Surface normal for each slot — derived from the slot's plane
 // rotation (Y axis only, for our four anchors). Used to push the
@@ -562,7 +568,10 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       const { factor } = (event as CustomEvent<{ factor?: number }>).detail ?? {};
       if (!factor || !Number.isFinite(factor)) return;
 
-      const target = new Vector3(...CAMERA_TARGET);
+      // Zoom around the customer's current pan target. Resetting to the
+      // default CAMERA_TARGET here made a pinch snap the model back to its
+      // full centered view after the customer had moved up or down.
+      const target = controls.target.clone();
       const offset = camera.position.clone().sub(target);
       const currentDistance = offset.length();
       const maxDistance = useMobileCamera
@@ -575,7 +584,6 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       if (currentDistance <= 0) return;
 
       camera.position.copy(target.clone().add(offset.setLength(nextDistance)));
-      controls.target.copy(target);
       controls.update();
     };
 
@@ -587,6 +595,49 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       );
     };
   }, [camera, useMobileCamera]);
+
+  // The full gi can extend beyond the viewport at close zoom levels. Keep the
+  // camera and orbit target moving together so customers can inspect the
+  // collar, chest, belt, and pants without changing their zoom.
+  useEffect(() => {
+    const handleCameraPan = (event: Event) => {
+      const controls = controlsRef.current;
+      if (!controls) return;
+
+      const { action } = (
+        event as CustomEvent<{ action?: 'up' | 'down' | 'center' }>
+      ).detail ?? {};
+      if (action !== 'up' && action !== 'down' && action !== 'center') return;
+
+      if (action === 'center') {
+        const centeredTarget = new Vector3(...CAMERA_TARGET);
+        camera.position.add(centeredTarget.clone().sub(controls.target));
+        controls.target.copy(centeredTarget);
+        controls.update();
+        return;
+      }
+
+      const requestedDelta =
+        action === 'up'
+          ? CAMERA_VERTICAL_PAN_STEP
+          : -CAMERA_VERTICAL_PAN_STEP;
+      const nextTargetY = Math.min(
+        CAMERA_TARGET_MAX_Y,
+        Math.max(CAMERA_TARGET_MIN_Y, controls.target.y + requestedDelta),
+      );
+      const appliedDelta = nextTargetY - controls.target.y;
+      if (Math.abs(appliedDelta) < 0.001) return;
+
+      controls.target.y = nextTargetY;
+      camera.position.y += appliedDelta;
+      controls.update();
+    };
+
+    window.addEventListener(CAMERA_PAN_EVENT, handleCameraPan);
+    return () => {
+      window.removeEventListener(CAMERA_PAN_EVENT, handleCameraPan);
+    };
+  }, [camera]);
 
   // ——— Studio drag-to-move for kimono artwork ———
   // Grab a logo/text decal and slide it along the jacket: the pointer is
@@ -960,7 +1011,8 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       <OrbitControls
         ref={controlsRef}
         target={CAMERA_TARGET}
-        enablePan={false}
+        enablePan
+        screenSpacePanning
         enableDamping
         dampingFactor={0.08}
         rotateSpeed={0.7}
@@ -992,6 +1044,11 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
   const [useMobileCamera, setUseMobileCamera] = useState(false);
   const initialPosition = cameraViewToPosition(cameraView, useMobileCamera);
   const touchHandlers = useDirectionalCanvasTouch();
+  const moveCamera = useCallback((action: 'up' | 'down' | 'center') => {
+    window.dispatchEvent(
+      new CustomEvent(CAMERA_PAN_EVENT, { detail: { action } }),
+    );
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1046,6 +1103,38 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
         <Scene useMobileCamera={useMobileCamera} />
       </Canvas>
       <ModelLoadingOverlay />
+      <div
+        className="absolute right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col overflow-hidden rounded-full border border-black/15 bg-white/90 shadow-md backdrop-blur-sm"
+        aria-label="Move model vertically"
+      >
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center border-b border-black/10 text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          aria-label="Move view up"
+          title="Move view up"
+          onClick={() => moveCamera('up')}
+        >
+          <span aria-hidden="true">&#8593;</span>
+        </button>
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center border-b border-black/10 text-lg text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          aria-label="Re-center model"
+          title="Re-center model"
+          onClick={() => moveCamera('center')}
+        >
+          <span aria-hidden="true">&#9678;</span>
+        </button>
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center text-xl text-black transition hover:bg-black hover:text-white active:bg-black/80"
+          aria-label="Move view down"
+          title="Move view down"
+          onClick={() => moveCamera('down')}
+        >
+          <span aria-hidden="true">&#8595;</span>
+        </button>
+      </div>
     </div>
   );
 });

@@ -1,4 +1,4 @@
-import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls } from '@react-three/drei';
 import { ModelLoadingOverlay } from '../shared/model-loading-overlay';
@@ -7,12 +7,16 @@ import {
   CanvasTexture,
   Color,
   DoubleSide,
+  Euler,
   Mesh,
   MeshBasicMaterial,
+  Matrix4,
   PerspectiveCamera,
+  Quaternion,
   SRGBColorSpace,
   TextureLoader,
   Vector3,
+  Vector2,
   WebGLRenderTarget,
   type Scene as ThreeScene,
   type Texture,
@@ -20,7 +24,7 @@ import {
 } from 'three';
 
 import { GiGlbModel } from './gi-glb-model';
-import { useGiState, cameraViewToPosition, cameraViewToTarget } from './gi-state';
+import { useGiState, cameraViewToPosition, cameraViewToTarget, type GiTextLayer } from './gi-state';
 import {
   CAMERA_POSITIONS,
   CAMERA_TARGET,
@@ -38,11 +42,17 @@ import { useDirectionalCanvasTouch } from '../shared/use-directional-canvas-touc
 import { LayerDecal } from '../shared/layer-decal';
 import { FrameTicker } from '../shared/frame-ticker';
 import {
+  VerticalCameraControls,
+  useVerticalCameraPan,
+} from '../shared/vertical-camera-controls';
+import {
   IN_TO_WORLD,
   ProjectedDecal,
   decalLoadStarted,
   decalLoadSettled,
 } from '../shared/projected-decal';
+import { isStudioMode } from '../shared/studio-mode';
+import { renderTextImage } from '../shared/text-image';
 
 const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
@@ -58,6 +68,7 @@ const SLOT_NORMAL: Record<KimonoLogoSlot, [number, number, number]> = {
   'left-sleeve': [0.707, 0, 0.707],
   'right-sleeve': [-0.707, 0, 0.707],
   back: [0, 0, -1],
+  'back-skirt': [0, 0, -1],
 };
 
 const BELT_TEXT_PLACEMENTS = {
@@ -621,6 +632,48 @@ CanvasBridge.displayName = 'CanvasBridge';
 
 const MOBILE_CAMERA_QUERY = '(max-width: 1023px)';
 
+const TEXT_LAYER_BASE_HEIGHT_IN = 1.6;
+
+const TextLayerDecal = memo(
+  ({ layer, meshes }: { layer: GiTextLayer; meshes: Mesh[] }) => {
+    const image = useMemo(
+      () => renderTextImage(layer.text, layer.font, layer.colorHex),
+      [layer.text, layer.font, layer.colorHex],
+    );
+    const rotation = useMemo(() => {
+      const surface = new Quaternion().setFromEuler(new Euler(...layer.rotation));
+      surface.multiply(
+        new Quaternion().setFromAxisAngle(
+          new Vector3(0, 0, 1),
+          (layer.rotateDeg * Math.PI) / 180,
+        ),
+      );
+      const euler = new Euler().setFromQuaternion(surface);
+      return [euler.x, euler.y, euler.z] as [number, number, number];
+    }, [layer.rotation, layer.rotateDeg]);
+
+    if (!image) return null;
+    const heightIn = TEXT_LAYER_BASE_HEIGHT_IN * (layer.scalePct / 100);
+    const widthIn = heightIn * (image.width / image.height);
+    return meshes.map((mesh) => (
+      <ProjectedDecal
+        key={`${layer.id}-${mesh.uuid}`}
+        mesh={mesh}
+        imageUrl={image.dataUrl}
+        position={layer.position}
+        rotation={rotation}
+        widthWorld={widthIn * IN_TO_WORLD}
+        heightWorld={heightIn * IN_TO_WORLD}
+        depthWorld={0.3}
+        surfaceOffsetWorld={0.008}
+        depthTest
+        normalCullMinDot={0.18}
+      />
+    ));
+  },
+);
+TextLayerDecal.displayName = 'TextLayerDecal';
+
 const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   const {
     layers,
@@ -629,6 +682,10 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     cameraView,
     cameraViewResetKey,
     kimonoLogos,
+    kimonoLogoAnchors,
+    setKimonoLogoAnchor,
+    textLayers,
+    updateTextLayer,
     computedKimonoAnchors,
     kimonoBodyMesh,
     kimonoLogoMeshes,
@@ -642,11 +699,16 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     beltMesh,
     beltTextTargetMeshes,
   } = useGiState();
-  const { camera } = useThree();
+  const { camera, gl, raycaster } = useThree();
   // OrbitControls instance ref; the impl type is awkward to import so we
   // pull it from the ref's runtime value when we need methods on it.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controlsRef = useRef<any>(null);
+  useVerticalCameraPan(controlsRef, {
+    centerTarget: CAMERA_TARGET,
+    minTargetY: -0.1,
+    maxTargetY: 2.75,
+  });
 
   // Expose the controls instance for the studio camera tuner (reads
   // controls.target live, same pattern as __giCamera in CanvasBridge).
@@ -743,7 +805,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       const { factor } = (event as CustomEvent<{ factor?: number }>).detail ?? {};
       if (!factor || !Number.isFinite(factor)) return;
 
-      const target = new Vector3(...CAMERA_TARGET);
+      const target = controls.target.clone();
       const offset = camera.position.clone().sub(target);
       const currentDistance = offset.length();
       const maxDistance = useMobileCamera
@@ -756,7 +818,6 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       if (currentDistance <= 0) return;
 
       camera.position.copy(target.clone().add(offset.setLength(nextDistance)));
-      controls.target.copy(target);
       controls.update();
     };
 
@@ -768,6 +829,84 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       );
     };
   }, [camera, useMobileCamera]);
+
+  const isStudio = useMemo(() => isStudioMode(), []);
+  const draggingSlotRef = useRef<KimonoLogoSlot | null>(null);
+  const draggingTextIdRef = useRef<string | null>(null);
+  const lastDragUpdateRef = useRef(0);
+  const kimonoDragSurfaces = useMemo(() => {
+    if (!kimonoBodyMesh) return [];
+    const lapel = kimonoBodyMesh.parent?.getObjectByName('Kimono_Lapel');
+    return lapel && (lapel as Mesh).isMesh
+      ? [kimonoBodyMesh, lapel as Mesh]
+      : [kimonoBodyMesh];
+  }, [kimonoBodyMesh]);
+
+  const anchorFromPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      if (kimonoDragSurfaces.length === 0) return null;
+      const rect = gl.domElement.getBoundingClientRect();
+      const ndc = new Vector2(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(ndc, camera);
+      const hit = raycaster.intersectObjects(kimonoDragSurfaces, false)[0];
+      if (!hit?.face) return null;
+      const normal = hit.face.normal
+        .clone()
+        .transformDirection(hit.object.matrixWorld)
+        .normalize();
+      const position = hit.point.clone().addScaledVector(normal, 0.012);
+      const euler = new Euler().setFromQuaternion(
+        new Quaternion().setFromRotationMatrix(
+          new Matrix4().lookAt(
+            position.clone().add(normal),
+            position,
+            new Vector3(0, 1, 0),
+          ),
+        ),
+      );
+      return {
+        position: [position.x, position.y, position.z] as [number, number, number],
+        rotation: [euler.x, euler.y, euler.z] as [number, number, number],
+      };
+    },
+    [camera, gl, kimonoDragSurfaces, raycaster],
+  );
+
+  useEffect(() => {
+    if (!isStudio) return;
+    const handleMove = (event: PointerEvent) => {
+      if (!draggingSlotRef.current && !draggingTextIdRef.current) return;
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastDragUpdateRef.current < 90) return;
+      lastDragUpdateRef.current = now;
+      const anchor = anchorFromPointer(event.clientX, event.clientY);
+      if (!anchor) return;
+      if (draggingSlotRef.current) setKimonoLogoAnchor(draggingSlotRef.current, anchor);
+      else if (draggingTextIdRef.current) updateTextLayer(draggingTextIdRef.current, anchor);
+    };
+    const handleUp = (event: PointerEvent) => {
+      const slot = draggingSlotRef.current;
+      const textId = draggingTextIdRef.current;
+      if (!slot && !textId) return;
+      draggingSlotRef.current = null;
+      draggingTextIdRef.current = null;
+      const anchor = anchorFromPointer(event.clientX, event.clientY);
+      if (anchor && slot) setKimonoLogoAnchor(slot, anchor);
+      if (anchor && textId) updateTextLayer(textId, anchor);
+      if (controlsRef.current) controlsRef.current.enabled = true;
+      document.body.style.cursor = '';
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [anchorFromPointer, isStudio, setKimonoLogoAnchor, updateTextLayer]);
 
   return (
     <>
@@ -848,8 +987,9 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
               logo.imageWidth,
               logo.imageHeight,
             );
+            const override = kimonoLogoAnchors[slot];
             const targetMesh = kimonoLogoTargetMeshes[slot];
-            if (targetMesh) {
+            if (targetMesh && !override) {
               return (
                 <LogoTargetMesh
                   key={`${slot}-${targetMesh.uuid}`}
@@ -860,23 +1000,27 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                 />
               );
             }
-            const position = computedKimonoAnchors?.[slot] ?? cfg.position;
+            const position =
+              override?.position ?? computedKimonoAnchors?.[slot] ?? cfg.position;
+            const rotation = override?.rotation ?? cfg.rotation;
             const isSleeve = slot === 'left-sleeve' || slot === 'right-sleeve';
-            const targetMeshes =
-              slot !== 'back' && kimonoLogoMeshes.length > 0
+            const isBackPanel = slot === 'back' || slot === 'back-skirt';
+            const targetMeshes = override
+              ? kimonoDragSurfaces
+              : !isBackPanel && kimonoLogoMeshes.length > 0
                 ? kimonoLogoMeshes
                 : [kimonoBodyMesh];
-            return targetMeshes.map((mesh) => (
+            const decals = targetMeshes.map((mesh) => (
               <ProjectedDecal
                 key={`${slot}-${mesh.uuid}`}
                 mesh={mesh}
                 imageUrl={logo.imageUrl}
                 position={position}
-                rotation={cfg.rotation}
+                rotation={rotation}
                 widthWorld={decalSize.w * IN_TO_WORLD}
                 heightWorld={decalSize.h * IN_TO_WORLD}
                 depthWorld={
-                  slot === 'back'
+                  isBackPanel
                     ? // Deep enough to keep projecting where the jacket
                       // tapers inward at the waist — 0.36 clipped the
                       // bottom of a full-size back logo.
@@ -885,20 +1029,84 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                         ? 0.32
                         : undefined
                 }
-                surfaceOffsetWorld={slot === 'back' ? 0.008 : 0.003}
+                surfaceOffsetWorld={isBackPanel ? 0.008 : 0.003}
                 depthTest
-                polygonOffsetFactor={slot === 'back' ? -2 : undefined}
-                polygonOffsetUnits={slot === 'back' ? -2 : undefined}
+                polygonOffsetFactor={isBackPanel ? -2 : undefined}
+                polygonOffsetUnits={isBackPanel ? -2 : undefined}
                 normalCullMinDot={
                   // The deeper back box can catch sleeve fabric hanging
                   // beside the torso; sleeves face sideways, so culling
                   // triangles that don't face backwards drops them while
                   // keeping the back panel (and its waist taper).
-                  slot === 'back' ? 0.35 : 0.18
+                  slot === 'back' && !override ? 0.35 : 0.18
                 }
-                surfaceIsland={slot === 'back' ? 'largest' : 'frontmost'}
+                surfaceIsland={
+                  override || slot === 'back-skirt'
+                    ? undefined
+                    : slot === 'back'
+                      ? 'largest'
+                      : 'frontmost'
+                }
               />
             ));
+            if (!isStudio) return decals;
+            return (
+              <group
+                key={slot}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  draggingSlotRef.current = slot;
+                  lastDragUpdateRef.current = 0;
+                  if (controlsRef.current) controlsRef.current.enabled = false;
+                  document.body.style.cursor = 'grabbing';
+                }}
+                onPointerOver={() => {
+                  if (!draggingSlotRef.current) document.body.style.cursor = 'grab';
+                }}
+                onPointerOut={() => {
+                  if (!draggingSlotRef.current) document.body.style.cursor = '';
+                }}
+              >
+                {decals}
+              </group>
+            );
+          })
+        : null}
+
+      {partVisibility.jacket && scenePartVisibility.jacket && kimonoBodyMesh
+        ? textLayers.map((layer) => {
+            const decal = (
+              <TextLayerDecal
+                key={layer.id}
+                layer={layer}
+                meshes={kimonoDragSurfaces}
+              />
+            );
+            if (!isStudio) return decal;
+            return (
+              <group
+                key={layer.id}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  draggingTextIdRef.current = layer.id;
+                  lastDragUpdateRef.current = 0;
+                  if (controlsRef.current) controlsRef.current.enabled = false;
+                  document.body.style.cursor = 'grabbing';
+                }}
+                onPointerOver={() => {
+                  if (!draggingSlotRef.current && !draggingTextIdRef.current) {
+                    document.body.style.cursor = 'grab';
+                  }
+                }}
+                onPointerOut={() => {
+                  if (!draggingSlotRef.current && !draggingTextIdRef.current) {
+                    document.body.style.cursor = '';
+                  }
+                }}
+              >
+                {decal}
+              </group>
+            );
           })
         : null}
 
@@ -1053,6 +1261,7 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
         <Scene useMobileCamera={useMobileCamera} />
       </Canvas>
       <ModelLoadingOverlay />
+      <VerticalCameraControls />
     </div>
   );
 });

@@ -68,6 +68,22 @@ export interface GiLayer {
   visible: boolean;
 }
 
+export interface KimonoLogoAnchorOverride {
+  position: [number, number, number];
+  rotation: [number, number, number];
+}
+
+export interface GiTextLayer {
+  id: string;
+  text: string;
+  font: string;
+  colorHex: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  rotateDeg: number;
+  scalePct: number;
+}
+
 export interface GiSerializedState {
   kind: 'kids-gi';
   partColors: Record<GiPart, string>;
@@ -94,6 +110,7 @@ export interface GiSerializedState {
         }
       >
     >;
+    logoAnchors?: Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>;
   };
   belt: {
     size: string;
@@ -132,6 +149,7 @@ export interface GiSerializedState {
     >;
   };
   layers: Array<Omit<GiLayer, 'imageUrl'> & { imageDataUrl?: string }>;
+  textLayers?: GiTextLayer[];
   cameraView: CameraView;
   // Present only when a "Custom Measurements" size is selected. Optional so
   // designs saved before the custom-sizing upcharge still hydrate.
@@ -208,6 +226,15 @@ interface GiStateValue {
   kimonoLogos: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
   setKimonoLogo: (slot: KimonoLogoSlot, logo: KimonoLogo) => void;
   removeKimonoLogo: (slot: KimonoLogoSlot) => void;
+  kimonoLogoAnchors: Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>;
+  setKimonoLogoAnchor: (
+    slot: KimonoLogoSlot,
+    anchor: KimonoLogoAnchorOverride | null,
+  ) => void;
+  textLayers: GiTextLayer[];
+  addTextLayer: (layer: GiTextLayer) => void;
+  updateTextLayer: (id: string, patch: Partial<Omit<GiTextLayer, 'id'>>) => void;
+  removeTextLayer: (id: string) => void;
   pantLogos: Partial<Record<PantLogoSlot, KimonoLogo>>;
   setPantLogo: (slot: PantLogoSlot, logo: KimonoLogo) => void;
   removePantLogo: (slot: PantLogoSlot) => void;
@@ -354,8 +381,42 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     },
     [],
   );
+  const [kimonoLogoAnchors, setKimonoLogoAnchorsState] = useState<
+    Partial<Record<KimonoLogoSlot, KimonoLogoAnchorOverride>>
+  >({});
+  const setKimonoLogoAnchor = useCallback(
+    (slot: KimonoLogoSlot, anchor: KimonoLogoAnchorOverride | null) => {
+      setKimonoLogoAnchorsState((prev) => {
+        const next = { ...prev };
+        if (anchor) next[slot] = anchor;
+        else delete next[slot];
+        return next;
+      });
+    },
+    [],
+  );
+  const [textLayers, setTextLayersState] = useState<GiTextLayer[]>([]);
+  const addTextLayer = useCallback((layer: GiTextLayer) => {
+    setTextLayersState((prev) => [...prev, layer]);
+  }, []);
+  const updateTextLayer = useCallback(
+    (id: string, patch: Partial<Omit<GiTextLayer, 'id'>>) => {
+      setTextLayersState((prev) =>
+        prev.map((layer) => (layer.id === id ? { ...layer, ...patch } : layer)),
+      );
+    },
+    [],
+  );
+  const removeTextLayer = useCallback((id: string) => {
+    setTextLayersState((prev) => prev.filter((layer) => layer.id !== id));
+  }, []);
   const removeKimonoLogo = useCallback((slot: KimonoLogoSlot) => {
     setKimonoLogosState((prev) => {
+      const next = { ...prev };
+      delete next[slot];
+      return next;
+    });
+    setKimonoLogoAnchorsState((prev) => {
       const next = { ...prev };
       delete next[slot];
       return next;
@@ -576,6 +637,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
           },
         },
         logos,
+        logoAnchors: kimonoLogoAnchors,
       },
       belt: {
         size: beltSize,
@@ -618,6 +680,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
         },
       },
       layers: layers.map(({ imageUrl: _imageUrl, ...rest }) => rest),
+      textLayers,
       cameraView,
     };
   }, [
@@ -627,6 +690,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     customSizeNotes,
     kimonoSubColors,
     kimonoLogos,
+    kimonoLogoAnchors,
     pantLogos,
     beltEmbroidery,
     beltSize,
@@ -634,6 +698,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
     pantSize,
     pantSubColors,
     layers,
+    textLayers,
     cameraView,
   ]);
 
@@ -670,7 +735,9 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
 	        rightThreadColor: state.belt.embroidery.rightThreadColor,
 	      });
       setKimonoLogosState({ ...(logoImages?.kimono ?? {}) });
+      setKimonoLogoAnchorsState({ ...(state.kimono.logoAnchors ?? {}) });
       setPantLogosState({ ...(logoImages?.pant ?? {}) });
+      setTextLayersState([...(state.textLayers ?? [])]);
       setLayers([]);
       setSelectedLayerId(null);
       // Always present a restored design from the front — resuming at
@@ -711,6 +778,12 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       kimonoLogos,
       setKimonoLogo,
       removeKimonoLogo,
+      kimonoLogoAnchors,
+      setKimonoLogoAnchor,
+      textLayers,
+      addTextLayer,
+      updateTextLayer,
+      removeTextLayer,
       pantLogos,
       setPantLogo,
       removePantLogo,
@@ -768,6 +841,12 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       kimonoLogos,
       setKimonoLogo,
       removeKimonoLogo,
+      kimonoLogoAnchors,
+      setKimonoLogoAnchor,
+      textLayers,
+      addTextLayer,
+      updateTextLayer,
+      removeTextLayer,
       pantLogos,
       setPantLogo,
       removePantLogo,

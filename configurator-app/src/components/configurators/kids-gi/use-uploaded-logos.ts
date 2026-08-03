@@ -42,6 +42,7 @@ export const KIMONO_UPLOAD_LABEL: Record<KimonoLogoSlot, string> = {
   'left-sleeve': 'Left Sleeve',
   'right-sleeve': 'Right Sleeve',
   back: 'Back',
+  'back-skirt': 'Below Belt (Back)',
 };
 
 export const PANT_UPLOAD_LABEL: Record<PantLogoSlot, string> = {
