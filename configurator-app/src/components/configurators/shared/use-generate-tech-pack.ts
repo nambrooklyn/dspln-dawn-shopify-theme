@@ -28,6 +28,6 @@ export function useGenerateTechPack(
 
     const encoded = btoa(JSON.stringify(designRecord));
     const techPackPath = isRashguard ? 'rashguard' : 'gi';
-    window.open(`/tech-pack/${techPackPath}?design=${encoded}&silent=1`, '_blank', 'width=1200,height=800');
+    window.open(`/tech-pack/${techPackPath}?design=${encoded}`, '_blank', 'width=1200,height=800');
   }, [garmentType, serialize, uploadedLogos, currentDesignId, currentDesignName]);
 }
