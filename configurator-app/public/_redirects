@@ -1,2 +1,6 @@
+# Bare domain → the real store. Forced (!) so it shadows index.html; the
+# store's iframe embeds use /configurator/* paths and fall through to the
+# SPA rule below. This file wins over netlify.toml redirects.
+/  https://dspln.com  302!
 /api/customer-designs /.netlify/functions/customer-designs 200
 /* /index.html 200
