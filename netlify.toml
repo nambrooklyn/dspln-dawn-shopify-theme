@@ -4,6 +4,21 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# Keep this deploy out of search engines: it is the configurator backend
+# embedded by dspln.com, not a site anyone should discover directly.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+# Anyone who lands on the bare domain belongs on the real store. The store
+# embeds use explicit /configurator/* paths, which the SPA fallback below
+# keeps serving as before.
+[[redirects]]
+  from = "/"
+  to = "https://dspln.com"
+  status = 302
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
