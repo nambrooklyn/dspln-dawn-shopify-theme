@@ -36,6 +36,7 @@ DESIGN JUDGMENT:
 
 RULES:
 - Only options in CURRENT PRODUCT CONTEXT exist. If asked for something unavailable, say so and offer the closest available option.
+- Follow the colorMode and colorOptionsByTarget in CURRENT PRODUCT CONTEXT. For fixed-palette products, use the exact listed color name. For any-hex products, convert ordinary or descriptive color language into a sensible #RRGGBB value and apply it; never ask the customer to provide or open a palette. If the description is subjective, choose a reasonable hex and briefly state the assumption.
 - Use tools for every design change the customer asks for; never claim a change happened without calling the tool.
 - Do not mention logo or artwork placement prices unless the customer explicitly asks. The visible total updates automatically.
 - Change only what they asked; keep the rest of their design.
@@ -50,7 +51,7 @@ const TOOLS = [
   {
     name: 'get_design',
     description:
-      'Read the current product design state, including its available colors, size, text, and artwork placements. Call before changes when the current placement or value matters.',
+      'Read the current product design state, including its color rules, current colors, size, text, and artwork placements. Call before changes when the current placement or value matters.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -88,7 +89,7 @@ const TOOLS = [
         color: {
           type: 'string',
           description:
-            'Color name from the allowed palette for the target (e.g. "Black", "Royal Blue"; belt: White/Blue/Purple/Brown/Black).',
+            'For a fixed-palette product, the exact allowed color name. For an any-hex product, a canonical six-digit #RRGGBB value chosen from the customer description.',
         },
       },
       required: ['target', 'color'],
@@ -307,6 +308,11 @@ const sanitizeMessages = (raw) => {
 };
 
 const sanitizeProductContext = (raw) => {
+  const garmentColors = [
+    'White', 'Royal Blue', 'Black', 'Olive', 'Khaki',
+    'Gray', 'Navy', 'Red', 'Orange', 'Brown',
+  ];
+  const beltColors = ['White', 'Blue', 'Purple', 'Brown', 'Black'];
   const fallback = {
     id: 'mens',
     name: "Men's Custom GI Suit",
@@ -322,6 +328,8 @@ const sanitizeProductContext = (raw) => {
     ],
     supportsBeltText: true,
     audience: 'adult',
+    colorMode: 'fixed-palette',
+    colorOptionsByTarget: {},
   };
   if (!raw || typeof raw !== 'object') return fallback;
   const cleanList = (value) =>
@@ -330,17 +338,51 @@ const sanitizeProductContext = (raw) => {
           .filter((item) => typeof item === 'string' && /^[a-z0-9:_-]{1,40}$/i.test(item))
           .slice(0, 30)
       : [];
+  const family = raw.family === 'rashguard' ? 'rashguard' : 'gi';
+  const colorTargets = cleanList(raw.colorTargets);
+  const colorMode =
+    raw.colorMode === 'any-hex' || family === 'rashguard'
+      ? 'any-hex'
+      : 'fixed-palette';
+  const rawOptions =
+    raw.colorOptionsByTarget && typeof raw.colorOptionsByTarget === 'object'
+      ? raw.colorOptionsByTarget
+      : {};
+  const colorOptionsByTarget = Object.fromEntries(
+    colorTargets.map((target) => {
+      const supplied = Array.isArray(rawOptions[target])
+        ? rawOptions[target]
+            .filter(
+              (item) =>
+                typeof item === 'string' &&
+                item.length > 0 &&
+                item.length <= 60 &&
+                !/[\u0000-\u001f]/.test(item),
+            )
+            .slice(0, 30)
+        : [];
+      const defaults =
+        colorMode === 'any-hex'
+          ? ['Any six-digit hex color (#RRGGBB)']
+          : target === 'belt'
+            ? beltColors
+            : garmentColors;
+      return [target, supplied.length > 0 ? supplied : defaults];
+    }),
+  );
   return {
     id: typeof raw.id === 'string' ? raw.id.slice(0, 50) : fallback.id,
     name: typeof raw.name === 'string' ? raw.name.slice(0, 80) : fallback.name,
-    family: raw.family === 'rashguard' ? 'rashguard' : 'gi',
+    family,
     allowedParts: cleanList(raw.allowedParts),
-    colorTargets: cleanList(raw.colorTargets),
+    colorTargets,
     artworkTargets: cleanList(raw.artworkTargets),
     supportsBeltText: raw.supportsBeltText === true,
     audience: ['adult', 'women', 'kids'].includes(raw.audience)
       ? raw.audience
       : fallback.audience,
+    colorMode,
+    colorOptionsByTarget,
   };
 };
 

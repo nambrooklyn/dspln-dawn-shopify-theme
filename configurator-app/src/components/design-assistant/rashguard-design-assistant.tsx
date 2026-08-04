@@ -53,6 +53,17 @@ interface RashguardDesignAssistantProps {
 
 const placementTarget = (raw: unknown) => String(raw ?? '').replace(/^rashguard:/, '');
 
+const normalizeHexColor = (raw: string) => {
+  const value = raw.trim();
+  const shortMatch = value.match(/^#?([0-9a-f]{3})$/i);
+  if (shortMatch) {
+    const [red, green, blue] = shortMatch[1].split('');
+    return `#${red}${red}${green}${green}${blue}${blue}`.toLowerCase();
+  }
+  const fullMatch = value.match(/^#?([0-9a-f]{6})$/i);
+  return fullMatch ? `#${fullMatch[1].toLowerCase()}` : null;
+};
+
 const artworkToFile = async (artwork: AttachedArtwork) => {
   const response = await fetch(artwork.url);
   if (!response.ok) throw new Error('Could not retrieve artwork');
@@ -88,6 +99,15 @@ export function RashguardDesignAssistant({
     artworkTargets: config.artworkTargets.map((target) => `rashguard:${target}`),
     supportsBeltText: false,
     audience: config.audience ?? 'adult',
+    colorMode: 'any-hex',
+    colorOptionsByTarget: Object.fromEntries(
+      config.parts.map((part) => [
+        `rashguard:${part}`,
+        Object.entries(config.colorNameByHex).map(
+          ([hex, name]) => `${name} (${hex})`,
+        ),
+      ]),
+    ),
   };
 
   const runProductTool = useCallback(
@@ -99,6 +119,12 @@ export function RashguardDesignAssistant({
       if (name === 'get_design') {
         return JSON.stringify({
           product: config.name,
+          colorMode: 'any-hex',
+          colorRule:
+            'Every panel accepts any six-digit hex color. Described colors should be converted to a reasonable #RRGGBB value.',
+          suggestedColors: Object.entries(config.colorNameByHex).map(
+            ([hex, name]) => ({ name, hex }),
+          ),
           size: state.size || null,
           colors: Object.fromEntries(
             Object.entries(state.partColors).map(([part, hex]) => [
@@ -117,12 +143,17 @@ export function RashguardDesignAssistant({
       if (name === 'set_panel_color') {
         const target = placementTarget(input.target);
         const colorName = String(input.color ?? '');
-        const color = config.colorHexByName[colorName.toLowerCase()];
+        const color =
+          normalizeHexColor(colorName) ??
+          config.colorHexByName[colorName.trim().toLowerCase()];
         if (!config.parts.includes(target)) {
           return JSON.stringify({ ok: false, error: `${target} is not an available panel.` });
         }
         if (!color) {
-          return JSON.stringify({ ok: false, error: `${colorName} is not in the product palette.` });
+          return JSON.stringify({
+            ok: false,
+            error: `${colorName} is not a valid color. Use a six-digit hex value such as #9caf88.`,
+          });
         }
         state.setPartColor(target, color);
         return JSON.stringify({ ok: true });

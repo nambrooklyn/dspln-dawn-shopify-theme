@@ -168,6 +168,8 @@ export interface AssistantProductContext {
   artworkTargets: string[];
   supportsBeltText: boolean;
   audience: 'adult' | 'women' | 'kids';
+  colorMode: 'fixed-palette' | 'any-hex';
+  colorOptionsByTarget: Record<string, string[]>;
 }
 
 export type GiAssistantProductKey =
@@ -285,6 +287,15 @@ export function DesignAssistant({
     artworkTargets: productProfile.artworkTargets,
     supportsBeltText: productProfile.supportsBeltText,
     audience: productProfile.audience,
+    colorMode: 'fixed-palette',
+    colorOptionsByTarget: Object.fromEntries(
+      productProfile.colorTargets.map((target) => [
+        target,
+        (target === 'belt' ? BELT_COLOR_SWATCHES : GI_COLOR_SWATCHES).map(
+          (swatch) => swatch.name,
+        ),
+      ]),
+    ),
   };
   const [open, setOpen] = useState(false);
   const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
@@ -408,6 +419,8 @@ export function DesignAssistant({
           );
           const logoCount = Object.values(s.kimonoLogos).filter(Boolean).length;
           return JSON.stringify({
+            colorMode: activeProductContext.colorMode,
+            availableColorsByTarget: activeProductContext.colorOptionsByTarget,
             includedParts: included,
             partPrices: GI_PART_PRICES,
             kimonoColors: Object.fromEntries(
@@ -704,7 +717,7 @@ export function DesignAssistant({
           return JSON.stringify({ ok: false, error: `Unknown tool ${name}` });
       }
     },
-    [productProfile, runProductTool],
+    [activeProductContext, productProfile, runProductTool],
   );
 
   // ---- conversation loop ----
