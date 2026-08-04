@@ -150,6 +150,11 @@
         "type": "shopify://apps/chatra-live-chat-chatbot/blocks/widget/3617185a-5880-4550-b1d3-81cdb9d37290",
         "disabled": true,
         "settings": {}
+      },
+      "6298225925462806087": {
+        "type": "shopify://apps/blockx-country-blocker/blocks/app-embed/b7d028e1-4369-4ca2-8d8c-e7d90d1ba404",
+        "disabled": false,
+        "settings": {}
       }
     },
     "color_schemes": {
