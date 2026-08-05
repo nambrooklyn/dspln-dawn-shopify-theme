@@ -1758,6 +1758,10 @@ function beltTextPages({
   rightBeltImage?: TechPackImage | null;
 }) {
   const pages: BeltTextPage[] = [];
+  // A removed belt keeps its typed embroidery in the spec (so re-adding the
+  // belt restores the text), but the factory must never receive embroidery
+  // pages for a part that isn't in the order — no belt, no belt-text pages.
+  if (spec.partVisibility?.belt === false) return pages;
   const leftText = spec.belt.embroidery.leftEnd.trim();
   const rightText = spec.belt.embroidery.rightEnd.trim();
 

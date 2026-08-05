@@ -429,6 +429,11 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
         let leftBeltEnd: string | undefined;
         let rightBeltEnd: string | undefined;
 
+        // A removed belt keeps its typed embroidery in the saved spec, so the
+        // belt-end views must also require the belt to actually be in the
+        // order — otherwise the pack gets embroidery pages for a phantom belt.
+        const beltOrdered = spec.partVisibility?.belt !== false;
+
         if (typeof productionCapture === 'function') {
           const shots = productionCapture(beltEndOverrides);
           if (shots) {
@@ -436,10 +441,10 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
             back = shots.back;
             left = shots.left;
             right = shots.right;
-            leftBeltEnd = spec.belt?.embroidery?.leftEnd?.trim()
+            leftBeltEnd = beltOrdered && spec.belt?.embroidery?.leftEnd?.trim()
               ? shots.leftBeltEnd
               : undefined;
-            rightBeltEnd = spec.belt?.embroidery?.rightEnd?.trim()
+            rightBeltEnd = beltOrdered && spec.belt?.embroidery?.rightEnd?.trim()
               ? shots.rightBeltEnd
               : undefined;
           }
@@ -450,10 +455,10 @@ function useTechPackRun(design: SavedDesignRecord, driver: TechPackDriver) {
           back = await captureView('back');
           left = await captureView('left');
           right = await captureView('right');
-          leftBeltEnd = spec.belt?.embroidery?.leftEnd?.trim()
+          leftBeltEnd = beltOrdered && spec.belt?.embroidery?.leftEnd?.trim()
             ? await captureView('left-belt-end')
             : undefined;
-          rightBeltEnd = spec.belt?.embroidery?.rightEnd?.trim()
+          rightBeltEnd = beltOrdered && spec.belt?.embroidery?.rightEnd?.trim()
             ? await captureView('right-belt-end')
             : undefined;
         }
