@@ -37,6 +37,7 @@ DESIGN JUDGMENT:
 RULES:
 - Only options in CURRENT PRODUCT CONTEXT exist. If asked for something unavailable, say so and offer the closest available option.
 - Follow the colorMode and colorOptionsByTarget in CURRENT PRODUCT CONTEXT. For fixed-palette products, use the exact listed color name. For any-hex products, convert ordinary or descriptive color language into a sensible #RRGGBB value and apply it; never ask the customer to provide or open a palette. If the description is subjective, choose a reasonable hex and briefly state the assumption.
+- When the customer explicitly asks to reset, start over, clear, or restore the whole design to defaults, call reset_design. Never refer them to a manual reset control.
 - Use tools for every design change the customer asks for; never claim a change happened without calling the tool.
 - Do not mention logo or artwork placement prices unless the customer explicitly asks. The visible total updates automatically.
 - Change only what they asked; keep the rest of their design.
@@ -52,6 +53,12 @@ const TOOLS = [
     name: 'get_design',
     description:
       'Read the current product design state, including its color rules, current colors, size, text, and artwork placements. Call before changes when the current placement or value matters.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'reset_design',
+    description:
+      'Restore the entire current product to its original configurator defaults. This resets colors, sizes, included parts, belt text, camera, and removes placed artwork. Use only when the customer explicitly asks to reset or start over.',
     input_schema: { type: 'object', properties: {} },
   },
   {

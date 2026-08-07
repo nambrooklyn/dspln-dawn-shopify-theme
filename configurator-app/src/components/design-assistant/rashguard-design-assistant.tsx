@@ -21,6 +21,7 @@ interface RashguardStateLike {
   partColors: Record<string, string>;
   artworkLayers: RashguardArtworkLayerLike[];
   setSize: (size: string) => void;
+  setSelectedPanel: (panel: 'garment' | 'artwork') => void;
   setPartColor: (part: string, color: string) => void;
   addArtworkLayer: (input: {
     file: File;
@@ -32,6 +33,7 @@ interface RashguardStateLike {
     updates: { target?: string },
   ) => void;
   removeArtworkLayer: (id: string) => void;
+  selectArtworkLayer: (id: string | null) => void;
   setCameraView: (view: 'front' | 'back') => void;
 }
 
@@ -137,6 +139,20 @@ export function RashguardDesignAssistant({
             target: `rashguard:${layer.target}`,
             filename: layer.filename,
           })),
+        });
+      }
+
+      if (name === 'reset_design') {
+        state.setSize('M');
+        for (const part of config.parts) state.setPartColor(part, '#ffffff');
+        for (const layer of state.artworkLayers) state.removeArtworkLayer(layer.id);
+        state.selectArtworkLayer(null);
+        state.setSelectedPanel('garment');
+        state.setCameraView('front');
+        return JSON.stringify({
+          ok: true,
+          reset: true,
+          product: config.name,
         });
       }
 

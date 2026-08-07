@@ -10,9 +10,14 @@ import {
 import { ImagePlus, LoaderCircle, Send, X } from 'lucide-react';
 
 import {
+  BELT_EMBROIDERY_DEFAULT,
   BELT_COLOR_SWATCHES,
+  GI_DEFAULT_COLORS,
   GI_COLOR_SWATCHES,
+  GI_PARTS,
   GI_PART_PRICES,
+  KIMONO_SUBPART_DEFAULT,
+  PANT_SUBPART_DEFAULT,
   type CameraView,
   type GiPart,
   type KimonoLogoSlot,
@@ -444,6 +449,50 @@ export function DesignAssistant({
                 .filter(([, logo]) => Boolean(logo))
                 .map(([slot, logo]) => ({ slot, filename: logo?.filename })),
             },
+          });
+        }
+        case 'reset_design': {
+          const allowedParts = new Set(productProfile.allowedParts);
+
+          for (const part of GI_PARTS) {
+            const included = allowedParts.has(part);
+            s.setPartVisible(part, included);
+            s.setScenePartVisible(part, included);
+            s.setPartColor(part, GI_DEFAULT_COLORS[part]);
+          }
+          for (const [subPart, color] of Object.entries(KIMONO_SUBPART_DEFAULT)) {
+            s.setKimonoSubColor(subPart as KimonoSubPart, color);
+          }
+          for (const [subPart, color] of Object.entries(PANT_SUBPART_DEFAULT)) {
+            s.setPantSubColor(subPart as PantSubPart, color);
+          }
+
+          s.setKimonoSize('');
+          s.setPantSize('');
+          s.setBeltSize('');
+          s.setCustomSizeNotes('');
+          s.setBeltEmbroidery({ ...BELT_EMBROIDERY_DEFAULT });
+
+          for (const slot of Object.keys(s.kimonoLogos)) {
+            s.removeKimonoLogo(slot as KimonoLogoSlot);
+          }
+          for (const slot of Object.keys(s.kimonoLogoAnchors)) {
+            s.setKimonoLogoAnchor(slot as KimonoLogoSlot, null);
+          }
+          for (const slot of Object.keys(s.pantLogos)) {
+            s.removePantLogo(slot as PantLogoSlot);
+          }
+          for (const layer of s.layers) s.removeLayer(layer.id);
+          for (const layer of s.textLayers) s.removeTextLayer(layer.id);
+
+          s.selectLayer(null);
+          s.setSelectedPart(productProfile.allowedParts[0] ?? GI_PARTS[0]);
+          s.setCameraView('front');
+
+          return JSON.stringify({
+            ok: true,
+            reset: true,
+            product: productProfile.name,
           });
         }
         case 'set_panel_color': {
