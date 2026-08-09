@@ -91,7 +91,7 @@ export const BeltEndTextSection = memo(
               {currentColorName}
             </span>
           </div>
-          <div className="grid grid-cols-10 justify-start gap-0.5 max-lg:w-full max-lg:gap-1 max-lg:overflow-visible max-lg:pb-0">
+          <div className="grid grid-cols-11 justify-start gap-0.5 max-lg:w-full max-lg:gap-1 max-lg:overflow-visible max-lg:pb-0">
             {GI_COLOR_SWATCHES.map((swatch) => {
               const isActive = swatch.hex.toLowerCase() === color.toLowerCase();
               return (

@@ -75,6 +75,7 @@ export const GI_COLOR_SWATCHES = [
   { name: 'Khaki', hex: '#bfb58a', renderHex: '#928f78' },
   { name: 'Gray', hex: '#787878' },
   { name: 'Navy', hex: '#1a2540', renderHex: '#2c3a6e' },
+  { name: 'Purple', hex: '#5b2c83', renderHex: '#4b256f' },
   { name: 'Red', hex: '#a82828', renderHex: '#6e2222' },
   { name: 'Orange', hex: '#be5c23' },
   { name: 'Brown', hex: '#7a4f00', renderHex: '#4a3000' },
