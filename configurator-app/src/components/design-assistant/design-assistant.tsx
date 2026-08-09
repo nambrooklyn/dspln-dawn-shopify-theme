@@ -27,7 +27,6 @@ import {
 } from '../configurators/gi/gi-config';
 import { useGiState, type KimonoLogo } from '../configurators/gi/gi-state';
 import { uploadArtworkImage } from '../configurators/shared/preview-upload';
-import { GI_COLOR_SWATCHES as WOMENS_GI_COLOR_SWATCHES } from '../configurators/womens-gi/gi-config';
 
 /**
  * DSPLN Design Assistant — customer-facing chat that designs the gi live.
@@ -138,13 +137,8 @@ export function shouldShowDesignAssistant(): boolean {
   }
 }
 
-type GarmentSwatch = { name: string; hex: string };
-
-const garmentHex = (
-  name: string,
-  swatches: readonly GarmentSwatch[] = GI_COLOR_SWATCHES,
-) =>
-  swatches.find(
+const garmentHex = (name: string) =>
+  GI_COLOR_SWATCHES.find(
     (swatch) => swatch.name.toLowerCase() === name.trim().toLowerCase(),
   )?.hex ?? null;
 
@@ -153,11 +147,8 @@ const beltHex = (name: string) =>
     (swatch) => swatch.name.toLowerCase() === name.trim().toLowerCase(),
   )?.hex ?? null;
 
-const nameOfHex = (
-  hex: string,
-  garmentSwatches: readonly GarmentSwatch[] = GI_COLOR_SWATCHES,
-) =>
-  [...garmentSwatches, ...BELT_COLOR_SWATCHES].find(
+const nameOfHex = (hex: string) =>
+  [...GI_COLOR_SWATCHES, ...BELT_COLOR_SWATCHES].find(
     (swatch) => swatch.hex.toLowerCase() === hex.toLowerCase(),
   )?.name ?? hex;
 
@@ -292,8 +283,6 @@ export function DesignAssistant({
   const stateHook = useProductState ?? useGiState;
   const state = stateHook() as ReturnType<typeof useGiState>;
   const productProfile = GI_ASSISTANT_PROFILES[productKey];
-  const garmentSwatches =
-    productKey === 'womens' ? WOMENS_GI_COLOR_SWATCHES : GI_COLOR_SWATCHES;
   const activeProductContext: AssistantProductContext = productContext ?? {
     id: productKey,
     name: productProfile.name,
@@ -307,7 +296,7 @@ export function DesignAssistant({
     colorOptionsByTarget: Object.fromEntries(
       productProfile.colorTargets.map((target) => [
         target,
-        (target === 'belt' ? BELT_COLOR_SWATCHES : garmentSwatches).map(
+        (target === 'belt' ? BELT_COLOR_SWATCHES : GI_COLOR_SWATCHES).map(
           (swatch) => swatch.name,
         ),
       ]),
@@ -440,10 +429,10 @@ export function DesignAssistant({
             includedParts: included,
             partPrices: GI_PART_PRICES,
             kimonoColors: Object.fromEntries(
-              Object.entries(s.kimonoSubColors).map(([k, v]) => [k, nameOfHex(v, garmentSwatches)]),
+              Object.entries(s.kimonoSubColors).map(([k, v]) => [k, nameOfHex(v)]),
             ),
             pantColors: Object.fromEntries(
-              Object.entries(s.pantSubColors).map(([k, v]) => [k, nameOfHex(v, garmentSwatches)]),
+              Object.entries(s.pantSubColors).map(([k, v]) => [k, nameOfHex(v)]),
             ),
             beltColor: nameOfHex(s.partColors.belt),
             sizes: { kimono: s.kimonoSize || null, pant: s.pantSize || null, belt: s.beltSize || null },
@@ -518,7 +507,7 @@ export function DesignAssistant({
             s.setPartColor('belt', hex);
             return JSON.stringify({ ok: true });
           }
-          const hex = garmentHex(colorName, garmentSwatches);
+          const hex = garmentHex(colorName);
           if (!hex) return JSON.stringify({ ok: false, error: `"${colorName}" is not in the garment palette.` });
           const [part, sub] = target.split('-') as ['kimono' | 'pant', string];
           if (part === 'kimono') {
@@ -558,7 +547,7 @@ export function DesignAssistant({
             patch[side === 'left' ? 'leftFont' : 'rightFont'] = toolInput.font;
           }
           if (typeof toolInput.threadColor === 'string') {
-            const hex = garmentHex(toolInput.threadColor, garmentSwatches);
+            const hex = garmentHex(toolInput.threadColor);
             if (hex) patch[side === 'left' ? 'leftThreadColor' : 'rightThreadColor'] = hex;
           }
           s.setBeltEmbroidery(patch);

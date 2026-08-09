@@ -45,11 +45,7 @@ export const SectionColorSwatches = memo(
             {currentName}
           </span>
         </div>
-        <div
-          className={`grid justify-start gap-0.5 max-lg:w-full max-lg:gap-1 max-lg:overflow-visible max-lg:pb-0 ${
-            swatches.length > 10 ? 'grid-cols-11' : 'grid-cols-10'
-          }`}
-        >
+        <div className="grid grid-cols-10 justify-start gap-0.5 max-lg:w-full max-lg:gap-1 max-lg:overflow-visible max-lg:pb-0">
           {swatches.map((swatch) => {
             const isActive = swatch.hex.toLowerCase() === value.toLowerCase();
             const isWhite = swatch.hex.toLowerCase() === '#ffffff';
