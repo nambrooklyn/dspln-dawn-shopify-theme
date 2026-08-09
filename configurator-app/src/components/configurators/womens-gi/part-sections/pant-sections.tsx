@@ -5,6 +5,7 @@ import {
   PANT_LOGO_SLOT_CAMERA_VIEW,
   PANT_LOGO_SLOT_LABEL,
   PANT_LOGO_SLOTS,
+  STUDIO_ONLY_PANT_LOGO_SLOTS,
   PANT_SUBPART_CAMERA_VIEW,
   PANT_SUBPART_LABEL,
   PANT_SUBPARTS,
@@ -49,55 +50,51 @@ export const PantSections = memo(() => {
         </p>
       ) : (
         <>
-      <SectionSizeSelect
-        title="Pant Size"
-        value={pantSize}
-        onChange={setPantSize}
-      />
-      {PANT_SUBPARTS.map((sub) => (
-        <SectionColorSwatches
-          key={sub}
-          title={PANT_SUBPART_LABEL[sub]}
-          value={pantSubColors[sub]}
-          onChange={(hex) => {
-            setPantSubColor(sub, hex);
-            setCameraView(PANT_SUBPART_CAMERA_VIEW[sub]);
-          }}
-        />
-      ))}
-      {PANT_LOGO_SLOTS.map((slot) => {
-        const logo = pantLogos[slot];
-        return (
-          <SectionLogoUpload
-            key={slot}
-            title={PANT_LOGO_SLOT_LABEL[slot]}
-            priceLabel="+$10"
-            imageUrl={logo?.imageUrl}
-            filename={logo?.filename}
-            onUpload={(file, dim) => {
-              setPantLogo(slot, {
-                imageUrl: URL.createObjectURL(file),
-                imageWidth: dim.width,
-                imageHeight: dim.height,
-                filename: file.name,
-                file,
-              });
-              setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot]);
-            }}
-            onRemove={() => removePantLogo(slot)}
-            onActivate={() => setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot])}
-            onApplyExisting={(item) => {
-              setPantLogo(slot, {
-                imageUrl: item.url,
-                imageWidth: item.imageWidth,
-                imageHeight: item.imageHeight,
-                filename: item.filename,
-              });
-              setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot]);
-            }}
-          />
-        );
-      })}
+          <SectionSizeSelect title="Pant Size" value={pantSize} onChange={setPantSize} />
+          {PANT_SUBPARTS.map((sub) => (
+            <SectionColorSwatches
+              key={sub}
+              title={PANT_SUBPART_LABEL[sub]}
+              value={pantSubColors[sub]}
+              onChange={(hex) => {
+                setPantSubColor(sub, hex);
+                setCameraView(PANT_SUBPART_CAMERA_VIEW[sub]);
+              }}
+            />
+          ))}
+          {PANT_LOGO_SLOTS.filter((slot) => !STUDIO_ONLY_PANT_LOGO_SLOTS.includes(slot)).map((slot) => {
+            const logo = pantLogos[slot];
+            return (
+              <SectionLogoUpload
+                key={slot}
+                title={PANT_LOGO_SLOT_LABEL[slot]}
+                priceLabel="+$10"
+                imageUrl={logo?.imageUrl}
+                filename={logo?.filename}
+                onUpload={(file, dim) => {
+                  setPantLogo(slot, {
+                    imageUrl: URL.createObjectURL(file),
+                    imageWidth: dim.width,
+                    imageHeight: dim.height,
+                    filename: file.name,
+                    file,
+                  });
+                  setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot]);
+                }}
+                onRemove={() => removePantLogo(slot)}
+                onActivate={() => setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot])}
+                onApplyExisting={(item) => {
+                  setPantLogo(slot, {
+                    imageUrl: item.url,
+                    imageWidth: item.imageWidth,
+                    imageHeight: item.imageHeight,
+                    filename: item.filename,
+                  });
+                  setCameraView(PANT_LOGO_SLOT_CAMERA_VIEW[slot]);
+                }}
+              />
+            );
+          })}
         </>
       )}
     </div>

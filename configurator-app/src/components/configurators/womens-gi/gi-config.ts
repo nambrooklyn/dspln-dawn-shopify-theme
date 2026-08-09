@@ -114,10 +114,7 @@ export const BELT_FONT_OPTIONS = [
 export type BeltFontName = (typeof BELT_FONT_OPTIONS)[number]['name'];
 
 export function fontCssForBeltFont(fontName: string): string {
-  return (
-    BELT_FONT_OPTIONS.find((font) => font.name === fontName)?.css ??
-    BELT_FONT_OPTIONS[0].css
-  );
+  return BELT_FONT_OPTIONS.find((font) => font.name === fontName)?.css ?? BELT_FONT_OPTIONS[0].css;
 }
 
 /**
@@ -126,9 +123,7 @@ export function fontCssForBeltFont(fontName: string): string {
  * specify an override.
  */
 export function renderHexFor(hex: string): string {
-  const swatch = [...GI_COLOR_SWATCHES, ...BELT_COLOR_SWATCHES].find(
-    (s) => s.hex.toLowerCase() === hex.toLowerCase(),
-  );
+  const swatch = [...GI_COLOR_SWATCHES, ...BELT_COLOR_SWATCHES].find((s) => s.hex.toLowerCase() === hex.toLowerCase());
   // @ts-expect-error renderHex is optional on the swatch tuple
   return swatch?.renderHex ?? hex;
 }
@@ -156,12 +151,7 @@ export function nameForBeltHex(hex: string): string | null {
  * Kimono sub-parts that can be colored independently. Each sub-part
  * maps to one or more meshes in the .glb (see KIMONO_MESH_TO_SUBPART).
  */
-export const KIMONO_SUBPARTS = [
-  'body',
-  'lapel',
-  'reinforcement',
-  'stitching',
-] as const;
+export const KIMONO_SUBPARTS = ['body', 'lapel', 'reinforcement', 'stitching'] as const;
 export type KimonoSubPart = (typeof KIMONO_SUBPARTS)[number];
 
 export const KIMONO_SUBPART_LABEL: Record<KimonoSubPart, string> = {
@@ -192,19 +182,16 @@ export const KIMONO_SUBPART_DEFAULT: Record<KimonoSubPart, string> = {
  * Anchor coords are in world space (the model has been auto-scaled to
  * ~2.5 units tall and centered at origin by gi-glb-model.tsx).
  */
-export const KIMONO_LOGO_SLOTS = [
-  'left-chest',
-  'left-sleeve',
-  'right-sleeve',
-  'back',
-] as const;
+export const KIMONO_LOGO_SLOTS = ['left-chest', 'left-sleeve', 'right-sleeve', 'back', 'back-skirt'] as const;
 export type KimonoLogoSlot = (typeof KIMONO_LOGO_SLOTS)[number];
+export const STUDIO_ONLY_KIMONO_LOGO_SLOTS: readonly KimonoLogoSlot[] = ['back-skirt'];
 
 export const KIMONO_LOGO_SLOT_LABEL: Record<KimonoLogoSlot, string> = {
   'left-chest': 'Logo on Left Chest',
   'left-sleeve': 'Logo on Left Sleeve',
   'right-sleeve': 'Logo on Right Sleeve',
   back: 'Big Logo on Back',
+  'back-skirt': 'Logo Below Belt (Back)',
 };
 
 export interface KimonoLogoAnchor {
@@ -246,6 +233,11 @@ export const KIMONO_LOGO_ANCHORS: Record<KimonoLogoSlot, KimonoLogoAnchor> = {
     rotation: [0, Math.PI, 0],
     defaultSizeIn: { w: 3.7, h: 3.7 },
   },
+  'back-skirt': {
+    position: [0, 1.43, -0.46],
+    rotation: [0, Math.PI, 0],
+    defaultSizeIn: { w: 5.25, h: 2 },
+  },
 };
 
 export const KIMONO_MESH_TO_SUBPART: Record<string, KimonoSubPart> = {
@@ -255,12 +247,7 @@ export const KIMONO_MESH_TO_SUBPART: Record<string, KimonoSubPart> = {
   Kimono_Stitching: 'stitching',
 };
 
-export const PANT_SUBPARTS = [
-  'body',
-  'reinforcement',
-  'stitching',
-  'drawcord',
-] as const;
+export const PANT_SUBPARTS = ['body', 'reinforcement', 'stitching', 'drawcord'] as const;
 export type PantSubPart = (typeof PANT_SUBPARTS)[number];
 
 export const PANT_SUBPART_LABEL: Record<PantSubPart, string> = {
@@ -284,12 +271,15 @@ export const PANT_MESH_TO_SUBPART: Record<string, PantSubPart> = {
   Pant_Stitching: 'stitching',
 };
 
-export const PANT_LOGO_SLOTS = ['left-pant', 'right-pant'] as const;
+export const PANT_LOGO_SLOTS = ['left-pant', 'right-pant', 'big-left-thigh', 'right-hem'] as const;
 export type PantLogoSlot = (typeof PANT_LOGO_SLOTS)[number];
+export const STUDIO_ONLY_PANT_LOGO_SLOTS: readonly PantLogoSlot[] = ['big-left-thigh', 'right-hem'];
 
 export const PANT_LOGO_SLOT_LABEL: Record<PantLogoSlot, string> = {
   'left-pant': 'Logo on Left Thigh',
   'right-pant': 'Logo on Right Thigh',
+  'big-left-thigh': 'Big Logo on Left Thigh',
+  'right-hem': 'Logo on Bottom Right Hem',
 };
 
 export const PANT_LOGO_ANCHORS: Record<PantLogoSlot, KimonoLogoAnchor> = {
@@ -303,6 +293,16 @@ export const PANT_LOGO_ANCHORS: Record<PantLogoSlot, KimonoLogoAnchor> = {
     position: [-0.27, 1.08, 0.25],
     rotation: [0, -0.16, 0],
     defaultSizeIn: { w: 1.95, h: 1.95 },
+  },
+  'big-left-thigh': {
+    position: [0.38, 1.24, 0.25],
+    rotation: [0, 0.16, 0],
+    defaultSizeIn: { w: 2.8, h: 6 },
+  },
+  'right-hem': {
+    position: [-0.35, 0.34, 0.3],
+    rotation: [0, -0.16, 0],
+    defaultSizeIn: { w: 2.2, h: 2.2 },
   },
 };
 
@@ -329,8 +329,10 @@ export type CameraView =
   | 'left-sleeve-close'
   | 'right-sleeve-close'
   | 'back-close'
+  | 'back-skirt-close'
   | 'left-thigh-close'
   | 'right-thigh-close'
+  | 'right-hem-close'
   | 'body-close'
   | 'reinforcement-close'
   | 'stitching-close'
@@ -356,8 +358,10 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   'left-sleeve-close': [3.72, 2.45, 1.12],
   'right-sleeve-close': [-3.81, 2.49, 1.3],
   'back-close': [-0.16, 2.65, -4.02],
+  'back-skirt-close': [0, 1.2, -3.4],
   'left-thigh-close': [1.3, 0.85, 1.7],
   'right-thigh-close': [-1.3, 0.85, 1.7],
+  'right-hem-close': [-1.05, 0.28, 1.35],
   'body-close': [-1.73, 2.51, 3.72],
   'reinforcement-close': [1.28, 0.68, 1.81],
   'stitching-close': [-0.99, 2.13, 1.91],
@@ -366,10 +370,7 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   'drawcord-close': [0.09, 1.64, 1.95],
 };
 
-export const MOBILE_CAMERA_POSITIONS: Record<
-  CameraView,
-  [number, number, number]
-> = {
+export const MOBILE_CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   front: [0, 1.55, 4.35],
   back: [0, 1.55, -4.35],
   left: [-4.35, 1.55, 0],
@@ -385,8 +386,10 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   'left-sleeve-close': [3.72, 2.45, 1.12],
   'right-sleeve-close': [-3.81, 2.49, 1.3],
   'back-close': [-0.16, 2.65, -4.02],
+  'back-skirt-close': [0, 1.2, -3.4],
   'left-thigh-close': [1.3, 0.85, 1.7],
   'right-thigh-close': [-1.3, 0.85, 1.7],
+  'right-hem-close': [-1.05, 0.28, 1.35],
   'body-close': [-1.73, 2.51, 3.72],
   'reinforcement-close': [1.28, 0.68, 1.81],
   'stitching-close': [-0.99, 2.13, 1.91],
@@ -416,8 +419,10 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   'left-sleeve-close': [0.4, 1.45, 0],
   'right-sleeve-close': [-0.4, 1.45, 0],
   'back-close': [0, 1.5, 0],
+  'back-skirt-close': [0, 0.98, 0],
   'left-thigh-close': [0.22, 0.8, 0],
   'right-thigh-close': [-0.22, 0.8, 0],
+  'right-hem-close': [-0.22, 0.2, 0],
   'body-close': [0, 1.4, 0],
   'reinforcement-close': [0.1, 1.3, 0],
   'stitching-close': [0.1, 1.5, 0],
@@ -449,6 +454,7 @@ export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = 
   'left-sleeve': 'left-sleeve-close',
   'right-sleeve': 'right-sleeve-close',
   back: 'back-close',
+  'back-skirt': 'back-skirt-close',
 };
 
 export const PANT_SUBPART_CAMERA_VIEW: Record<PantSubPart, CameraView> = {
@@ -461,8 +467,9 @@ export const PANT_SUBPART_CAMERA_VIEW: Record<PantSubPart, CameraView> = {
 export const PANT_LOGO_SLOT_CAMERA_VIEW: Record<PantLogoSlot, CameraView> = {
   'left-pant': 'left-thigh-close',
   'right-pant': 'right-thigh-close',
+  'big-left-thigh': 'left-thigh-close',
+  'right-hem': 'right-hem-close',
 };
-
 
 // Anchor for a logo placed on the jacket chest (front).
 // In world space relative to the placeholder gi origin (0,0,0).

@@ -1,13 +1,6 @@
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
-import {
-  Box3,
-  Color,
-  Mesh,
-  MeshStandardMaterial,
-  Raycaster,
-  Vector3,
-} from 'three';
+import { Box3, Color, Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
 import type { Group, Object3D } from 'three';
 
 import {
@@ -66,10 +59,7 @@ function isBeltPatchMesh(name: string) {
   return normalized.startsWith('belt_patch');
 }
 
-function objectOrAncestorMatches(
-  obj: Object3D,
-  matcher: (name: string) => boolean,
-) {
+function objectOrAncestorMatches(obj: Object3D, matcher: (name: string) => boolean) {
   let current: Object3D | null = obj;
   while (current) {
     if (matcher(current.name)) return true;
@@ -80,10 +70,7 @@ function objectOrAncestorMatches(
   return false;
 }
 
-function slotFromObject<TSlot>(
-  obj: Object3D,
-  slotForName: (name: string) => TSlot | null,
-) {
+function slotFromObject<TSlot>(obj: Object3D, slotForName: (name: string) => TSlot | null) {
   let current: Object3D | null = obj;
   while (current) {
     const slot = slotForName(current.name);
@@ -96,10 +83,7 @@ function slotFromObject<TSlot>(
 }
 
 function isMainBeltObject(obj: Object3D) {
-  return objectOrAncestorMatches(
-    obj,
-    (name) => normalizedMeshName(name) === 'belt',
-  );
+  return objectOrAncestorMatches(obj, (name) => normalizedMeshName(name) === 'belt');
 }
 
 function isBeltPatchObject(obj: Object3D) {
@@ -170,10 +154,7 @@ function cloneWithOriginalMaps(material: MeshStandardMaterial) {
 
 function partForColor(name: string): GiPart | undefined {
   const normalized = normalizedMeshName(name);
-  if (
-    normalized === 'belt' ||
-    normalized.startsWith('belt_stitching')
-  ) {
+  if (normalized === 'belt' || normalized.startsWith('belt_stitching')) {
     return 'belt';
   }
   if (
@@ -183,10 +164,7 @@ function partForColor(name: string): GiPart | undefined {
   ) {
     return 'jacket';
   }
-  if (
-    normalized.startsWith('pant_body') ||
-    normalized.startsWith('pant_reinforcement')
-  ) {
+  if (normalized.startsWith('pant_body') || normalized.startsWith('pant_reinforcement')) {
     return 'pants';
   }
   return undefined;
@@ -215,10 +193,7 @@ function partForVisibility(name: string): GiPart | null {
   if (normalized.startsWith('kimono')) return 'jacket';
   if (normalized === 'belt' || normalized.startsWith('belt_')) return 'belt';
   if (normalized.startsWith('pant_')) return 'pants';
-  if (
-    normalized === 'dspln_size_lapel_label_1_001' ||
-    normalized === 'lapel_label_patch'
-  ) {
+  if (normalized === 'dspln_size_lapel_label_1_001' || normalized === 'lapel_label_patch') {
     return 'jacket';
   }
   if (
@@ -299,13 +274,9 @@ export const GiGlbModel = memo(() => {
         m.receiveShadow = true;
         if (m.material) {
           if (Array.isArray(m.material)) {
-            m.material = m.material.map((x) =>
-              cloneWithOriginalMaps(x as MeshStandardMaterial),
-            );
+            m.material = m.material.map((x) => cloneWithOriginalMaps(x as MeshStandardMaterial));
           } else {
-            m.material = cloneWithOriginalMaps(
-              m.material as MeshStandardMaterial,
-            );
+            m.material = cloneWithOriginalMaps(m.material as MeshStandardMaterial);
           }
         }
       }
@@ -322,11 +293,7 @@ export const GiGlbModel = memo(() => {
     const desiredHeight = 3.25;
     const sc = size.y > 0 ? desiredHeight / size.y : 1;
     return {
-      offset: [-center.x * sc, -box.min.y * sc, -center.z * sc] as [
-        number,
-        number,
-        number,
-      ],
+      offset: [-center.x * sc, -box.min.y * sc, -center.z * sc] as [number, number, number],
       scale: sc,
     };
   }, [cloned]);
@@ -389,22 +356,16 @@ export const GiGlbModel = memo(() => {
           target = partTints[part];
         }
       }
-      const preservesTexture =
-        sub === 'stitching' || pantSub === 'stitching' || targetPart === 'belt';
+      const preservesTexture = sub === 'stitching' || pantSub === 'stitching' || targetPart === 'belt';
       if (!target) return; // decorative — keep original material
       const apply = (mat: MeshStandardMaterial) => {
         if ('color' in mat && mat.color) {
           (mat.color as Color).copy(target);
           const isWhite = target.getHexString() === WHITE_HEX;
-          mat.map =
-            isWhite || preservesTexture
-              ? (mat.userData.originalMap ?? null)
-              : null;
+          mat.map = isWhite || preservesTexture ? (mat.userData.originalMap ?? null) : null;
           mat.alphaMap = isWhite ? (mat.userData.originalAlphaMap ?? null) : null;
           mat.aoMap = isWhite ? (mat.userData.originalAoMap ?? null) : null;
-          mat.emissiveMap = isWhite
-            ? (mat.userData.originalEmissiveMap ?? null)
-            : null;
+          mat.emissiveMap = isWhite ? (mat.userData.originalEmissiveMap ?? null) : null;
           mat.lightMap = isWhite ? (mat.userData.originalLightMap ?? null) : null;
           mat.vertexColors = false;
           mat.needsUpdate = true;
@@ -437,11 +398,7 @@ export const GiGlbModel = memo(() => {
   // Click-to-select: clicking a mesh figures out which part it belongs to.
   // Fires on click (not pointer-down) and ignores drags — orbiting the
   // model must not yank the panel between parts.
-  const handleModelClick = (e: {
-    stopPropagation: () => void;
-    delta?: number;
-    object?: Object3D;
-  }) => {
+  const handleModelClick = (e: { stopPropagation: () => void; delta?: number; object?: Object3D }) => {
     e.stopPropagation();
     if ((e.delta ?? 0) > 6) return;
     const part = e.object ? partForColorObject(e.object) : undefined;
@@ -493,10 +450,9 @@ export const GiGlbModel = memo(() => {
       if (normalizedMeshName(mesh.name).startsWith('pant_body')) {
         pantLogoMeshes['left-pant'] = mesh;
         pantLogoMeshes['right-pant'] = mesh;
-      } else if (
-        !pantFallbackMesh &&
-        normalizedMeshName(mesh.name).startsWith('pant_body')
-      ) {
+        pantLogoMeshes['big-left-thigh'] = mesh;
+        pantLogoMeshes['right-hem'] = mesh;
+      } else if (!pantFallbackMesh && normalizedMeshName(mesh.name).startsWith('pant_body')) {
         pantFallbackMesh = mesh;
       }
     });
@@ -506,26 +462,21 @@ export const GiGlbModel = memo(() => {
     setPantLogoTargetMeshes(pantLogoTargetMeshes);
     const nextPantLogoMeshes: Partial<Record<PantLogoSlot, Mesh>> = {};
     const leftPantLogoMesh = pantLogoMeshes['left-pant'] ?? pantFallbackMesh;
-    const rightPantLogoMesh =
-      pantLogoMeshes['right-pant'] ??
-      pantLogoMeshes['left-pant'] ??
-      pantFallbackMesh;
+    const rightPantLogoMesh = pantLogoMeshes['right-pant'] ?? pantLogoMeshes['left-pant'] ?? pantFallbackMesh;
     if (leftPantLogoMesh) nextPantLogoMeshes['left-pant'] = leftPantLogoMesh;
     if (rightPantLogoMesh) nextPantLogoMeshes['right-pant'] = rightPantLogoMesh;
+    if (leftPantLogoMesh) nextPantLogoMeshes['big-left-thigh'] = leftPantLogoMesh;
+    if (rightPantLogoMesh) nextPantLogoMeshes['right-hem'] = rightPantLogoMesh;
     setPantLogoMeshes(nextPantLogoMeshes);
     if (!bodyMesh) return;
     setKimonoBodyMesh(bodyMesh);
-    setKimonoLogoMeshes(
-      kimonoBodyLogoMeshes.length > 0 ? kimonoBodyLogoMeshes : [bodyMesh],
-    );
+    setKimonoLogoMeshes(kimonoBodyLogoMeshes.length > 0 ? kimonoBodyLogoMeshes : [bodyMesh]);
 
     // World-space bbox of the body mesh. Three.js DecalGeometry takes
     // the projection center in WORLD coords (it applies the mesh's
     // matrixWorld internally), so we anchor in world space.
     const bbox = new Box3();
-    (kimonoBodyLogoMeshes.length > 0 ? kimonoBodyLogoMeshes : [bodyMesh]).forEach(
-      (mesh) => bbox.expandByObject(mesh),
-    );
+    (kimonoBodyLogoMeshes.length > 0 ? kimonoBodyLogoMeshes : [bodyMesh]).forEach((mesh) => bbox.expandByObject(mesh));
     const center = bbox.getCenter(new Vector3());
     const size = bbox.getSize(new Vector3());
     const eps = 0.005;
@@ -545,24 +496,15 @@ export const GiGlbModel = memo(() => {
       false,
     )[0];
     const anchors: Record<KimonoLogoSlot, [number, number, number]> = {
-      'left-chest': leftChestHit
-        ? leftChestHit.point.toArray()
-        : [leftChestX, leftChestY, bbox.max.z - 0.03],
+      'left-chest': leftChestHit ? leftChestHit.point.toArray() : [leftChestX, leftChestY, bbox.max.z - 0.03],
       // Sleeve anchors sit on the outside bicep, vertically aligned
       // with the left-chest print box.
-      'left-sleeve': [
-        bbox.max.x - size.x * 0.09,
-        center.y + size.y * 0.18,
-        bbox.max.z * -0.2 - 0.0125,
-      ],
-      'right-sleeve': [
-        bbox.min.x + size.x * 0.09,
-        center.y + size.y * 0.18,
-        bbox.max.z * -0.2,
-      ],
+      'left-sleeve': [bbox.max.x - size.x * 0.09, center.y + size.y * 0.18, bbox.max.z * -0.2 - 0.0125],
+      'right-sleeve': [bbox.min.x + size.x * 0.09, center.y + size.y * 0.18, bbox.max.z * -0.2],
       // Square print area on the flatter upper-back panel. Kept high
       // enough that all four corners stay inside the jacket's taper.
       back: [center.x, center.y + size.y * 0.075 - 0.025, bbox.min.z - out],
+      'back-skirt': [center.x, bbox.min.y + size.y * 0.215, bbox.min.z - out],
     };
     setComputedKimonoAnchors(anchors);
     if (typeof window !== 'undefined') {
@@ -587,12 +529,7 @@ export const GiGlbModel = memo(() => {
   ]);
 
   return (
-    <group
-      ref={groupRef}
-      position={offset}
-      scale={scale}
-      onClick={handleModelClick}
-    >
+    <group ref={groupRef} position={offset} scale={scale} onClick={handleModelClick}>
       <primitive object={cloned} />
     </group>
   );

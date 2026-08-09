@@ -37,16 +37,8 @@ import {
 import { useDirectionalCanvasTouch } from '../shared/use-directional-canvas-touch';
 import { LayerDecal } from '../shared/layer-decal';
 import { FrameTicker } from '../shared/frame-ticker';
-import {
-  VerticalCameraControls,
-  useVerticalCameraPan,
-} from '../shared/vertical-camera-controls';
-import {
-  IN_TO_WORLD,
-  ProjectedDecal,
-  decalLoadStarted,
-  decalLoadSettled,
-} from '../shared/projected-decal';
+import { VerticalCameraControls, useVerticalCameraPan } from '../shared/vertical-camera-controls';
+import { IN_TO_WORLD, ProjectedDecal, decalLoadStarted, decalLoadSettled } from '../shared/projected-decal';
 
 const CAMERA_MIN_DISTANCE = 1.2;
 const DESKTOP_CAMERA_MAX_DISTANCE = 5.0;
@@ -62,6 +54,7 @@ const SLOT_NORMAL: Record<KimonoLogoSlot, [number, number, number]> = {
   'left-sleeve': [0.707, 0, 0.707],
   'right-sleeve': [-0.707, 0, 0.707],
   back: [0, 0, -1],
+  'back-skirt': [0, 0, -1],
 };
 
 const BELT_TEXT_PLACEMENTS = {
@@ -96,99 +89,92 @@ function makeBeltTextImageUrl(text: string, color: string, fontName: string) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = `900 ${Math.max(150, Math.min(244, 1760 / Math.max(clean.length, 6)))}px ${fontCssForBeltFont(fontName)}`;
-  ctx.fillText(
-    clean,
-    canvas.width / 2,
-    canvas.height / 2 + 18,
-    canvas.width * 0.94,
-  );
+  ctx.fillText(clean, canvas.width / 2, canvas.height / 2 + 18, canvas.width * 0.94);
 
   return canvas.toDataURL('image/png');
 }
 
-const BeltTextTargetMesh = memo(
-  ({ mesh, imageUrl }: { mesh: Mesh; imageUrl: string }) => {
-    const [texture, setTexture] = useState<Texture | null>(null);
+const BeltTextTargetMesh = memo(({ mesh, imageUrl }: { mesh: Mesh; imageUrl: string }) => {
+  const [texture, setTexture] = useState<Texture | null>(null);
 
-    useEffect(() => {
-      let cancelled = false;
-      let settled = false;
-      const settleOnce = () => {
-        if (!settled) {
-          settled = true;
-          decalLoadSettled();
-        }
-      };
-      // Track with the shared pending-decal counter: the tech-pack capture
-      // waits for it, so backgrounded generation can't photograph the white
-      // placeholder material before this texture loads.
-      decalLoadStarted();
-      const loader = new TextureLoader();
-      loader.load(
-        imageUrl,
-        (tex) => {
-          settleOnce();
-          if (cancelled) {
-            tex.dispose();
-            return;
-          }
-          tex.colorSpace = SRGBColorSpace;
-          tex.flipY = false;
-          setTexture(tex);
-        },
-        undefined,
-        () => {
-          settleOnce();
-          if (!cancelled) setTexture(null);
-        },
-      );
-      return () => {
-        cancelled = true;
+  useEffect(() => {
+    let cancelled = false;
+    let settled = false;
+    const settleOnce = () => {
+      if (!settled) {
+        settled = true;
+        decalLoadSettled();
+      }
+    };
+    // Track with the shared pending-decal counter: the tech-pack capture
+    // waits for it, so backgrounded generation can't photograph the white
+    // placeholder material before this texture loads.
+    decalLoadStarted();
+    const loader = new TextureLoader();
+    loader.load(
+      imageUrl,
+      (tex) => {
         settleOnce();
-        setTexture((prev) => {
-          prev?.dispose();
-          return null;
-        });
-      };
-    }, [imageUrl]);
-
-    const material = useMemo(
-      () =>
-        new MeshBasicMaterial({
-          transparent: true,
-          depthTest: true,
-          depthWrite: false,
-          polygonOffset: true,
-          polygonOffsetFactor: -8,
-          polygonOffsetUnits: -8,
-          side: DoubleSide,
-          toneMapped: false,
-        }),
-      [],
+        if (cancelled) {
+          tex.dispose();
+          return;
+        }
+        tex.colorSpace = SRGBColorSpace;
+        tex.flipY = false;
+        setTexture(tex);
+      },
+      undefined,
+      () => {
+        settleOnce();
+        if (!cancelled) setTexture(null);
+      },
     );
+    return () => {
+      cancelled = true;
+      settleOnce();
+      setTexture((prev) => {
+        prev?.dispose();
+        return null;
+      });
+    };
+  }, [imageUrl]);
 
-    useEffect(() => {
-      material.map = texture;
-      material.needsUpdate = true;
-    }, [material, texture]);
+  const material = useMemo(
+    () =>
+      new MeshBasicMaterial({
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -8,
+        polygonOffsetUnits: -8,
+        side: DoubleSide,
+        toneMapped: false,
+      }),
+    [],
+  );
 
-    useEffect(() => () => material.dispose(), [material]);
+  useEffect(() => {
+    material.map = texture;
+    material.needsUpdate = true;
+  }, [material, texture]);
 
-    const targetObject = useMemo(() => {
-      mesh.updateMatrixWorld(true);
-      const next = new Mesh(mesh.geometry, material);
-      next.matrix.copy(mesh.matrixWorld);
-      next.matrixAutoUpdate = false;
-      next.renderOrder = 12;
-      next.frustumCulled = false;
-      return next;
-    }, [mesh, material]);
+  useEffect(() => () => material.dispose(), [material]);
 
-    if (!texture) return null;
+  const targetObject = useMemo(() => {
+    mesh.updateMatrixWorld(true);
+    const next = new Mesh(mesh.geometry, material);
+    next.matrix.copy(mesh.matrixWorld);
+    next.matrixAutoUpdate = false;
+    next.renderOrder = 12;
+    next.frustumCulled = false;
+    return next;
+  }, [mesh, material]);
 
-    return <primitive object={targetObject} />;
-  },
-);
+  if (!texture) return null;
+
+  return <primitive object={targetObject} />;
+});
 BeltTextTargetMesh.displayName = 'BeltTextTargetMesh';
 
 const BeltText = memo(
@@ -236,149 +222,133 @@ const BeltText = memo(
 );
 BeltText.displayName = 'BeltText';
 
-const LogoTargetMesh = memo(
-  ({
-    mesh,
-    imageUrl,
-    flipX = false,
-  }: {
-    mesh: Mesh;
-    imageUrl: string;
-    flipX?: boolean;
-  }) => {
-    const [texture, setTexture] = useState<Texture | null>(null);
+const LogoTargetMesh = memo(({ mesh, imageUrl, flipX = false }: { mesh: Mesh; imageUrl: string; flipX?: boolean }) => {
+  const [texture, setTexture] = useState<Texture | null>(null);
 
-    useEffect(() => {
-      let cancelled = false;
-      let settled = false;
-      const settleOnce = () => {
-        if (!settled) {
-          settled = true;
-          decalLoadSettled();
-        }
-      };
-      // Track with the shared pending-decal counter: the tech-pack capture
-      // waits for it, so backgrounded generation can't photograph the white
-      // placeholder material before this texture loads.
-      decalLoadStarted();
-      const loader = new TextureLoader();
-      loader.load(
-        imageUrl,
-        (tex) => {
-          settleOnce();
-          if (cancelled) {
-            tex.dispose();
-            return;
-          }
-          const source = tex.image as CanvasImageSource & {
-            naturalWidth?: number;
-            naturalHeight?: number;
-            width?: number;
-            height?: number;
-          };
-          const sourceWidth = source.naturalWidth ?? source.width ?? 0;
-          const sourceHeight = source.naturalHeight ?? source.height ?? 0;
-          if (!sourceWidth || !sourceHeight || typeof document === 'undefined') {
-            tex.colorSpace = SRGBColorSpace;
-            tex.flipY = false;
-            setTexture(tex);
-            return;
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = 1024;
-          canvas.height = 1024;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            tex.colorSpace = SRGBColorSpace;
-            tex.flipY = false;
-            setTexture(tex);
-            return;
-          }
-
-          const sourceAspect = sourceWidth / sourceHeight;
-          const drawWidth =
-            sourceAspect >= 1 ? canvas.width : canvas.height * sourceAspect;
-          const drawHeight =
-            sourceAspect >= 1 ? canvas.width / sourceAspect : canvas.height;
-          const drawX = (canvas.width - drawWidth) / 2;
-          const drawY = (canvas.height - drawHeight) / 2;
-
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          if (flipX) {
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
-          } else {
-            ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
-          }
-
-          tex.dispose();
-          const containedTexture = new CanvasTexture(canvas);
-          containedTexture.colorSpace = SRGBColorSpace;
-          containedTexture.flipY = false;
-          setTexture(containedTexture);
-        },
-        undefined,
-        () => {
-          settleOnce();
-          if (!cancelled) setTexture(null);
-        },
-      );
-      return () => {
-        cancelled = true;
+  useEffect(() => {
+    let cancelled = false;
+    let settled = false;
+    const settleOnce = () => {
+      if (!settled) {
+        settled = true;
+        decalLoadSettled();
+      }
+    };
+    // Track with the shared pending-decal counter: the tech-pack capture
+    // waits for it, so backgrounded generation can't photograph the white
+    // placeholder material before this texture loads.
+    decalLoadStarted();
+    const loader = new TextureLoader();
+    loader.load(
+      imageUrl,
+      (tex) => {
         settleOnce();
-        setTexture((prev) => {
-          prev?.dispose();
-          return null;
-        });
-      };
-    }, [imageUrl, flipX]);
+        if (cancelled) {
+          tex.dispose();
+          return;
+        }
+        const source = tex.image as CanvasImageSource & {
+          naturalWidth?: number;
+          naturalHeight?: number;
+          width?: number;
+          height?: number;
+        };
+        const sourceWidth = source.naturalWidth ?? source.width ?? 0;
+        const sourceHeight = source.naturalHeight ?? source.height ?? 0;
+        if (!sourceWidth || !sourceHeight || typeof document === 'undefined') {
+          tex.colorSpace = SRGBColorSpace;
+          tex.flipY = false;
+          setTexture(tex);
+          return;
+        }
 
-    const material = useMemo(
-      () =>
-        new MeshBasicMaterial({
-          transparent: true,
-          depthTest: true,
-          depthWrite: false,
-          polygonOffset: true,
-          polygonOffsetFactor: -8,
-          polygonOffsetUnits: -8,
-          side: DoubleSide,
-          toneMapped: false,
-        }),
-      [],
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          tex.colorSpace = SRGBColorSpace;
+          tex.flipY = false;
+          setTexture(tex);
+          return;
+        }
+
+        const sourceAspect = sourceWidth / sourceHeight;
+        const drawWidth = sourceAspect >= 1 ? canvas.width : canvas.height * sourceAspect;
+        const drawHeight = sourceAspect >= 1 ? canvas.width / sourceAspect : canvas.height;
+        const drawX = (canvas.width - drawWidth) / 2;
+        const drawY = (canvas.height - drawHeight) / 2;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (flipX) {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+        } else {
+          ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+        }
+
+        tex.dispose();
+        const containedTexture = new CanvasTexture(canvas);
+        containedTexture.colorSpace = SRGBColorSpace;
+        containedTexture.flipY = false;
+        setTexture(containedTexture);
+      },
+      undefined,
+      () => {
+        settleOnce();
+        if (!cancelled) setTexture(null);
+      },
     );
+    return () => {
+      cancelled = true;
+      settleOnce();
+      setTexture((prev) => {
+        prev?.dispose();
+        return null;
+      });
+    };
+  }, [imageUrl, flipX]);
 
-    useEffect(() => {
-      material.map = texture;
-      material.needsUpdate = true;
-    }, [material, texture]);
+  const material = useMemo(
+    () =>
+      new MeshBasicMaterial({
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -8,
+        polygonOffsetUnits: -8,
+        side: DoubleSide,
+        toneMapped: false,
+      }),
+    [],
+  );
 
-    useEffect(() => () => material.dispose(), [material]);
+  useEffect(() => {
+    material.map = texture;
+    material.needsUpdate = true;
+  }, [material, texture]);
 
-    const targetObject = useMemo(() => {
-      mesh.updateMatrixWorld(true);
-      const next = new Mesh(mesh.geometry, material);
-      next.matrix.copy(mesh.matrixWorld);
-      next.matrixAutoUpdate = false;
-      next.renderOrder = 12;
-      next.frustumCulled = false;
-      return next;
-    }, [mesh, material]);
+  useEffect(() => () => material.dispose(), [material]);
 
-    if (!texture) return null;
+  const targetObject = useMemo(() => {
+    mesh.updateMatrixWorld(true);
+    const next = new Mesh(mesh.geometry, material);
+    next.matrix.copy(mesh.matrixWorld);
+    next.matrixAutoUpdate = false;
+    next.renderOrder = 12;
+    next.frustumCulled = false;
+    return next;
+  }, [mesh, material]);
 
-    return <primitive object={targetObject} />;
-  },
-);
+  if (!texture) return null;
+
+  return <primitive object={targetObject} />;
+});
 LogoTargetMesh.displayName = 'LogoTargetMesh';
 
-function fitLogoToPrintArea(
-  maxSizeIn: { w: number; h: number },
-  imageWidth: number,
-  imageHeight: number,
-) {
+function fitLogoToPrintArea(maxSizeIn: { w: number; h: number }, imageWidth: number, imageHeight: number) {
   if (imageWidth <= 0 || imageHeight <= 0) return maxSizeIn;
 
   const imageAspect = imageWidth / imageHeight;
@@ -468,10 +438,7 @@ interface GiProductionViews {
  * views, fraction-crop for belt-end pages) needs no changes.
  */
 type BeltEndViewOverrides = Partial<
-  Record<
-    'left-belt-end' | 'right-belt-end',
-    { position: [number, number, number]; target: [number, number, number] }
-  >
+  Record<'left-belt-end' | 'right-belt-end', { position: [number, number, number]; target: [number, number, number] }>
 >;
 
 function captureGiProductionViews(
@@ -545,12 +512,7 @@ function captureGiProductionViews(
     const facing = dir === 'front' || dir === 'back';
     const width = facing ? size.x : size.z;
     const depth = facing ? size.z : size.x;
-    const dist =
-      Math.max(
-        (size.y * fitMargin) / 2 / tanV,
-        (width * fitMargin) / 2 / tanH,
-      ) +
-      depth / 2;
+    const dist = Math.max((size.y * fitMargin) / 2 / tanV, (width * fitMargin) / 2 / tanH) + depth / 2;
     cam.position.set(
       center.x + (dir === 'left' ? -dist : dir === 'right' ? dist : 0),
       center.y,
@@ -594,9 +556,8 @@ const CanvasBridge = memo(() => {
       const globals = window as unknown as Record<string, unknown>;
       globals.__giRenderer = gl;
       // Deterministic tech-pack capture (see captureGiProductionViews).
-      globals.__giCaptureProductionViews = (
-        overrides?: BeltEndViewOverrides,
-      ) => captureGiProductionViews(gl, scene, overrides);
+      globals.__giCaptureProductionViews = (overrides?: BeltEndViewOverrides) =>
+        captureGiProductionViews(gl, scene, overrides);
       globals.__giScene = scene;
       globals.__giCamera = camera;
     }
@@ -670,9 +631,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
 
     const startPos = camera.position.clone();
     const startTgt = controls.target.clone();
-    const targetPos = new Vector3(
-      ...cameraViewToPosition(cameraView, useMobileCamera),
-    );
+    const targetPos = new Vector3(...cameraViewToPosition(cameraView, useMobileCamera));
     const targetTgt = new Vector3(...cameraViewToTarget(cameraView));
     const duration = GI_CAMERA_TWEEN_MS;
     let raf = 0;
@@ -748,27 +707,17 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       const target = controls.target.clone();
       const offset = camera.position.clone().sub(target);
       const currentDistance = offset.length();
-      const maxDistance = useMobileCamera
-        ? MOBILE_CAMERA_MAX_DISTANCE
-        : DESKTOP_CAMERA_MAX_DISTANCE;
-      const nextDistance = Math.min(
-        maxDistance,
-        Math.max(CAMERA_MIN_DISTANCE, currentDistance * factor),
-      );
+      const maxDistance = useMobileCamera ? MOBILE_CAMERA_MAX_DISTANCE : DESKTOP_CAMERA_MAX_DISTANCE;
+      const nextDistance = Math.min(maxDistance, Math.max(CAMERA_MIN_DISTANCE, currentDistance * factor));
       if (currentDistance <= 0) return;
 
-      camera.position.copy(
-        target.clone().add(offset.setLength(nextDistance)),
-      );
+      camera.position.copy(target.clone().add(offset.setLength(nextDistance)));
       controls.update();
     };
 
     window.addEventListener('dspln:configurator-canvas:pinch', handlePinch);
     return () => {
-      window.removeEventListener(
-        'dspln:configurator-canvas:pinch',
-        handlePinch,
-      );
+      window.removeEventListener('dspln:configurator-canvas:pinch', handlePinch);
     };
   }, [camera, useMobileCamera]);
 
@@ -801,22 +750,11 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
       />
       {/* Back key — mirror of front key, no shadows. Lights the gi's
           rear so the Back view looks as bright + shaped as the Front. */}
-      <directionalLight
-        position={[-5, 7, -5]}
-        intensity={1.5}
-        color="#ffffff"
-      />
+      <directionalLight position={[-5, 7, -5]} intensity={1.5} color="#ffffff" />
       {/* Side fill — softens the off-key side from either view */}
       <directionalLight position={[-5, 3, 3]} intensity={0.4} color="#ffffff" />
       {/* Soft floor contact shadow under the gi */}
-      <ContactShadows
-        position={[0, 0, 0]}
-        opacity={0.35}
-        scale={5}
-        blur={2.6}
-        far={2}
-        resolution={1024}
-      />
+      <ContactShadows position={[0, 0, 0]} opacity={0.35} scale={5} blur={2.6} far={2} resolution={1024} />
 
       {USE_PLACEHOLDER ? <GiModelLoading /> : <GiModelClient />}
 
@@ -846,11 +784,8 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
             const logo = entry[1];
             if (!logo) return null;
             const cfg = KIMONO_LOGO_ANCHORS[slot];
-            const decalSize = fitLogoToPrintArea(
-              cfg.defaultSizeIn,
-              logo.imageWidth,
-              logo.imageHeight,
-            );
+            if (!cfg) return null;
+            const decalSize = fitLogoToPrintArea(cfg.defaultSizeIn, logo.imageWidth, logo.imageHeight);
             const position = computedKimonoAnchors?.[slot] ?? cfg.position;
             const isSleeve = slot === 'left-sleeve' || slot === 'right-sleeve';
             const targetMesh = kimonoLogoTargetMeshes[slot];
@@ -864,10 +799,8 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                 />
               );
             }
-            const targetMeshes =
-              slot !== 'back' && kimonoLogoMeshes.length > 0
-                ? kimonoLogoMeshes
-                : [kimonoBodyMesh];
+            const isBackPanel = slot === 'back' || slot === 'back-skirt';
+            const targetMeshes = !isBackPanel && kimonoLogoMeshes.length > 0 ? kimonoLogoMeshes : [kimonoBodyMesh];
             return targetMeshes.map((mesh) => (
               <ProjectedDecal
                 key={`${slot}-${mesh.uuid}`}
@@ -878,30 +811,32 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                 widthWorld={decalSize.w * IN_TO_WORLD}
                 heightWorld={decalSize.h * IN_TO_WORLD}
                 depthWorld={
-                  slot === 'back'
-                    ? 0.18
-                    : slot === 'left-chest'
-                      ? 0.32
-                    : isSleeve
+                  slot === 'back-skirt'
+                    ? 0.36
+                    : isBackPanel
+                      ? 0.18
+                      : slot === 'left-chest'
                         ? 0.32
-                        : undefined
+                        : isSleeve
+                          ? 0.32
+                          : undefined
                 }
                 surfaceOffsetWorld={
-                  slot === 'back' ? 0.003 : slot === 'left-chest' ? 0.006 : 0.003
+                  slot === 'back-skirt' ? 0.008 : isBackPanel ? 0.003 : slot === 'left-chest' ? 0.006 : 0.003
                 }
                 depthTest
-                polygonOffsetFactor={slot === 'back' ? -16 : undefined}
-                polygonOffsetUnits={slot === 'back' ? -16 : undefined}
-                normalCullMinDot={
-                  slot === 'back' ? 0.12 : slot === 'left-chest' ? 0.08 : 0.18
-                }
+                polygonOffsetFactor={isBackPanel ? -16 : undefined}
+                polygonOffsetUnits={isBackPanel ? -16 : undefined}
+                normalCullMinDot={slot === 'back' ? 0.12 : slot === 'left-chest' ? 0.08 : 0.18}
                 frontSurfaceDepthWorld={slot === 'left-chest' ? 0.09 : undefined}
                 surfaceIsland={
-                  slot === 'back'
-                    ? 'largest'
-                    : slot === 'left-chest'
-                      ? undefined
-                      : 'frontmost'
+                  slot === 'back-skirt'
+                    ? undefined
+                    : slot === 'back'
+                      ? 'largest'
+                      : slot === 'left-chest'
+                        ? undefined
+                        : 'frontmost'
                 }
               />
             ));
@@ -915,22 +850,13 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
             if (!logo) return null;
             const targetMesh = pantLogoTargetMeshes[slot];
             if (targetMesh) {
-              return (
-                <LogoTargetMesh
-                  key={`${slot}-${targetMesh.uuid}`}
-                  mesh={targetMesh}
-                  imageUrl={logo.imageUrl}
-                />
-              );
+              return <LogoTargetMesh key={`${slot}-${targetMesh.uuid}`} mesh={targetMesh} imageUrl={logo.imageUrl} />;
             }
             const pantLogoMesh = pantLogoMeshes[slot];
             if (!pantLogoMesh) return null;
             const cfg = PANT_LOGO_ANCHORS[slot];
-            const decalSize = fitLogoToPrintArea(
-              cfg.defaultSizeIn,
-              logo.imageWidth,
-              logo.imageHeight,
-            );
+            if (!cfg) return null;
+            const decalSize = fitLogoToPrintArea(cfg.defaultSizeIn, logo.imageWidth, logo.imageHeight);
             return (
               <ProjectedDecal
                 key={`${slot}-${pantLogoMesh.uuid}`}
@@ -940,9 +866,10 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
                 rotation={cfg.rotation}
                 widthWorld={decalSize.w * IN_TO_WORLD}
                 heightWorld={decalSize.h * IN_TO_WORLD}
-                depthWorld={0.32}
-                surfaceOffsetWorld={0.003}
-                surfaceIsland="frontmost"
+                depthWorld={slot === 'right-hem' ? 0.42 : 0.32}
+                surfaceOffsetWorld={slot === 'right-hem' ? 0.012 : 0.003}
+                normalCullMinDot={slot === 'right-hem' ? 0 : undefined}
+                surfaceIsland={slot === 'right-hem' ? undefined : 'frontmost'}
               />
             );
           })
@@ -978,11 +905,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
         rotateSpeed={0.7}
         zoomSpeed={0.6}
         minDistance={CAMERA_MIN_DISTANCE}
-        maxDistance={
-          useMobileCamera
-            ? MOBILE_CAMERA_MAX_DISTANCE
-            : DESKTOP_CAMERA_MAX_DISTANCE
-        }
+        maxDistance={useMobileCamera ? MOBILE_CAMERA_MAX_DISTANCE : DESKTOP_CAMERA_MAX_DISTANCE}
         minPolarAngle={(79 * Math.PI) / 192}
         maxPolarAngle={(113 * Math.PI) / 192}
       />
@@ -1021,10 +944,7 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
   // forces r3f's observer to pick up the real container dimensions.
   useEffect(() => {
     const t1 = setTimeout(() => window.dispatchEvent(new Event('resize')), 400);
-    const t2 = setTimeout(
-      () => window.dispatchEvent(new Event('resize')),
-      1200,
-    );
+    const t2 = setTimeout(() => window.dispatchEvent(new Event('resize')), 1200);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -1038,10 +958,7 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
       onPointerDown={touchHandlers.onPointerDown}
       onPointerMoveCapture={touchHandlers.onPointerMoveCapture}
       onPointerUp={touchHandlers.onPointerUp}
-      className={
-        className ??
-        'gi-mobile-scroll-canvas relative h-full w-full touch-none bg-white'
-      }
+      className={className ?? 'gi-mobile-scroll-canvas relative h-full w-full touch-none bg-white'}
     >
       <Canvas
         shadows

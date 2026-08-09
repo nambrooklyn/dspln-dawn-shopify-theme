@@ -22,9 +22,7 @@ export interface UploadedLogoItem {
   imageHeight: number;
 }
 
-export type LogoApplyTarget =
-  | `kimono:${KimonoLogoSlot}`
-  | `pant:${PantLogoSlot}`;
+export type LogoApplyTarget = `kimono:${KimonoLogoSlot}` | `pant:${PantLogoSlot}`;
 
 export const APPLY_TARGETS: Array<{ value: LogoApplyTarget; label: string }> = [
   ...KIMONO_LOGO_SLOTS.map((slot) => ({
@@ -42,11 +40,14 @@ export const KIMONO_UPLOAD_LABEL: Record<KimonoLogoSlot, string> = {
   'left-sleeve': 'Left Sleeve',
   'right-sleeve': 'Right Sleeve',
   back: 'Back',
+  'back-skirt': 'Below Belt (Back)',
 };
 
 export const PANT_UPLOAD_LABEL: Record<PantLogoSlot, string> = {
   'left-pant': 'Left Thigh',
   'right-pant': 'Right Thigh',
+  'big-left-thigh': 'Big Left Thigh',
+  'right-hem': 'Bottom Right Hem',
 };
 
 /**
@@ -148,17 +149,9 @@ export function useUploadedLogos({
       });
     });
 
-    setUploadedLogos(
-      items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    );
+    setUploadedLogos(items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
     return () => objectUrls.forEach((url) => URL.revokeObjectURL(url));
-  }, [
-    activeDesignName,
-    currentKimonoLogos,
-    currentPantLogos,
-    defaultDesignName,
-    savedDesigns,
-  ]);
+  }, [activeDesignName, currentKimonoLogos, currentPantLogos, defaultDesignName, savedDesigns]);
 
   return uploadedLogos;
 }
