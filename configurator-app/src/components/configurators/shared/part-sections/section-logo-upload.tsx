@@ -23,6 +23,7 @@ import {
 
 import { useSavedUploads } from '../../gi/uploaded-logos-context';
 import type { UploadedLogoItem } from '../../gi/use-uploaded-logos';
+import { uploadArtworkImageCached } from '../preview-upload';
 
 interface LogoTransformControls {
   offsetXIn: number;
@@ -200,6 +201,18 @@ export const SectionLogoUpload = memo(
         if (!file) return;
         const result = await trimTransparentPadding(file);
         onUpload(result.file, result.dimensions);
+        // Warm the artwork upload NOW, in the background, so add-to-cart's
+        // design save finds the hosted URL already cached instead of paying
+        // a multi-MB upload while the customer stares at "Adding...". The
+        // cache is keyed by the image's data URL, which matches what the
+        // save computes from this same file's bytes.
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            void uploadArtworkImageCached(reader.result).catch(() => {});
+          }
+        };
+        reader.readAsDataURL(result.file);
       },
       [onUpload],
     );

@@ -15,7 +15,11 @@ import {
   snapshotCanvasCenteredThumbnail,
   snapshotCanvasThumbnail,
 } from './rashguard-export';
-import { shrinkArtworkDataUrl, uploadPreviewImage } from '../shared/preview-upload';
+import {
+  shrinkArtworkDataUrl,
+  uploadPreviewImage,
+  uploadPreviewImageCached,
+} from '../shared/preview-upload';
 import {
   buildRashguardCloudDesignUrls,
   getRashguardCloudOwnerContext,
@@ -820,7 +824,9 @@ const RashguardConfiguratorInner = memo(() => {
             : null;
         if (!dataUrl) return;
 
-        const hostedUrl = await uploadPreviewImage(dataUrl);
+        // Content-cached: repeat add-to-carts (and layers already warmed)
+        // reuse the hosted URL instead of re-uploading the same bytes.
+        const hostedUrl = await uploadPreviewImageCached(dataUrl);
         const fallbackUrl = layer.imageUrl?.startsWith('http') ? layer.imageUrl : dataUrl;
         const artworkUrl = hostedUrl ?? fallbackUrl;
         if (artworkUrl) artworkLayerUrls[index] = artworkUrl;

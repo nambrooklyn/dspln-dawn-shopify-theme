@@ -261,6 +261,52 @@ export async function uploadArtworkImage(
   }
 }
 
+/**
+ * Content-keyed upload caches. Add-to-cart used to re-shrink and re-upload
+ * every logo on every press — the multi-MB uploads dominated the wait (the
+ * "add to cart takes forever" complaint). Keying by the image's data URL means
+ * each distinct image uploads once per session; repeat saves and add-to-carts
+ * reuse the hosted URL instantly. Failures are evicted so they retry.
+ */
+const artworkUploadCache = new Map<
+  string,
+  Promise<{ url: string | null; shrunkDataUrl: string }>
+>();
+
+export function uploadArtworkImageCached(
+  imageDataUrl: string,
+): Promise<{ url: string | null; shrunkDataUrl: string }> {
+  const cached = artworkUploadCache.get(imageDataUrl);
+  if (cached) return cached;
+
+  const pending = (async () => {
+    const shrunkDataUrl = await shrinkArtworkDataUrl(imageDataUrl);
+    const url = await uploadArtworkImage(shrunkDataUrl);
+    if (!url) artworkUploadCache.delete(imageDataUrl);
+    return { url, shrunkDataUrl };
+  })();
+
+  artworkUploadCache.set(imageDataUrl, pending);
+  return pending;
+}
+
+const previewUploadCache = new Map<string, Promise<string | null>>();
+
+export function uploadPreviewImageCached(
+  imageDataUrl: string,
+): Promise<string | null> {
+  const cached = previewUploadCache.get(imageDataUrl);
+  if (cached) return cached;
+
+  const pending = uploadPreviewImage(imageDataUrl).then((url) => {
+    if (!url) previewUploadCache.delete(imageDataUrl);
+    return url;
+  });
+
+  previewUploadCache.set(imageDataUrl, pending);
+  return pending;
+}
+
 export async function uploadPreviewImage(
   imageDataUrl: string,
 ): Promise<string | null> {

@@ -1,6 +1,6 @@
 import { storefrontOrigin } from './storefront-links';
 import { isStudioMode } from './studio-mode';
-import { shrinkArtworkDataUrl, uploadArtworkImage } from './preview-upload';
+import { uploadArtworkImageCached } from './preview-upload';
 
 type RashguardProductConfig = {
   shopifyProductHandle: string;
@@ -168,9 +168,12 @@ async function offloadDraftImages(images: unknown[]): Promise<unknown[]> {
       if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
         return image;
       }
-      const slim = await shrinkArtworkDataUrl(dataUrl);
-      const hosted = await uploadArtworkImage(slim);
-      return { ...record, dataUrl: hosted ?? slim };
+      // Content-cached: a layer that already uploaded (earlier save or
+      // add-to-cart) reuses its hosted URL instead of re-shrinking and
+      // re-uploading multi-MB bytes on every press.
+      const { url: hosted, shrunkDataUrl } =
+        await uploadArtworkImageCached(dataUrl);
+      return { ...record, dataUrl: hosted ?? shrunkDataUrl };
     }),
   );
 }
