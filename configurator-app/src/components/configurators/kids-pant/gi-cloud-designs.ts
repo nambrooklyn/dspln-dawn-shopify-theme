@@ -3,7 +3,7 @@ import { isStudioMode } from '../shared/studio-mode';
 import type { GiDraftDocument, GiDraftLogoImage } from './gi-draft-storage';
 import type { KimonoLogoSlot, PantLogoSlot } from './gi-config';
 import { GI_PRODUCT_CONFIGS } from '../shared/gi-product-config';
-import { shrinkArtworkDataUrl, uploadArtworkImage } from '../shared/preview-upload';
+import { uploadArtworkImageCached } from '../shared/preview-upload';
 import { storefrontOrigin } from '../shared/storefront-links';
 
 const PRODUCT_CONFIG = GI_PRODUCT_CONFIGS['kids-pant'];
@@ -159,14 +159,14 @@ async function imagesToCloudImages<TSlot extends string>(
 	    Object.entries(images).map(async ([slot, image]) => {
 	      if (!image) return null;
 	      const draftImage = image as GiDraftLogoImage;
-      const dataUrl = await shrinkArtworkDataUrl(
-        await imageToDataUrl(draftImage),
-      );
       // Upload the logo separately and store only its URL so the heavy
       // base64 stays out of the design-record JSON. Logo-heavy saves used to
       // exceed the request-size limit and block add-to-cart; fall back to the
-      // shrunk base64 only if the upload fails.
-      const uploadedUrl = await uploadArtworkImage(dataUrl);
+      // shrunk base64 only if the upload fails. The upload is content-cached,
+      // so a logo that already uploaded (earlier save or add-to-cart) is not
+      // shrunk or uploaded again.
+      const { url: uploadedUrl, shrunkDataUrl } =
+        await uploadArtworkImageCached(await imageToDataUrl(draftImage));
       const stored: CloudLogoImage = uploadedUrl
         ? {
             shopifyUrl: uploadedUrl,
@@ -175,7 +175,7 @@ async function imagesToCloudImages<TSlot extends string>(
             imageHeight: draftImage.imageHeight,
           }
         : {
-            dataUrl,
+            dataUrl: shrunkDataUrl,
             filename: draftImage.filename,
             imageWidth: draftImage.imageWidth,
             imageHeight: draftImage.imageHeight,
@@ -232,16 +232,40 @@ async function cloudImagesToDraftImages<TSlot extends string>(
 async function draftToCloudConfigData(
   draft: GiDraftDocument,
 ): Promise<CloudDesignConfigData> {
+  // Kimono and pant logo uploads are independent — run them concurrently so
+  // add-to-cart waits for the slowest part, not the sum of both.
+  const [kimono, pant] = await Promise.all([
+    imagesToCloudImages(draft.images.kimono),
+    imagesToCloudImages(draft.images.pant),
+  ]);
   return {
     source: PRODUCT_CONFIG.cloudConfigSource,
     studio: isStudioMode() || undefined,
     version: 1,
     spec: draft.spec,
     renders: draft.renders,
-    images: {
-      kimono: await imagesToCloudImages(draft.images.kimono),
-      pant: await imagesToCloudImages(draft.images.pant),
-    },
+    images: { kimono, pant },
+  };
+}
+
+/**
+ * Fold the server's response into the draft we just uploaded WITHOUT
+ * re-downloading the artwork. recordToDraft fetches every logo back from the
+ * blob store — multi-MB round-trips for bytes that are already in memory —
+ * and on the save/add-to-cart path the local blobs are byte-identical to what
+ * was stored. Only the server-owned fields change.
+ */
+function mergeSavedRecordIntoDraft(
+  draft: GiDraftDocument,
+  record: CustomerDesignRecord,
+): GiDraftDocument {
+  return {
+    ...draft,
+    id: record.id,
+    name: record.name,
+    thumbnailUrl: record.thumbnailUrl ?? draft.thumbnailUrl,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
   };
 }
 
@@ -325,7 +349,7 @@ export async function saveGiCloudDesign(
     }),
   });
 
-  return recordToDraft(response.data.design);
+  return mergeSavedRecordIntoDraft(draft, response.data.design);
 }
 
 export async function saveGiCloudDesignRecord(
@@ -354,7 +378,7 @@ export async function saveGiCloudDesignRecord(
   });
 
   return {
-    draft: await recordToDraft(response.data.design),
+    draft: mergeSavedRecordIntoDraft(draft, response.data.design),
     designUrl: response.data.design.designUrl,
     productionUrl: response.data.design.productionUrl,
     artwork: response.data.design.artwork ?? [],
