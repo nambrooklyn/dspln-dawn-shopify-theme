@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { Crop, ImagePlus, LoaderCircle, Send, Type, Upload, WandSparkles, X } from 'lucide-react';
+import { Crop, ImagePlus, LoaderCircle, Redo2, Send, Type, Undo2, Upload, WandSparkles, X } from 'lucide-react';
 
 import {
   BELT_EMBROIDERY_DEFAULT,
@@ -207,7 +207,52 @@ function CleanupBrushCanvas({
   const [overlayUrl, setOverlayUrl] = useState('');
   const [overlayScale, setOverlayScale] = useState(45);
   const [overlayPosition, setOverlayPosition] = useState({ x: 50, y: 50 });
+  const [brushCursor, setBrushCursor] = useState({ x: 0, y: 0, visible: false });
+  const [history, setHistory] = useState<string[]>([imageUrl]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const extraImageInputRef = useRef<HTMLInputElement>(null);
+  const historyRef = useRef(history);
+  const historyIndexRef = useRef(historyIndex);
+  historyRef.current = history;
+  historyIndexRef.current = historyIndex;
+
+  const commitSnapshot = useCallback((dataUrl: string) => {
+    const next = historyRef.current.slice(0, historyIndexRef.current + 1);
+    if (next[next.length - 1] !== dataUrl) next.push(dataUrl);
+    const bounded = next.slice(-30);
+    setHistory(bounded);
+    setHistoryIndex(bounded.length - 1);
+    onChange(dataUrl);
+  }, [onChange]);
+
+  const moveThroughHistory = useCallback((direction: -1 | 1) => {
+    const nextIndex = Math.min(
+      historyRef.current.length - 1,
+      Math.max(0, historyIndexRef.current + direction),
+    );
+    if (nextIndex === historyIndexRef.current) return;
+    const snapshot = historyRef.current[nextIndex];
+    setHistoryIndex(nextIndex);
+    onChange(snapshot);
+  }, [onChange]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches('input, textarea, [contenteditable="true"]')) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z') {
+        event.preventDefault();
+        moveThroughHistory(event.shiftKey ? 1 : -1);
+      } else if (key === 'y') {
+        event.preventDefault();
+        moveThroughHistory(1);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [moveThroughHistory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,6 +269,7 @@ function CleanupBrushCanvas({
         const canvas = canvasRef.current;
         canvas.width = current.naturalWidth;
         canvas.height = current.naturalHeight;
+        onDimensionsChange(canvas.width, canvas.height);
         const context = canvas.getContext('2d', { willReadFrequently: true });
         if (!context) return;
         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -295,7 +341,7 @@ function CleanupBrushCanvas({
     if (!drawingRef.current || !canvasRef.current) return;
     drawingRef.current = false;
     event.currentTarget.releasePointerCapture(event.pointerId);
-    onChange(canvasRef.current.toDataURL('image/png'));
+    commitSnapshot(canvasRef.current.toDataURL('image/png'));
   };
 
   const applyCrop = () => {
@@ -313,7 +359,7 @@ function CleanupBrushCanvas({
     output.height = height;
     output.getContext('2d')?.drawImage(canvas, left, top, width, height, 0, 0, width, height);
     onDimensionsChange(width, height);
-    onChange(output.toDataURL('image/png'));
+    commitSnapshot(output.toDataURL('image/png'));
     setCropInsets({ left: 0, top: 0, right: 0, bottom: 0 });
     setPanel('cleanup');
   };
@@ -336,7 +382,7 @@ function CleanupBrushCanvas({
       (textPosition.y / 100) * canvas.height,
     );
     context.restore();
-    onChange(canvas.toDataURL('image/png'));
+    commitSnapshot(canvas.toDataURL('image/png'));
     setTextValue('');
     setPanel('cleanup');
   };
@@ -370,7 +416,7 @@ function CleanupBrushCanvas({
       width,
       height,
     );
-    onChange(canvas.toDataURL('image/png'));
+    commitSnapshot(canvas.toDataURL('image/png'));
     setOverlayUrl('');
     setPanel('cleanup');
   };
@@ -389,6 +435,9 @@ function CleanupBrushCanvas({
         <button type="button" onClick={() => setPanel('crop')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'crop' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Crop className="h-3 w-3" /> Crop</button>
         <button type="button" onClick={() => setPanel('text')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'text' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Type className="h-3 w-3" /> Text</button>
         <button type="button" onClick={() => setPanel('image')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'image' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Upload className="h-3 w-3" /> Add image</button>
+        <span className="mx-1 h-5 w-px bg-[#e3ded7]" />
+        <button type="button" onClick={() => moveThroughHistory(-1)} disabled={historyIndex === 0} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" className="inline-flex h-8 items-center gap-1 rounded-full border border-[#d7d0c8] px-2.5 text-[10px] font-semibold text-[#1c1b1b] disabled:opacity-30"><Undo2 className="h-3.5 w-3.5" /> Undo</button>
+        <button type="button" onClick={() => moveThroughHistory(1)} disabled={historyIndex >= history.length - 1} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)" className="inline-flex h-8 items-center gap-1 rounded-full border border-[#d7d0c8] px-2.5 text-[10px] font-semibold text-[#1c1b1b] disabled:opacity-30"><Redo2 className="h-3.5 w-3.5" /> Redo</button>
       </div>
       <div className="border-b border-[#e3ded7] bg-[#faf8f5] px-4 py-2">
         {panel === 'cleanup' ? <div className="flex flex-wrap items-center gap-2">
@@ -415,7 +464,7 @@ function CleanupBrushCanvas({
         </div> : null}
       </div>
       <div
-        className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4"
+        className="flex min-h-0 flex-1 items-start justify-center overflow-auto p-4"
         style={{
           backgroundColor: '#fff',
           backgroundImage:
@@ -435,11 +484,25 @@ function CleanupBrushCanvas({
             paint(event);
           }}
           onPointerMove={(event) => {
+            const bounds = event.currentTarget.getBoundingClientRect();
+            setBrushCursor({
+              x: event.clientX - bounds.left,
+              y: event.clientY - bounds.top,
+              visible: panel === 'cleanup',
+            });
             if (panel === 'cleanup' && drawingRef.current) paint(event);
+          }}
+          onPointerEnter={(event) => {
+            const bounds = event.currentTarget.getBoundingClientRect();
+            setBrushCursor({ x: event.clientX - bounds.left, y: event.clientY - bounds.top, visible: panel === 'cleanup' });
+          }}
+          onPointerLeave={() => {
+            if (!drawingRef.current) setBrushCursor((current) => ({ ...current, visible: false }));
           }}
           onPointerUp={finishStroke}
           onPointerCancel={finishStroke}
         />
+        {panel === 'cleanup' && brushCursor.visible ? <div aria-hidden="true" className="pointer-events-none absolute rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(92,0,0,0.95)]" style={{ width: brushSize, height: brushSize, left: brushCursor.x - brushSize / 2, top: brushCursor.y - brushSize / 2 }} /> : null}
         {panel === 'crop' ? <div className="pointer-events-none absolute border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.48)]" style={cropBox}><span className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -bottom-1.5 -left-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /></div> : null}
         </div>
       </div>
@@ -1619,7 +1682,7 @@ export function DesignAssistant({
                   setCleanupStrength(0);
                   setCleanupDirty(false);
                   setCleanupEditorOpen(false);
-                }} className="h-9 rounded-full border border-[#5c0000] px-4 text-xs font-semibold text-[#5c0000]">Undo</button>
+                }} className="h-9 rounded-full border border-[#5c0000] px-4 text-xs font-semibold text-[#5c0000]">Reset original</button>
                 <button type="button" onClick={() => void saveBackgroundCleanup().then(() => {
                   setCleanupEditorOpen(false);
                 })} disabled={uploadingArtwork} className="h-9 rounded-full bg-[#5c0000] px-5 text-xs font-semibold text-white disabled:opacity-40">Done</button>
