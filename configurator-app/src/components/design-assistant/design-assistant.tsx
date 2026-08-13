@@ -103,7 +103,7 @@ const readArtworkFile = async (file: File) => {
 
 const removeEdgeConnectedLightBackground = async (
   dataUrl: string,
-  mode: 'background' | 'shadow' = 'background',
+  cleanupStrength = 0,
 ) => {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const next = new Image();
@@ -135,8 +135,8 @@ const removeEdgeConnectedLightBackground = async (
     const blue = data[offset + 2];
     const darkest = Math.min(red, green, blue);
     const lightest = Math.max(red, green, blue);
-    const minimumBrightness = mode === 'shadow' ? 150 : 224;
-    const maximumColorSpread = mode === 'shadow' ? 36 : 24;
+    const minimumBrightness = Math.round(224 - cleanupStrength * 1.35);
+    const maximumColorSpread = Math.round(24 + cleanupStrength * 0.36);
     return (
       darkest >= minimumBrightness &&
       lightest - darkest <= maximumColorSpread
@@ -166,6 +166,15 @@ const removeEdgeConnectedLightBackground = async (
     if (x + 1 < width) enqueue(index + 1);
     if (y > 0) enqueue(index - width);
     if (y + 1 < height) enqueue(index + width);
+  }
+
+  // A stronger cleanup also removes disconnected neutral pixels, which is
+  // necessary for isolated drop-shadow remnants. Recompute from the original
+  // for every slider change so cleanup never compounds destructively.
+  if (cleanupStrength > 0) {
+    for (let index = 0; index < width * height; index += 1) {
+      if (isLightBackground(index)) data[index * 4 + 3] = 0;
+    }
   }
 
   context.putImageData(pixels, 0, 0);
@@ -387,6 +396,8 @@ export function DesignAssistant({
   const [attachedArtwork, setAttachedArtwork] = useState<AttachedArtwork | null>(null);
   const [originalAttachedArtwork, setOriginalAttachedArtwork] =
     useState<AttachedArtwork | null>(null);
+  const [cleanupStrength, setCleanupStrength] = useState(0);
+  const [cleanupDirty, setCleanupDirty] = useState(false);
   const conversationRef = useRef<ApiMessage[]>([]);
   const artworkRef = useRef(new Map<string, AttachedArtwork>());
   const artworkInputRef = useRef<HTMLInputElement>(null);
@@ -439,6 +450,8 @@ export function DesignAssistant({
       artworkRef.current.set(artwork.id, artwork);
       setAttachedArtwork(artwork);
       setOriginalAttachedArtwork(artwork);
+      setCleanupStrength(0);
+      setCleanupDirty(false);
     } catch {
       setArtworkError('I could not upload that image. Please try another file.');
     } finally {
@@ -446,40 +459,58 @@ export function DesignAssistant({
     }
   }, []);
 
-  const processAttachedBackground = useCallback(async (
-    mode: 'background' | 'shadow',
-  ) => {
-    if (!attachedArtwork || uploadingArtwork) return;
+  const previewBackgroundCleanup = useCallback(async (strength: number) => {
+    if (!originalAttachedArtwork || uploadingArtwork) return null;
     setArtworkError('');
     setUploadingArtwork(true);
     try {
       const dataUrl = await removeEdgeConnectedLightBackground(
-        attachedArtwork.previewUrl,
-        mode,
+        originalAttachedArtwork.previewUrl,
+        strength,
       );
-      const hostedUrl = await uploadArtworkImage(dataUrl);
-      if (!hostedUrl) throw new Error('Artwork upload failed');
       const artwork: AttachedArtwork = {
-        ...attachedArtwork,
-        id: crypto.randomUUID(),
-        url: hostedUrl,
+        ...originalAttachedArtwork,
+        id: `preview-${crypto.randomUUID()}`,
         previewUrl: dataUrl,
         filename:
-          attachedArtwork.filename.replace(/\.[^.]+$/, '') +
-          (mode === 'shadow' ? '-shadow-cleaned.png' : '-transparent.png'),
+          originalAttachedArtwork.filename.replace(/\.[^.]+$/, '') +
+          '-transparent.png',
       };
-      artworkRef.current.set(artwork.id, artwork);
       setAttachedArtwork(artwork);
+      setCleanupStrength(strength);
+      setCleanupDirty(true);
+      return artwork;
     } catch {
-      setArtworkError(
-        mode === 'shadow'
-          ? 'I could not clean up more of the background. You can undo and use the original.'
-          : 'I could not remove this background. Try an image with a plain white or light background.',
-      );
+      setArtworkError('I could not clean up this background. You can undo and use the original.');
+      return null;
     } finally {
       setUploadingArtwork(false);
     }
-  }, [attachedArtwork, uploadingArtwork]);
+  }, [originalAttachedArtwork, uploadingArtwork]);
+
+  const saveBackgroundCleanup = useCallback(async (
+    candidate?: AttachedArtwork | null,
+  ) => {
+    const artworkToSave = candidate ?? attachedArtwork;
+    if (!artworkToSave || (!candidate && !cleanupDirty) || uploadingArtwork) return;
+    setUploadingArtwork(true);
+    try {
+      const hostedUrl = await uploadArtworkImage(artworkToSave.previewUrl);
+      if (!hostedUrl) throw new Error('Artwork upload failed');
+      const artwork = {
+        ...artworkToSave,
+        id: crypto.randomUUID(),
+        url: hostedUrl,
+      };
+      artworkRef.current.set(artwork.id, artwork);
+      setAttachedArtwork(artwork);
+      setCleanupDirty(false);
+    } catch {
+      setArtworkError('I could not save the cleaned artwork. Please try again.');
+    } finally {
+      setUploadingArtwork(false);
+    }
+  }, [attachedArtwork, cleanupDirty, uploadingArtwork]);
 
   const attachArtwork = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -895,6 +926,8 @@ export function DesignAssistant({
       setInput('');
       setAttachedArtwork(null);
       setOriginalAttachedArtwork(null);
+      setCleanupStrength(0);
+      setCleanupDirty(false);
       setArtworkError('');
       setBusy(true);
       setBubbles((prev) => [
@@ -1128,10 +1161,10 @@ export function DesignAssistant({
                     {attachedArtwork.width} × {attachedArtwork.height}px
                   </p>
                   <div className="mt-1 flex min-w-0 gap-2">
-                    {originalAttachedArtwork?.id === attachedArtwork.id ? (
+                    {cleanupStrength === 0 ? (
                       <button
                         type="button"
-                        onClick={() => void processAttachedBackground('background')}
+                        onClick={() => void previewBackgroundCleanup(1).then((artwork) => saveBackgroundCleanup(artwork))}
                         disabled={uploadingArtwork}
                         className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2.5 text-[9px] font-semibold tracking-[0.02em] text-white hover:bg-[#760000] disabled:opacity-40"
                       >
@@ -1139,17 +1172,27 @@ export function DesignAssistant({
                       </button>
                     ) : originalAttachedArtwork ? (
                       <>
+                        <label className="min-w-0 flex-1 text-[8px] font-semibold text-[#5c0000]">
+                          <span className="flex justify-between"><span>Cleanup strength</span><span>{cleanupStrength}%</span></span>
+                          <input
+                            type="range"
+                            min="1"
+                            max="100"
+                            value={cleanupStrength}
+                            disabled={uploadingArtwork}
+                            onChange={(event) => void previewBackgroundCleanup(Number(event.target.value))}
+                            onPointerUp={() => void saveBackgroundCleanup()}
+                            onKeyUp={() => void saveBackgroundCleanup()}
+                            className="h-3 w-full accent-[#5c0000]"
+                          />
+                        </label>
                         <button
                           type="button"
-                          onClick={() => void processAttachedBackground('shadow')}
-                          disabled={uploadingArtwork}
-                          className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2 text-[8px] font-semibold tracking-[0.01em] text-white hover:bg-[#760000] disabled:opacity-40"
-                        >
-                          {uploadingArtwork ? 'Cleaning…' : 'More cleanup'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAttachedArtwork(originalAttachedArtwork)}
+                          onClick={() => {
+                            setAttachedArtwork(originalAttachedArtwork);
+                            setCleanupStrength(0);
+                            setCleanupDirty(false);
+                          }}
                           disabled={uploadingArtwork}
                           className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full border border-[#5c0000] px-2 text-[8px] font-semibold text-[#5c0000] hover:bg-[#f5eaea] disabled:opacity-40"
                         >
@@ -1165,6 +1208,8 @@ export function DesignAssistant({
                   onClick={() => {
                     setAttachedArtwork(null);
                     setOriginalAttachedArtwork(null);
+                    setCleanupStrength(0);
+                    setCleanupDirty(false);
                   }}
                   className="rounded-full p-1 text-[#8a8580] hover:bg-[#eee9e2]"
                 >
@@ -1204,7 +1249,7 @@ export function DesignAssistant({
               />
               <button
                 type="submit"
-                disabled={busy || uploadingArtwork || (!input.trim() && !attachedArtwork)}
+                disabled={busy || uploadingArtwork || cleanupDirty || (!input.trim() && !attachedArtwork)}
                 aria-label="Send"
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
               >
