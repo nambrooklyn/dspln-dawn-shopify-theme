@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { Crop, ImagePlus, LoaderCircle, Redo2, Send, Type, Undo2, Upload, WandSparkles, X } from 'lucide-react';
+import { Bot, Crop, ImagePlus, LoaderCircle, Redo2, Send, Type, Undo2, Upload, WandSparkles, X, ZoomIn, ZoomOut } from 'lucide-react';
 
 import {
   BELT_EMBROIDERY_DEFAULT,
@@ -210,6 +210,7 @@ function CleanupBrushCanvas({
   const [brushCursor, setBrushCursor] = useState({ x: 0, y: 0, visible: false });
   const [history, setHistory] = useState<string[]>([imageUrl]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [zoom, setZoom] = useState(75);
   const extraImageInputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef(history);
   const historyIndexRef = useRef(historyIndex);
@@ -429,17 +430,31 @@ function CleanupBrushCanvas({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-[#e3ded7] bg-white px-4 py-2">
-        <button type="button" onClick={() => setPanel('cleanup')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'cleanup' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><WandSparkles className="h-3 w-3" /> Cleanup</button>
-        <button type="button" onClick={() => setPanel('crop')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'crop' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Crop className="h-3 w-3" /> Crop</button>
-        <button type="button" onClick={() => setPanel('text')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'text' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Type className="h-3 w-3" /> Text</button>
-        <button type="button" onClick={() => setPanel('image')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'image' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Upload className="h-3 w-3" /> Add image</button>
-        <span className="mx-1 h-5 w-px bg-[#e3ded7]" />
-        <button type="button" onClick={() => moveThroughHistory(-1)} disabled={historyIndex === 0} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" className="inline-flex h-8 items-center gap-1 rounded-full border border-[#d7d0c8] px-2.5 text-[10px] font-semibold text-[#1c1b1b] disabled:opacity-30"><Undo2 className="h-3.5 w-3.5" /> Undo</button>
-        <button type="button" onClick={() => moveThroughHistory(1)} disabled={historyIndex >= history.length - 1} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)" className="inline-flex h-8 items-center gap-1 rounded-full border border-[#d7d0c8] px-2.5 text-[10px] font-semibold text-[#1c1b1b] disabled:opacity-30"><Redo2 className="h-3.5 w-3.5" /> Redo</button>
+    <div className="flex min-h-0 flex-1 flex-col bg-[#f7f7f8]">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-[#dedede] bg-white px-3">
+        <div className="flex overflow-hidden rounded-lg border border-[#dedede] bg-white shadow-sm">
+          <button type="button" onClick={() => moveThroughHistory(-1)} disabled={historyIndex === 0} title="Undo (Ctrl/Cmd+Z)" className="inline-flex h-9 items-center gap-1.5 border-r border-[#dedede] px-3 text-xs font-medium disabled:opacity-30"><Undo2 className="h-4 w-4" /> Undo</button>
+          <button type="button" onClick={() => moveThroughHistory(1)} disabled={historyIndex >= history.length - 1} title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)" aria-label="Redo" className="inline-flex h-9 w-10 items-center justify-center disabled:opacity-30"><Redo2 className="h-4 w-4" /></button>
+        </div>
+        <div className="flex overflow-hidden rounded-lg border border-[#dedede] bg-white shadow-sm">
+          <button type="button" onClick={() => setZoom((value) => Math.max(25, value - 25))} aria-label="Zoom out" className="inline-flex h-9 w-10 items-center justify-center border-r border-[#dedede]"><ZoomOut className="h-4 w-4" /></button>
+          <span className="inline-flex h-9 min-w-16 items-center justify-center px-3 text-xs font-medium">{zoom}%</span>
+          <button type="button" onClick={() => setZoom((value) => Math.min(200, value + 25))} aria-label="Zoom in" className="inline-flex h-9 w-10 items-center justify-center border-l border-[#dedede]"><ZoomIn className="h-4 w-4" /></button>
+        </div>
       </div>
-      <div className="border-b border-[#e3ded7] bg-[#faf8f5] px-4 py-2">
+      <div className="flex min-h-0 flex-1">
+        <aside className="flex w-[82px] shrink-0 flex-col items-stretch border-r border-[#dedede] bg-white py-2">
+          {[
+            { id: 'cleanup' as const, label: 'Cleanup', icon: WandSparkles },
+            { id: 'image' as const, label: 'Uploads', icon: Upload },
+            { id: 'text' as const, label: 'Text', icon: Type },
+            { id: 'crop' as const, label: 'Crop', icon: Crop },
+          ].map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setPanel(id)} className={`flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${panel === id ? 'bg-[#f5eaea] text-[#5c0000]' : 'text-[#202124] hover:bg-[#f7f7f8]'}`}><Icon className="h-5 w-5" />{label}</button>)}
+          <button type="button" onClick={() => document.getElementById('artwork-editor-ai-prompt')?.focus()} className="flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium text-[#202124] hover:bg-[#f7f7f8]"><Bot className="h-5 w-5" />Ask AI</button>
+        </aside>
+        <main className="flex min-w-0 flex-1 flex-col">
+      <div className="z-10 flex min-h-14 shrink-0 items-center justify-center border-b border-[#dedede] bg-[#f7f7f8] px-4 py-2">
+        <div className="w-fit max-w-full rounded-2xl border border-[#dedede] bg-white px-3 py-2 shadow-sm">
         {panel === 'cleanup' ? <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => setTool('restore')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'restore' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Restore details</button>
           <button type="button" onClick={() => setTool('erase')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'erase' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Erase leftovers</button>
@@ -462,21 +477,22 @@ function CleanupBrushCanvas({
           <button type="button" onClick={() => extraImageInputRef.current?.click()} className="h-8 rounded-full border border-[#5c0000] px-4 text-[10px] font-semibold text-[#5c0000]">Choose image</button>
           {overlayUrl ? <><img src={overlayUrl} alt="Additional artwork" className="h-8 w-8 rounded object-contain" /><label className="flex flex-1 items-center gap-2 text-[9px] font-semibold text-[#5c0000]">Size<input type="range" min="10" max="100" value={overlayScale} onChange={(event) => setOverlayScale(Number(event.target.value))} className="w-full accent-[#5c0000]" /></label><label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">X<input type="range" min="5" max="95" value={overlayPosition.x} onChange={(event) => setOverlayPosition((current) => ({ ...current, x: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label><label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">Y<input type="range" min="5" max="95" value={overlayPosition.y} onChange={(event) => setOverlayPosition((current) => ({ ...current, y: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label><button type="button" onClick={() => void applyExtraImage()} className="h-8 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white">Add to artwork</button></> : <span className="text-[10px] text-[#8a8580]">Add another logo or image, then set its size and position.</span>}
         </div> : null}
+        </div>
       </div>
       <div
-        className="flex min-h-0 flex-1 items-start justify-center overflow-auto p-4"
+        className="flex min-h-0 flex-1 items-start justify-center overflow-auto overscroll-contain bg-[#f7f7f8] p-8"
         style={{
-          backgroundColor: '#fff',
+          backgroundColor: '#f7f7f8',
           backgroundImage:
-            'linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%)',
+            'linear-gradient(45deg, #e2e2e2 25%, transparent 25%), linear-gradient(-45deg, #e2e2e2 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e2e2 75%), linear-gradient(-45deg, transparent 75%, #e2e2e2 75%)',
           backgroundSize: '24px 24px',
           backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
         }}
       >
-        <div className="relative inline-flex max-h-[58dvh] max-w-full">
+        <div className="relative inline-flex max-w-none border-2 border-[#4564ff] bg-white shadow-xl" style={{ width: `${zoom}%` }}>
         <canvas
           ref={canvasRef}
-          className={`max-h-[58dvh] max-w-full touch-none object-contain ${panel === 'cleanup' ? 'cursor-crosshair' : 'cursor-default'}`}
+          className={`h-auto w-full max-w-none touch-none object-contain ${panel === 'cleanup' ? 'cursor-none' : 'cursor-default'}`}
           onPointerDown={(event) => {
             if (panel !== 'cleanup') return;
             drawingRef.current = true;
@@ -504,7 +520,10 @@ function CleanupBrushCanvas({
         />
         {panel === 'cleanup' && brushCursor.visible ? <div aria-hidden="true" className="pointer-events-none absolute rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(92,0,0,0.95)]" style={{ width: brushSize, height: brushSize, left: brushCursor.x - brushSize / 2, top: brushCursor.y - brushSize / 2 }} /> : null}
         {panel === 'crop' ? <div className="pointer-events-none absolute border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.48)]" style={cropBox}><span className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -bottom-1.5 -left-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /></div> : null}
+        <span className="pointer-events-none absolute -top-2 -left-2 h-3.5 w-3.5 rounded-full border-2 border-[#4564ff] bg-white" /><span className="pointer-events-none absolute -top-2 -right-2 h-3.5 w-3.5 rounded-full border-2 border-[#4564ff] bg-white" /><span className="pointer-events-none absolute -bottom-2 -left-2 h-3.5 w-3.5 rounded-full border-2 border-[#4564ff] bg-white" /><span className="pointer-events-none absolute -right-2 -bottom-2 h-3.5 w-3.5 rounded-full border-2 border-[#4564ff] bg-white" />
         </div>
+      </div>
+        </main>
       </div>
     </div>
   );
@@ -1632,11 +1651,10 @@ export function DesignAssistant({
       )}
       {cleanupEditorOpen && attachedArtwork && originalAttachedArtwork ? (
         <div className="fixed inset-0 z-[200] flex items-center justify-center overscroll-none bg-black/70 p-4 sm:p-8">
-          <div className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#e3ded7] px-4 py-3">
+          <div className="flex h-[92dvh] w-full max-w-[1180px] flex-col overflow-hidden rounded-2xl border border-[#dedede] bg-white shadow-2xl">
+            <div className="flex h-11 shrink-0 items-center justify-between border-b border-[#e3ded7] px-4">
               <div>
-                <p className="text-xs font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase">Background cleanup</p>
-                <p className="text-[10px] text-[#8a8580]">Higher strength may remove gray artwork details.</p>
+                <p className="text-xs font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase">Artwork editor</p>
               </div>
               <button type="button" onClick={() => setCleanupEditorOpen(false)} className="rounded-full p-2 text-[#8a8580] hover:bg-[#f0ece6]" aria-label="Close cleanup preview">
                 <X className="h-5 w-5" />
@@ -1685,7 +1703,7 @@ export function DesignAssistant({
                 }}
               >
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white" aria-hidden="true"><WandSparkles className="h-4 w-4" /></span>
-                <input value={editorPrompt} onChange={(event) => setEditorPrompt(event.target.value)} placeholder="Ask the design assistant to edit or place this artwork" className="h-9 min-w-0 flex-1 bg-transparent px-2 text-xs outline-none" />
+                <input id="artwork-editor-ai-prompt" value={editorPrompt} onChange={(event) => setEditorPrompt(event.target.value)} placeholder="Ask the design assistant to edit or place this artwork" className="h-9 min-w-0 flex-1 bg-transparent px-2 text-xs outline-none" />
                 <button type="submit" disabled={busy || uploadingArtwork || !editorPrompt.trim()} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white disabled:opacity-40"><Send className="h-3 w-3" /> Ask AI</button>
               </form>
               <div className="mt-3 flex justify-end gap-2">
