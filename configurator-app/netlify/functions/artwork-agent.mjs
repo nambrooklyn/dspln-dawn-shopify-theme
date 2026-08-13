@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { getStore } from '@netlify/blobs';
 
-const MODEL = process.env.DSPLN_ARTWORK_MODEL || 'gpt-image-1.5';
+const MODEL = process.env.DSPLN_ARTWORK_MODEL || 'gpt-image-2';
 const STORE_NAME = 'dspln-preview-images';
 const MAX_PROMPT_LENGTH = 2_000;
 const MAX_SOURCE_BYTES = 6_000_000;
@@ -57,6 +57,7 @@ const callImageApi = async ({ apiKey, operation, prompt, source }) => {
     form.set('quality', 'medium');
     form.set('background', 'transparent');
     form.set('output_format', 'png');
+    form.set('input_fidelity', 'high');
 
     return fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
@@ -138,11 +139,23 @@ export default async (request) => {
     const response = await callImageApi({ apiKey, operation, prompt, source });
     const data = await response.json();
     if (!response.ok) {
-      console.error('[artwork-agent] OpenAI error', response.status, data);
+      const requestId = response.headers.get('x-request-id') || undefined;
+      console.error('[artwork-agent] OpenAI error', {
+        status: response.status,
+        requestId,
+        code: data?.error?.code,
+        type: data?.error?.type,
+        message: data?.error?.message,
+      });
       return json(
         {
           error: 'artwork_upstream',
-          message: 'I could not create that artwork revision. Please try a simpler request.',
+          message:
+            response.status === 429
+              ? 'The artwork service is busy right now. Please retry this edit in a moment.'
+              : 'The artwork edit did not finish. Please retry it; your original artwork is still available.',
+          retryable: response.status === 429 || response.status >= 500,
+          requestId,
         },
         502,
       );
