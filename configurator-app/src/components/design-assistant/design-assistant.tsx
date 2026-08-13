@@ -6,6 +6,7 @@ import {
   type ChangeEvent,
   type DragEvent,
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { ImagePlus, LoaderCircle, Send, X } from 'lucide-react';
 
@@ -180,6 +181,149 @@ const removeEdgeConnectedLightBackground = async (
   context.putImageData(pixels, 0, 0);
   return canvas.toDataURL('image/png');
 };
+
+function CleanupBrushCanvas({
+  imageUrl,
+  originalUrl,
+  onChange,
+}: {
+  imageUrl: string;
+  originalUrl: string;
+  onChange: (dataUrl: string) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const originalPixelsRef = useRef<ImageData | null>(null);
+  const drawingRef = useRef(false);
+  const [tool, setTool] = useState<'restore' | 'erase'>('restore');
+  const [brushSize, setBrushSize] = useState(36);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = (url: string) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = url;
+      });
+    void Promise.all([load(imageUrl), load(originalUrl)]).then(
+      ([current, original]) => {
+        if (cancelled || !canvasRef.current) return;
+        const canvas = canvasRef.current;
+        canvas.width = current.naturalWidth;
+        canvas.height = current.naturalHeight;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) return;
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(current, 0, 0, canvas.width, canvas.height);
+        const originalCanvas = document.createElement('canvas');
+        originalCanvas.width = canvas.width;
+        originalCanvas.height = canvas.height;
+        const originalContext = originalCanvas.getContext('2d', {
+          willReadFrequently: true,
+        });
+        if (!originalContext) return;
+        originalContext.drawImage(original, 0, 0, canvas.width, canvas.height);
+        originalPixelsRef.current = originalContext.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, originalUrl]);
+
+  const paint = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const original = originalPixelsRef.current;
+    if (!canvas || !original) return;
+    const bounds = canvas.getBoundingClientRect();
+    const centerX = Math.round(
+      ((event.clientX - bounds.left) / bounds.width) * canvas.width,
+    );
+    const centerY = Math.round(
+      ((event.clientY - bounds.top) / bounds.height) * canvas.height,
+    );
+    const displayScale = canvas.width / Math.max(bounds.width, 1);
+    const radius = Math.max(2, Math.round((brushSize * displayScale) / 2));
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return;
+    const left = Math.max(0, centerX - radius);
+    const top = Math.max(0, centerY - radius);
+    const right = Math.min(canvas.width, centerX + radius + 1);
+    const bottom = Math.min(canvas.height, centerY + radius + 1);
+    const patch = context.getImageData(left, top, right - left, bottom - top);
+
+    for (let y = 0; y < patch.height; y += 1) {
+      for (let x = 0; x < patch.width; x += 1) {
+        const imageX = left + x;
+        const imageY = top + y;
+        const distance = Math.hypot(imageX - centerX, imageY - centerY);
+        if (distance > radius) continue;
+        const patchOffset = (y * patch.width + x) * 4;
+        if (tool === 'erase') {
+          patch.data[patchOffset + 3] = 0;
+        } else {
+          const sourceOffset = (imageY * canvas.width + imageX) * 4;
+          patch.data[patchOffset] = original.data[sourceOffset];
+          patch.data[patchOffset + 1] = original.data[sourceOffset + 1];
+          patch.data[patchOffset + 2] = original.data[sourceOffset + 2];
+          patch.data[patchOffset + 3] = original.data[sourceOffset + 3];
+        }
+      }
+    }
+    context.putImageData(patch, left, top);
+  };
+
+  const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current || !canvasRef.current) return;
+    drawingRef.current = false;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    onChange(canvasRef.current.toDataURL('image/png'));
+  };
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#e3ded7] bg-white px-4 py-2">
+        <button type="button" onClick={() => setTool('restore')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'restore' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Restore details</button>
+        <button type="button" onClick={() => setTool('erase')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'erase' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Erase leftovers</button>
+        <label className="ml-auto flex items-center gap-2 text-[10px] font-semibold text-[#5c0000]">
+          Brush size
+          <input type="range" min="8" max="100" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} className="w-28 accent-[#5c0000]" />
+        </label>
+      </div>
+      <div
+        className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4"
+        style={{
+          backgroundColor: '#fff',
+          backgroundImage:
+            'linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%)',
+          backgroundSize: '24px 24px',
+          backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          className="max-h-[62dvh] max-w-full cursor-crosshair touch-none object-contain"
+          onPointerDown={(event) => {
+            drawingRef.current = true;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            paint(event);
+          }}
+          onPointerMove={(event) => {
+            if (drawingRef.current) paint(event);
+          }}
+          onPointerUp={finishStroke}
+          onPointerCancel={finishStroke}
+        />
+      </div>
+    </div>
+  );
+}
 
 const requestArtworkRevision = async (payload: {
   operation: 'generate' | 'edit';
@@ -1293,18 +1437,16 @@ export function DesignAssistant({
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div
-              className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4"
-              style={{
-                backgroundColor: '#fff',
-                backgroundImage:
-                  'linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%)',
-                backgroundSize: '24px 24px',
-                backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
+            <CleanupBrushCanvas
+              imageUrl={attachedArtwork.previewUrl}
+              originalUrl={originalAttachedArtwork.previewUrl}
+              onChange={(dataUrl) => {
+                setAttachedArtwork((current) =>
+                  current ? { ...current, previewUrl: dataUrl } : current,
+                );
+                setCleanupDirty(true);
               }}
-            >
-              <img src={attachedArtwork.previewUrl} alt="Background cleanup preview" className="max-h-[65dvh] max-w-full object-contain" />
-            </div>
+            />
             <div className="border-t border-[#e3ded7] bg-white p-4">
               <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#5c0000]"><span>Cleanup strength</span><span>{cleanupStrength}%</span></div>
               <input
