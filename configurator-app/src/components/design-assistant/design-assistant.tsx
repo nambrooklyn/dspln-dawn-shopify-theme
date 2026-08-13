@@ -1110,13 +1110,13 @@ export function DesignAssistant({
                   <p className="text-[10px] text-[#8a8580]">
                     {attachedArtwork.width} × {attachedArtwork.height}px
                   </p>
-                  <div className="mt-1 flex gap-2">
+                  <div className="mt-1 flex min-w-0 gap-2">
                     {originalAttachedArtwork?.id === attachedArtwork.id ? (
                       <button
                         type="button"
                         onClick={removeAttachedBackground}
                         disabled={uploadingArtwork}
-                        className="text-[10px] font-semibold text-[#5c0000] hover:underline disabled:opacity-40"
+                        className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2.5 text-[9px] font-semibold tracking-[0.02em] text-white hover:bg-[#760000] disabled:opacity-40"
                       >
                         {uploadingArtwork ? 'Removing…' : 'Remove background'}
                       </button>
@@ -1125,7 +1125,7 @@ export function DesignAssistant({
                         type="button"
                         onClick={() => setAttachedArtwork(originalAttachedArtwork)}
                         disabled={uploadingArtwork}
-                        className="text-[10px] font-semibold text-[#5c0000] hover:underline disabled:opacity-40"
+                        className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2.5 text-[9px] font-semibold tracking-[0.02em] text-white hover:bg-[#760000] disabled:opacity-40"
                       >
                         Undo
                       </button>
