@@ -101,6 +101,69 @@ const readArtworkFile = async (file: File) => {
   return { dataUrl, dimensions };
 };
 
+const removeEdgeConnectedLightBackground = async (dataUrl: string) => {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const next = new Image();
+    next.onload = () => resolve(next);
+    next.onerror = () => reject(new Error('Artwork could not be processed'));
+    next.src = dataUrl;
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  if (canvas.width * canvas.height > 20_000_000) {
+    throw new Error('Artwork is too large to process');
+  }
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('Artwork could not be processed');
+  context.drawImage(image, 0, 0);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+  const { data, width, height } = pixels;
+  const visited = new Uint8Array(width * height);
+  const queue = new Uint32Array(width * height);
+  let head = 0;
+  let tail = 0;
+
+  const isLightBackground = (index: number) => {
+    const offset = index * 4;
+    if (data[offset + 3] === 0) return true;
+    const red = data[offset];
+    const green = data[offset + 1];
+    const blue = data[offset + 2];
+    const darkest = Math.min(red, green, blue);
+    const lightest = Math.max(red, green, blue);
+    return darkest >= 224 && lightest - darkest <= 24;
+  };
+  const enqueue = (index: number) => {
+    if (visited[index] || !isLightBackground(index)) return;
+    visited[index] = 1;
+    queue[tail++] = index;
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    enqueue(x);
+    enqueue((height - 1) * width + x);
+  }
+  for (let y = 1; y < height - 1; y += 1) {
+    enqueue(y * width);
+    enqueue(y * width + width - 1);
+  }
+
+  while (head < tail) {
+    const index = queue[head++];
+    const x = index % width;
+    const y = Math.floor(index / width);
+    data[index * 4 + 3] = 0;
+    if (x > 0) enqueue(index - 1);
+    if (x + 1 < width) enqueue(index + 1);
+    if (y > 0) enqueue(index - width);
+    if (y + 1 < height) enqueue(index + width);
+  }
+
+  context.putImageData(pixels, 0, 0);
+  return canvas.toDataURL('image/png');
+};
+
 const requestArtworkRevision = async (payload: {
   operation: 'generate' | 'edit';
   prompt: string;
@@ -314,6 +377,8 @@ export function DesignAssistant({
   const [dragActive, setDragActive] = useState(false);
   const [artworkError, setArtworkError] = useState('');
   const [attachedArtwork, setAttachedArtwork] = useState<AttachedArtwork | null>(null);
+  const [originalAttachedArtwork, setOriginalAttachedArtwork] =
+    useState<AttachedArtwork | null>(null);
   const conversationRef = useRef<ApiMessage[]>([]);
   const artworkRef = useRef(new Map<string, AttachedArtwork>());
   const artworkInputRef = useRef<HTMLInputElement>(null);
@@ -365,12 +430,39 @@ export function DesignAssistant({
       };
       artworkRef.current.set(artwork.id, artwork);
       setAttachedArtwork(artwork);
+      setOriginalAttachedArtwork(artwork);
     } catch {
       setArtworkError('I could not upload that image. Please try another file.');
     } finally {
       setUploadingArtwork(false);
     }
   }, []);
+
+  const removeAttachedBackground = useCallback(async () => {
+    if (!attachedArtwork || uploadingArtwork) return;
+    setArtworkError('');
+    setUploadingArtwork(true);
+    try {
+      const dataUrl = await removeEdgeConnectedLightBackground(
+        attachedArtwork.previewUrl,
+      );
+      const hostedUrl = await uploadArtworkImage(dataUrl);
+      if (!hostedUrl) throw new Error('Artwork upload failed');
+      const artwork: AttachedArtwork = {
+        ...attachedArtwork,
+        id: crypto.randomUUID(),
+        url: hostedUrl,
+        previewUrl: dataUrl,
+        filename: attachedArtwork.filename.replace(/\.[^.]+$/, '') + '-transparent.png',
+      };
+      artworkRef.current.set(artwork.id, artwork);
+      setAttachedArtwork(artwork);
+    } catch {
+      setArtworkError('I could not remove this background. Try an image with a plain white or light background.');
+    } finally {
+      setUploadingArtwork(false);
+    }
+  }, [attachedArtwork, uploadingArtwork]);
 
   const attachArtwork = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -785,6 +877,7 @@ export function DesignAssistant({
         text || 'Please inspect this artwork and ask me where I want it placed.';
       setInput('');
       setAttachedArtwork(null);
+      setOriginalAttachedArtwork(null);
       setArtworkError('');
       setBusy(true);
       setBubbles((prev) => [
@@ -1001,7 +1094,14 @@ export function DesignAssistant({
                 <img
                   src={attachedArtwork.previewUrl}
                   alt={attachedArtwork.filename}
-                  className="h-12 w-12 rounded-lg bg-white object-contain"
+                  className="h-12 w-12 rounded-lg object-contain"
+                  style={{
+                    backgroundColor: '#fff',
+                    backgroundImage:
+                      'linear-gradient(45deg, #e7e3dd 25%, transparent 25%), linear-gradient(-45deg, #e7e3dd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e7e3dd 75%), linear-gradient(-45deg, transparent 75%, #e7e3dd 75%)',
+                    backgroundSize: '10px 10px',
+                    backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px',
+                  }}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[11px] font-medium text-[#1c1b1b]">
@@ -1010,11 +1110,35 @@ export function DesignAssistant({
                   <p className="text-[10px] text-[#8a8580]">
                     {attachedArtwork.width} × {attachedArtwork.height}px
                   </p>
+                  <div className="mt-1 flex gap-2">
+                    {originalAttachedArtwork?.id === attachedArtwork.id ? (
+                      <button
+                        type="button"
+                        onClick={removeAttachedBackground}
+                        disabled={uploadingArtwork}
+                        className="text-[10px] font-semibold text-[#5c0000] hover:underline disabled:opacity-40"
+                      >
+                        {uploadingArtwork ? 'Removing…' : 'Remove background'}
+                      </button>
+                    ) : originalAttachedArtwork ? (
+                      <button
+                        type="button"
+                        onClick={() => setAttachedArtwork(originalAttachedArtwork)}
+                        disabled={uploadingArtwork}
+                        className="text-[10px] font-semibold text-[#5c0000] hover:underline disabled:opacity-40"
+                      >
+                        Undo
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 <button
                   type="button"
                   aria-label="Remove attached artwork"
-                  onClick={() => setAttachedArtwork(null)}
+                  onClick={() => {
+                    setAttachedArtwork(null);
+                    setOriginalAttachedArtwork(null);
+                  }}
                   className="rounded-full p-1 text-[#8a8580] hover:bg-[#eee9e2]"
                 >
                   <X className="h-3.5 w-3.5" />
