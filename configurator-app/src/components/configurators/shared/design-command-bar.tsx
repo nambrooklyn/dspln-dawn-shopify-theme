@@ -141,9 +141,11 @@ export const DesignCommandBar = memo(
     const [shareAfterSave, setShareAfterSave] = useState(false);
     const [nameDraft, setNameDraft] = useState(designName);
     const [uploadsOpen, setUploadsOpen] = useState(false);
-    const [uploadTarget, setUploadTarget] = useState(
-      uploadTargets?.[0]?.value ?? '',
+    const [pendingUploadKey, setPendingUploadKey] = useState<string | null>(
+      null,
     );
+    const pendingUpload =
+      uploads?.find((upload) => upload.key === pendingUploadKey) ?? null;
     const [shareUrl, setShareUrl] = useState<string | null>(null);
 
     const copyShareUrl = async () => {
@@ -269,39 +271,72 @@ export const DesignCommandBar = memo(
         {uploadsOpen ? (
           <div
             className="bg-foreground/20 fixed inset-0 z-[90]"
-            onClick={() => setUploadsOpen(false)}
+            onClick={() => {
+              setUploadsOpen(false);
+              setPendingUploadKey(null);
+            }}
           >
             <div
               onClick={(event) => event.stopPropagation()}
               className="border-border bg-background fixed top-24 right-4 z-[95] w-60 rounded-lg border p-2 shadow-2xl sm:right-8"
             >
               <div className="flex items-center justify-between gap-2 pb-2">
-                {uploadTargets?.length ? (
-                  <select
-                    value={uploadTarget}
-                    onChange={(event) => setUploadTarget(event.target.value)}
-                    aria-label="Apply artwork to"
-                    className="border-border bg-background text-foreground h-8 min-w-0 flex-1 rounded border px-2 text-xs"
-                  >
-                    {uploadTargets.map((target) => (
-                      <option key={target.value} value={target.value}>
-                        {target.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span />
-                )}
+                <span className="text-foreground px-1 text-xs font-semibold">
+                  {pendingUpload ? 'Where should it go?' : 'Your uploads'}
+                </span>
                 <button
                   type="button"
                   aria-label="Close uploads"
-                  onClick={() => setUploadsOpen(false)}
+                  onClick={() => {
+                    setUploadsOpen(false);
+                    setPendingUploadKey(null);
+                  }}
                   className="hover:bg-muted rounded-full p-1"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              {uploads?.length ? (
+              {pendingUpload ? (
+                // Placement step: picking a tile no longer applies straight to
+                // whatever the old dropdown defaulted to (Left Chest) — the
+                // customer chooses the spot explicitly for each image.
+                <div>
+                  <div className="border-border bg-muted/40 mb-2 flex items-center gap-2 rounded border p-1.5">
+                    <img
+                      src={pendingUpload.url}
+                      alt=""
+                      className="h-10 w-10 shrink-0 rounded object-contain"
+                    />
+                    <span className="text-muted-foreground min-w-0 truncate text-[11px]">
+                      {pendingUpload.filename ?? 'Uploaded image'}
+                    </span>
+                  </div>
+                  <ul className="max-h-56 space-y-1 overflow-y-auto">
+                    {(uploadTargets ?? []).map((target) => (
+                      <li key={target.value}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onApplyUpload?.(pendingUpload.key, target.value);
+                            setPendingUploadKey(null);
+                            setUploadsOpen(false);
+                          }}
+                          className="hover:bg-muted border-border w-full rounded border px-3 py-2 text-left text-xs"
+                        >
+                          {target.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => setPendingUploadKey(null)}
+                    className="text-muted-foreground hover:text-foreground mt-2 w-full rounded px-3 py-1.5 text-center text-[11px]"
+                  >
+                    ← Back to uploads
+                  </button>
+                </div>
+              ) : uploads?.length ? (
                 <ul className="grid max-h-64 grid-cols-3 gap-1.5 overflow-y-auto">
                   {uploads.map((upload) => (
                     <li key={upload.key} className="relative">
@@ -309,8 +344,12 @@ export const DesignCommandBar = memo(
                         type="button"
                         aria-label="Apply this artwork"
                         onClick={() => {
-                          onApplyUpload?.(upload.key, uploadTarget);
-                          setUploadsOpen(false);
+                          if (uploadTargets?.length) {
+                            setPendingUploadKey(upload.key);
+                          } else {
+                            onApplyUpload?.(upload.key, '');
+                            setUploadsOpen(false);
+                          }
                         }}
                         className="border-border bg-muted/60 hover:ring-foreground/40 flex aspect-square w-full items-center justify-center overflow-hidden rounded border p-1 hover:ring-2"
                       >
