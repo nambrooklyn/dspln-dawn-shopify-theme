@@ -88,6 +88,49 @@
         "include_margins": true
       }
     },
+    "rich_text_ET3ejd": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_eUA4Ny": {
+          "type": "heading",
+          "settings": {
+            "heading": "",
+            "heading_size": "h1"
+          }
+        },
+        "text_i9z7Ki": {
+          "type": "text",
+          "settings": {
+            "text": ""
+          }
+        },
+        "button_x4MxTp": {
+          "type": "button",
+          "settings": {
+            "button_label": "",
+            "button_link": "",
+            "button_style_secondary": false,
+            "button_label_2": "",
+            "button_link_2": "",
+            "button_style_secondary_2": false
+          }
+        }
+      },
+      "block_order": [
+        "heading_eUA4Ny",
+        "text_i9z7Ki",
+        "button_x4MxTp"
+      ],
+      "name": "t:sections.rich-text.presets.name",
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "",
+        "full_width": true,
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    },
     "dspln_contact_wWVcnY": {
       "type": "dspln-contact",
       "name": "DSPLN contact",
@@ -102,6 +145,7 @@
     "main",
     "rich_text_wbc9Tj",
     "1785106274bdf78bc9",
+    "rich_text_ET3ejd",
     "dspln_contact_wWVcnY"
   ]
 }
