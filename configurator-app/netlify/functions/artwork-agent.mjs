@@ -57,8 +57,6 @@ const callImageApi = async ({ apiKey, operation, prompt, source }) => {
     form.set('quality', 'medium');
     form.set('background', 'transparent');
     form.set('output_format', 'png');
-    form.set('input_fidelity', 'high');
-
     return fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}` },
