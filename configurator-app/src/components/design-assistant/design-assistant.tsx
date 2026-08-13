@@ -473,7 +473,7 @@ export function DesignAssistant({
     } catch {
       setArtworkError(
         mode === 'shadow'
-          ? 'I could not remove the remaining shadow. You can undo and use the original.'
+          ? 'I could not clean up more of the background. You can undo and use the original.'
           : 'I could not remove this background. Try an image with a plain white or light background.',
       );
     } finally {
@@ -1145,7 +1145,7 @@ export function DesignAssistant({
                           disabled={uploadingArtwork}
                           className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2 text-[8px] font-semibold tracking-[0.01em] text-white hover:bg-[#760000] disabled:opacity-40"
                         >
-                          {uploadingArtwork ? 'Cleaning…' : 'Remove remaining shadow'}
+                          {uploadingArtwork ? 'Cleaning…' : 'More cleanup'}
                         </button>
                         <button
                           type="button"
