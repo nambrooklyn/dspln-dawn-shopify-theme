@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { ImagePlus, LoaderCircle, Send, X } from 'lucide-react';
+import { Crop, ImagePlus, LoaderCircle, Send, Type, Upload, WandSparkles, X } from 'lucide-react';
 
 import {
   BELT_EMBROIDERY_DEFAULT,
@@ -186,16 +186,28 @@ function CleanupBrushCanvas({
   imageUrl,
   originalUrl,
   onChange,
+  onDimensionsChange,
 }: {
   imageUrl: string;
   originalUrl: string;
   onChange: (dataUrl: string) => void;
+  onDimensionsChange: (width: number, height: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalPixelsRef = useRef<ImageData | null>(null);
   const drawingRef = useRef(false);
   const [tool, setTool] = useState<'restore' | 'erase'>('restore');
   const [brushSize, setBrushSize] = useState(36);
+  const [panel, setPanel] = useState<'cleanup' | 'crop' | 'text' | 'image'>('cleanup');
+  const [cropInsets, setCropInsets] = useState({ left: 0, top: 0, right: 0, bottom: 0 });
+  const [textValue, setTextValue] = useState('');
+  const [textColor, setTextColor] = useState('#111111');
+  const [textSize, setTextSize] = useState(12);
+  const [textPosition, setTextPosition] = useState({ x: 50, y: 50 });
+  const [overlayUrl, setOverlayUrl] = useState('');
+  const [overlayScale, setOverlayScale] = useState(45);
+  const [overlayPosition, setOverlayPosition] = useState({ x: 50, y: 50 });
+  const extraImageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -286,15 +298,121 @@ function CleanupBrushCanvas({
     onChange(canvasRef.current.toDataURL('image/png'));
   };
 
+  const applyCrop = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const left = Math.round((cropInsets.left / 100) * canvas.width);
+    const top = Math.round((cropInsets.top / 100) * canvas.height);
+    const right = Math.round((cropInsets.right / 100) * canvas.width);
+    const bottom = Math.round((cropInsets.bottom / 100) * canvas.height);
+    const width = canvas.width - left - right;
+    const height = canvas.height - top - bottom;
+    if (width < 2 || height < 2) return;
+    const output = document.createElement('canvas');
+    output.width = width;
+    output.height = height;
+    output.getContext('2d')?.drawImage(canvas, left, top, width, height, 0, 0, width, height);
+    onDimensionsChange(width, height);
+    onChange(output.toDataURL('image/png'));
+    setCropInsets({ left: 0, top: 0, right: 0, bottom: 0 });
+    setPanel('cleanup');
+  };
+
+  const applyText = () => {
+    const canvas = canvasRef.current;
+    const value = textValue.trim();
+    if (!canvas || !value) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const fontSize = Math.max(12, Math.round((textSize / 100) * canvas.width));
+    context.save();
+    context.font = `700 ${fontSize}px Arial, sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = textColor;
+    context.fillText(
+      value,
+      (textPosition.x / 100) * canvas.width,
+      (textPosition.y / 100) * canvas.height,
+    );
+    context.restore();
+    onChange(canvas.toDataURL('image/png'));
+    setTextValue('');
+    setPanel('cleanup');
+  };
+
+  const chooseExtraImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !['image/png', 'image/jpeg'].includes(file.type)) return;
+    const { dataUrl } = await readArtworkFile(file);
+    setOverlayUrl(dataUrl);
+  };
+
+  const applyExtraImage = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !overlayUrl) return;
+    const overlay = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = overlayUrl;
+    });
+    const maxWidth = canvas.width * (overlayScale / 100);
+    const maxHeight = canvas.height * (overlayScale / 100);
+    const scale = Math.min(maxWidth / overlay.naturalWidth, maxHeight / overlay.naturalHeight);
+    const width = overlay.naturalWidth * scale;
+    const height = overlay.naturalHeight * scale;
+    canvas.getContext('2d')?.drawImage(
+      overlay,
+      (overlayPosition.x / 100) * canvas.width - width / 2,
+      (overlayPosition.y / 100) * canvas.height - height / 2,
+      width,
+      height,
+    );
+    onChange(canvas.toDataURL('image/png'));
+    setOverlayUrl('');
+    setPanel('cleanup');
+  };
+
+  const cropBox = {
+    left: `${cropInsets.left}%`,
+    top: `${cropInsets.top}%`,
+    right: `${cropInsets.right}%`,
+    bottom: `${cropInsets.bottom}%`,
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#e3ded7] bg-white px-4 py-2">
-        <button type="button" onClick={() => setTool('restore')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'restore' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Restore details</button>
-        <button type="button" onClick={() => setTool('erase')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'erase' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Erase leftovers</button>
-        <label className="ml-auto flex items-center gap-2 text-[10px] font-semibold text-[#5c0000]">
-          Brush size
-          <input type="range" min="8" max="100" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} className="w-28 accent-[#5c0000]" />
-        </label>
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-[#e3ded7] bg-white px-4 py-2">
+        <button type="button" onClick={() => setPanel('cleanup')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'cleanup' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><WandSparkles className="h-3 w-3" /> Cleanup</button>
+        <button type="button" onClick={() => setPanel('crop')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'crop' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Crop className="h-3 w-3" /> Crop</button>
+        <button type="button" onClick={() => setPanel('text')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'text' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Type className="h-3 w-3" /> Text</button>
+        <button type="button" onClick={() => setPanel('image')} className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold ${panel === 'image' ? 'bg-[#5c0000] text-white' : 'border border-[#d7d0c8] text-[#1c1b1b]'}`}><Upload className="h-3 w-3" /> Add image</button>
+      </div>
+      <div className="border-b border-[#e3ded7] bg-[#faf8f5] px-4 py-2">
+        {panel === 'cleanup' ? <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setTool('restore')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'restore' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Restore details</button>
+          <button type="button" onClick={() => setTool('erase')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'erase' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Erase leftovers</button>
+          <label className="ml-auto flex items-center gap-2 text-[10px] font-semibold text-[#5c0000]">Brush size<input type="range" min="8" max="100" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} className="w-28 accent-[#5c0000]" /></label>
+        </div> : null}
+        {panel === 'crop' ? <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+          {(['left', 'top', 'right', 'bottom'] as const).map((edge) => <label key={edge} className="text-[9px] font-semibold capitalize text-[#5c0000]">{edge}<input type="range" min="0" max="45" value={cropInsets[edge]} onChange={(event) => setCropInsets((current) => ({ ...current, [edge]: Number(event.target.value) }))} className="block w-full accent-[#5c0000]" /></label>)}
+          <button type="button" onClick={applyCrop} className="col-span-2 h-8 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white sm:col-start-4 sm:col-span-1">Apply crop</button>
+        </div> : null}
+        {panel === 'text' ? <div className="flex flex-wrap items-center gap-2">
+          <input value={textValue} onChange={(event) => setTextValue(event.target.value)} placeholder="Enter text" className="h-8 min-w-40 flex-1 rounded-full border border-[#d7d0c8] px-3 text-xs" />
+          <input type="color" value={textColor} onChange={(event) => setTextColor(event.target.value)} aria-label="Text color" className="h-8 w-10" />
+          <label className="flex items-center gap-2 text-[9px] font-semibold text-[#5c0000]">Size<input type="range" min="3" max="30" value={textSize} onChange={(event) => setTextSize(Number(event.target.value))} className="w-24 accent-[#5c0000]" /></label>
+          <label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">X<input type="range" min="5" max="95" value={textPosition.x} onChange={(event) => setTextPosition((current) => ({ ...current, x: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label>
+          <label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">Y<input type="range" min="5" max="95" value={textPosition.y} onChange={(event) => setTextPosition((current) => ({ ...current, y: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label>
+          <button type="button" onClick={applyText} disabled={!textValue.trim()} className="h-8 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white disabled:opacity-40">Add text</button>
+        </div> : null}
+        {panel === 'image' ? <div className="flex flex-wrap items-center gap-2">
+          <input ref={extraImageInputRef} type="file" accept="image/png,image/jpeg" onChange={(event) => void chooseExtraImage(event)} className="hidden" />
+          <button type="button" onClick={() => extraImageInputRef.current?.click()} className="h-8 rounded-full border border-[#5c0000] px-4 text-[10px] font-semibold text-[#5c0000]">Choose image</button>
+          {overlayUrl ? <><img src={overlayUrl} alt="Additional artwork" className="h-8 w-8 rounded object-contain" /><label className="flex flex-1 items-center gap-2 text-[9px] font-semibold text-[#5c0000]">Size<input type="range" min="10" max="100" value={overlayScale} onChange={(event) => setOverlayScale(Number(event.target.value))} className="w-full accent-[#5c0000]" /></label><label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">X<input type="range" min="5" max="95" value={overlayPosition.x} onChange={(event) => setOverlayPosition((current) => ({ ...current, x: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label><label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">Y<input type="range" min="5" max="95" value={overlayPosition.y} onChange={(event) => setOverlayPosition((current) => ({ ...current, y: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label><button type="button" onClick={() => void applyExtraImage()} className="h-8 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white">Add to artwork</button></> : <span className="text-[10px] text-[#8a8580]">Add another logo or image, then set its size and position.</span>}
+        </div> : null}
       </div>
       <div
         className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4"
@@ -306,20 +424,24 @@ function CleanupBrushCanvas({
           backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
         }}
       >
+        <div className="relative inline-flex max-h-[58dvh] max-w-full">
         <canvas
           ref={canvasRef}
-          className="max-h-[62dvh] max-w-full cursor-crosshair touch-none object-contain"
+          className={`max-h-[58dvh] max-w-full touch-none object-contain ${panel === 'cleanup' ? 'cursor-crosshair' : 'cursor-default'}`}
           onPointerDown={(event) => {
+            if (panel !== 'cleanup') return;
             drawingRef.current = true;
             event.currentTarget.setPointerCapture(event.pointerId);
             paint(event);
           }}
           onPointerMove={(event) => {
-            if (drawingRef.current) paint(event);
+            if (panel === 'cleanup' && drawingRef.current) paint(event);
           }}
           onPointerUp={finishStroke}
           onPointerCancel={finishStroke}
         />
+        {panel === 'crop' ? <div className="pointer-events-none absolute border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.48)]" style={cropBox}><span className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -bottom-1.5 -left-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /><span className="absolute -right-1.5 -bottom-1.5 h-3 w-3 rounded-full border-2 border-[#5c0000] bg-white" /></div> : null}
+        </div>
       </div>
     </div>
   );
@@ -543,6 +665,7 @@ export function DesignAssistant({
   const [cleanupStrength, setCleanupStrength] = useState(0);
   const [cleanupDirty, setCleanupDirty] = useState(false);
   const [cleanupEditorOpen, setCleanupEditorOpen] = useState(false);
+  const [editorPrompt, setEditorPrompt] = useState('');
   const conversationRef = useRef<ApiMessage[]>([]);
   const artworkRef = useRef(new Map<string, AttachedArtwork>());
   const artworkInputRef = useRef<HTMLInputElement>(null);
@@ -638,7 +761,8 @@ export function DesignAssistant({
     candidate?: AttachedArtwork | null,
   ) => {
     const artworkToSave = candidate ?? attachedArtwork;
-    if (!artworkToSave || (!candidate && !cleanupDirty) || uploadingArtwork) return;
+    if (!artworkToSave || uploadingArtwork) return null;
+    if (!candidate && !cleanupDirty) return artworkToSave;
     setUploadingArtwork(true);
     try {
       const hostedUrl = await uploadArtworkImage(artworkToSave.previewUrl);
@@ -651,8 +775,10 @@ export function DesignAssistant({
       artworkRef.current.set(artwork.id, artwork);
       setAttachedArtwork(artwork);
       setCleanupDirty(false);
+      return artwork;
     } catch {
       setArtworkError('I could not save the cleaned artwork. Please try again.');
+      return null;
     } finally {
       setUploadingArtwork(false);
     }
@@ -1062,10 +1188,13 @@ export function DesignAssistant({
   // ---- conversation loop ----
 
   const send = useCallback(
-    async (event?: FormEvent) => {
+    async (
+      event?: FormEvent,
+      override?: { text?: string; artwork?: AttachedArtwork | null },
+    ) => {
       event?.preventDefault();
-      const text = input.trim();
-      const artwork = attachedArtwork;
+      const text = (override?.text ?? input).trim();
+      const artwork = override?.artwork ?? attachedArtwork;
       if ((!text && !artwork) || busy || uploadingArtwork) return;
       const userText =
         text || 'Please inspect this artwork and ask me where I want it placed.';
@@ -1075,6 +1204,7 @@ export function DesignAssistant({
       setCleanupStrength(0);
       setCleanupDirty(false);
       setCleanupEditorOpen(false);
+      setEditorPrompt('');
       setArtworkError('');
       setBusy(true);
       setBubbles((prev) => [
@@ -1440,6 +1570,11 @@ export function DesignAssistant({
             <CleanupBrushCanvas
               imageUrl={attachedArtwork.previewUrl}
               originalUrl={originalAttachedArtwork.previewUrl}
+              onDimensionsChange={(width, height) => {
+                setAttachedArtwork((current) =>
+                  current ? { ...current, width, height } : current,
+                );
+              }}
               onChange={(dataUrl) => {
                 setAttachedArtwork((current) =>
                   current ? { ...current, previewUrl: dataUrl } : current,
@@ -1460,6 +1595,24 @@ export function DesignAssistant({
                 onKeyUp={() => void saveBackgroundCleanup()}
                 className="h-6 w-full accent-[#5c0000]"
               />
+              <form
+                className="mt-3 flex items-center gap-2 rounded-xl border border-[#e3ded7] bg-[#faf8f5] p-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!editorPrompt.trim()) return;
+                  void saveBackgroundCleanup().then((savedArtwork) => {
+                    if (!savedArtwork) return;
+                    void send(undefined, {
+                      text: editorPrompt,
+                      artwork: savedArtwork,
+                    });
+                  });
+                }}
+              >
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white" aria-hidden="true"><WandSparkles className="h-4 w-4" /></span>
+                <input value={editorPrompt} onChange={(event) => setEditorPrompt(event.target.value)} placeholder="Ask the design assistant to edit or place this artwork" className="h-9 min-w-0 flex-1 bg-transparent px-2 text-xs outline-none" />
+                <button type="submit" disabled={busy || uploadingArtwork || !editorPrompt.trim()} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white disabled:opacity-40"><Send className="h-3 w-3" /> Ask AI</button>
+              </form>
               <div className="mt-3 flex justify-end gap-2">
                 <button type="button" onClick={() => {
                   setAttachedArtwork(originalAttachedArtwork);
