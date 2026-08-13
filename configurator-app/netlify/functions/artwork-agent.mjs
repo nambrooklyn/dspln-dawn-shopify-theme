@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import { getStore } from '@netlify/blobs';
 
-const MODEL = process.env.DSPLN_ARTWORK_MODEL || 'gpt-image-2';
+// GPT Image 2 does not support transparent backgrounds. Apparel artwork must
+// retain alpha, so keep this endpoint on GPT Image 1.5 until its replacement
+// supports transparent PNG output.
+const MODEL = process.env.DSPLN_ARTWORK_MODEL || 'gpt-image-1.5';
 const STORE_NAME = 'dspln-preview-images';
 const MAX_PROMPT_LENGTH = 2_000;
 const MAX_SOURCE_BYTES = 6_000_000;
