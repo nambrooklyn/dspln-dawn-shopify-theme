@@ -398,6 +398,7 @@ export function DesignAssistant({
     useState<AttachedArtwork | null>(null);
   const [cleanupStrength, setCleanupStrength] = useState(0);
   const [cleanupDirty, setCleanupDirty] = useState(false);
+  const [cleanupEditorOpen, setCleanupEditorOpen] = useState(false);
   const conversationRef = useRef<ApiMessage[]>([]);
   const artworkRef = useRef(new Map<string, AttachedArtwork>());
   const artworkInputRef = useRef<HTMLInputElement>(null);
@@ -452,6 +453,7 @@ export function DesignAssistant({
       setOriginalAttachedArtwork(artwork);
       setCleanupStrength(0);
       setCleanupDirty(false);
+      setCleanupEditorOpen(false);
     } catch {
       setArtworkError('I could not upload that image. Please try another file.');
     } finally {
@@ -928,6 +930,7 @@ export function DesignAssistant({
       setOriginalAttachedArtwork(null);
       setCleanupStrength(0);
       setCleanupDirty(false);
+      setCleanupEditorOpen(false);
       setArtworkError('');
       setBusy(true);
       setBubbles((prev) => [
@@ -1141,18 +1144,25 @@ export function DesignAssistant({
           <form onSubmit={send} className="border-t border-[#eee9e2] p-2.5">
             {attachedArtwork ? (
               <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#e3ded7] bg-[#faf8f5] p-2">
-                <img
-                  src={attachedArtwork.previewUrl}
-                  alt={attachedArtwork.filename}
-                  className="h-12 w-12 rounded-lg object-contain"
-                  style={{
-                    backgroundColor: '#fff',
-                    backgroundImage:
-                      'linear-gradient(45deg, #e7e3dd 25%, transparent 25%), linear-gradient(-45deg, #e7e3dd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e7e3dd 75%), linear-gradient(-45deg, transparent 75%, #e7e3dd 75%)',
-                    backgroundSize: '10px 10px',
-                    backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px',
-                  }}
-                />
+                <button
+                  type="button"
+                  onClick={() => cleanupStrength > 0 && setCleanupEditorOpen(true)}
+                  aria-label={cleanupStrength > 0 ? 'Open larger cleanup preview' : undefined}
+                  className="shrink-0"
+                >
+                  <img
+                    src={attachedArtwork.previewUrl}
+                    alt={attachedArtwork.filename}
+                    className="h-12 w-12 rounded-lg object-contain"
+                    style={{
+                      backgroundColor: '#fff',
+                      backgroundImage:
+                        'linear-gradient(45deg, #e7e3dd 25%, transparent 25%), linear-gradient(-45deg, #e7e3dd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e7e3dd 75%), linear-gradient(-45deg, transparent 75%, #e7e3dd 75%)',
+                      backgroundSize: '10px 10px',
+                      backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px',
+                    }}
+                  />
+                </button>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[11px] font-medium text-[#1c1b1b]">
                     {attachedArtwork.filename}
@@ -1164,7 +1174,10 @@ export function DesignAssistant({
                     {cleanupStrength === 0 ? (
                       <button
                         type="button"
-                        onClick={() => void previewBackgroundCleanup(1).then((artwork) => saveBackgroundCleanup(artwork))}
+                        onClick={() => void previewBackgroundCleanup(1).then(async (artwork) => {
+                          await saveBackgroundCleanup(artwork);
+                          if (artwork) setCleanupEditorOpen(true);
+                        })}
                         disabled={uploadingArtwork}
                         className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2.5 text-[9px] font-semibold tracking-[0.02em] text-white hover:bg-[#760000] disabled:opacity-40"
                       >
@@ -1188,10 +1201,18 @@ export function DesignAssistant({
                         </label>
                         <button
                           type="button"
+                          onClick={() => setCleanupEditorOpen(true)}
+                          className="text-[8px] font-semibold text-[#5c0000] underline"
+                        >
+                          Enlarge
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
                             setAttachedArtwork(originalAttachedArtwork);
                             setCleanupStrength(0);
                             setCleanupDirty(false);
+                            setCleanupEditorOpen(false);
                           }}
                           disabled={uploadingArtwork}
                           className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full border border-[#5c0000] px-2 text-[8px] font-semibold text-[#5c0000] hover:bg-[#f5eaea] disabled:opacity-40"
@@ -1210,6 +1231,7 @@ export function DesignAssistant({
                     setOriginalAttachedArtwork(null);
                     setCleanupStrength(0);
                     setCleanupDirty(false);
+                    setCleanupEditorOpen(false);
                   }}
                   className="rounded-full p-1 text-[#8a8580] hover:bg-[#eee9e2]"
                 >
@@ -1259,6 +1281,58 @@ export function DesignAssistant({
           </form>
         </div>
       )}
+      {cleanupEditorOpen && attachedArtwork && originalAttachedArtwork ? (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 sm:p-8">
+          <div className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#e3ded7] px-4 py-3">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase">Background cleanup</p>
+                <p className="text-[10px] text-[#8a8580]">Higher strength may remove gray artwork details.</p>
+              </div>
+              <button type="button" onClick={() => setCleanupEditorOpen(false)} className="rounded-full p-2 text-[#8a8580] hover:bg-[#f0ece6]" aria-label="Close cleanup preview">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div
+              className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4"
+              style={{
+                backgroundColor: '#fff',
+                backgroundImage:
+                  'linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%)',
+                backgroundSize: '24px 24px',
+                backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
+              }}
+            >
+              <img src={attachedArtwork.previewUrl} alt="Background cleanup preview" className="max-h-[65dvh] max-w-full object-contain" />
+            </div>
+            <div className="border-t border-[#e3ded7] bg-white p-4">
+              <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#5c0000]"><span>Cleanup strength</span><span>{cleanupStrength}%</span></div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={cleanupStrength}
+                disabled={uploadingArtwork}
+                onChange={(event) => void previewBackgroundCleanup(Number(event.target.value))}
+                onPointerUp={() => void saveBackgroundCleanup()}
+                onKeyUp={() => void saveBackgroundCleanup()}
+                className="h-6 w-full accent-[#5c0000]"
+              />
+              <div className="mt-3 flex justify-end gap-2">
+                <button type="button" onClick={() => {
+                  setAttachedArtwork(originalAttachedArtwork);
+                  setCleanupStrength(0);
+                  setCleanupDirty(false);
+                  setCleanupEditorOpen(false);
+                }} className="h-9 rounded-full border border-[#5c0000] px-4 text-xs font-semibold text-[#5c0000]">Undo</button>
+                <button type="button" onClick={() => void saveBackgroundCleanup().then(() => {
+                  setCleanupEditorOpen(false);
+                })} disabled={uploadingArtwork} className="h-9 rounded-full bg-[#5c0000] px-5 text-xs font-semibold text-white disabled:opacity-40">Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
