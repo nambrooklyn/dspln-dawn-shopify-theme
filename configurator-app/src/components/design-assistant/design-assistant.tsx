@@ -96,10 +96,7 @@ const readArtworkFile = async (file: File) => {
   return { dataUrl, dimensions };
 };
 
-const removeEdgeConnectedLightBackground = async (
-  dataUrl: string,
-  mode: 'background' | 'shadow' = 'background',
-) => {
+const removeEdgeConnectedLightBackground = async (dataUrl: string) => {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const next = new Image();
     next.onload = () => resolve(next);
@@ -130,12 +127,7 @@ const removeEdgeConnectedLightBackground = async (
     const blue = data[offset + 2];
     const darkest = Math.min(red, green, blue);
     const lightest = Math.max(red, green, blue);
-    const minimumBrightness = mode === 'shadow' ? 150 : 224;
-    const maximumColorSpread = mode === 'shadow' ? 36 : 24;
-    return (
-      darkest >= minimumBrightness &&
-      lightest - darkest <= maximumColorSpread
-    );
+    return darkest >= 224 && lightest - darkest <= 24;
   };
   const enqueue = (index: number) => {
     if (visited[index] || !isLightBackground(index)) return;
@@ -430,16 +422,13 @@ export function DesignAssistant({
     }
   }, []);
 
-  const processAttachedBackground = useCallback(async (
-    mode: 'background' | 'shadow',
-  ) => {
+  const removeAttachedBackground = useCallback(async () => {
     if (!attachedArtwork || uploadingArtwork) return;
     setArtworkError('');
     setUploadingArtwork(true);
     try {
       const dataUrl = await removeEdgeConnectedLightBackground(
         attachedArtwork.previewUrl,
-        mode,
       );
       const hostedUrl = await uploadArtworkImage(dataUrl);
       if (!hostedUrl) throw new Error('Artwork upload failed');
@@ -448,18 +437,12 @@ export function DesignAssistant({
         id: crypto.randomUUID(),
         url: hostedUrl,
         previewUrl: dataUrl,
-        filename:
-          attachedArtwork.filename.replace(/\.[^.]+$/, '') +
-          (mode === 'shadow' ? '-shadow-cleaned.png' : '-transparent.png'),
+        filename: attachedArtwork.filename.replace(/\.[^.]+$/, '') + '-transparent.png',
       };
       artworkRef.current.set(artwork.id, artwork);
       setAttachedArtwork(artwork);
     } catch {
-      setArtworkError(
-        mode === 'shadow'
-          ? 'I could not remove the remaining shadow. You can undo and use the original.'
-          : 'I could not remove this background. Try an image with a plain white or light background.',
-      );
+      setArtworkError('I could not remove this background. Try an image with a plain white or light background.');
     } finally {
       setUploadingArtwork(false);
     }
@@ -1069,31 +1052,21 @@ export function DesignAssistant({
                     {originalAttachedArtwork?.id === attachedArtwork.id ? (
                       <button
                         type="button"
-                        onClick={() => void processAttachedBackground('background')}
+                        onClick={removeAttachedBackground}
                         disabled={uploadingArtwork}
                         className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2.5 text-[9px] font-semibold tracking-[0.02em] text-white hover:bg-[#760000] disabled:opacity-40"
                       >
                         {uploadingArtwork ? 'Removing…' : 'Remove background'}
                       </button>
                     ) : originalAttachedArtwork ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => void processAttachedBackground('shadow')}
-                          disabled={uploadingArtwork}
-                          className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2 text-[8px] font-semibold tracking-[0.01em] text-white hover:bg-[#760000] disabled:opacity-40"
-                        >
-                          {uploadingArtwork ? 'Cleaning…' : 'Remove remaining shadow'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAttachedArtwork(originalAttachedArtwork)}
-                          disabled={uploadingArtwork}
-                          className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full border border-[#5c0000] px-2 text-[8px] font-semibold text-[#5c0000] hover:bg-[#f5eaea] disabled:opacity-40"
-                        >
-                          Undo
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedArtwork(originalAttachedArtwork)}
+                        disabled={uploadingArtwork}
+                        className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2.5 text-[9px] font-semibold tracking-[0.02em] text-white hover:bg-[#760000] disabled:opacity-40"
+                      >
+                        Undo
+                      </button>
                     ) : null}
                   </div>
                 </div>
