@@ -343,6 +343,10 @@ export const SectionLogoUpload = memo(
                     <Replace className="h-3.5 w-3.5" />
                     Replace
                   </span>
+                  {/* Clickable only while the overlay is visible: with a
+                      static pointer-events-auto this button sat invisible
+                      (opacity-0) over the tile center and swallowed replace
+                      clicks/taps as silent logo deletions (no hover on touch). */}
                   <button
                     type="button"
                     onClick={(event) => {
@@ -350,7 +354,9 @@ export const SectionLogoUpload = memo(
                       onRemove();
                     }}
                     aria-label="Remove logo"
-                    className="bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground pointer-events-auto flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors"
+                    className={`bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors ${
+                      isHovering ? 'pointer-events-auto' : 'pointer-events-none'
+                    }`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Remove
