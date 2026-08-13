@@ -8,7 +8,7 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { Bot, Crop, ImagePlus, LoaderCircle, Redo2, Send, Type, Undo2, Upload, WandSparkles, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ImageIcon, ImagePlus, Layers3, LoaderCircle, Redo2, Send, Shapes, Smile, Type, Undo2, Upload, WandSparkles, X, ZoomIn, ZoomOut } from 'lucide-react';
 
 import {
   BELT_EMBROIDERY_DEFAULT,
@@ -187,11 +187,15 @@ function CleanupBrushCanvas({
   originalUrl,
   onChange,
   onDimensionsChange,
+  onRemoveBackground,
+  onClose,
 }: {
   imageUrl: string;
   originalUrl: string;
   onChange: (dataUrl: string) => void;
   onDimensionsChange: (width: number, height: number) => void;
+  onRemoveBackground: () => void;
+  onClose: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalPixelsRef = useRef<ImageData | null>(null);
@@ -436,60 +440,57 @@ function CleanupBrushCanvas({
           <button type="button" onClick={() => moveThroughHistory(-1)} disabled={historyIndex === 0} title="Undo (Ctrl/Cmd+Z)" className="inline-flex h-9 items-center gap-1.5 border-r border-[#dedede] px-3 text-xs font-medium disabled:opacity-30"><Undo2 className="h-4 w-4" /> Undo</button>
           <button type="button" onClick={() => moveThroughHistory(1)} disabled={historyIndex >= history.length - 1} title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)" aria-label="Redo" className="inline-flex h-9 w-10 items-center justify-center disabled:opacity-30"><Redo2 className="h-4 w-4" /></button>
         </div>
+        <div className="flex items-center gap-2">
         <div className="flex overflow-hidden rounded-lg border border-[#dedede] bg-white shadow-sm">
           <button type="button" onClick={() => setZoom((value) => Math.max(25, value - 25))} aria-label="Zoom out" className="inline-flex h-9 w-10 items-center justify-center border-r border-[#dedede]"><ZoomOut className="h-4 w-4" /></button>
           <span className="inline-flex h-9 min-w-16 items-center justify-center px-3 text-xs font-medium">{zoom}%</span>
           <button type="button" onClick={() => setZoom((value) => Math.min(200, value + 25))} aria-label="Zoom in" className="inline-flex h-9 w-10 items-center justify-center border-l border-[#dedede]"><ZoomIn className="h-4 w-4" /></button>
         </div>
+        <button type="button" onClick={onClose} aria-label="Close artwork editor" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#dedede] bg-white shadow-sm"><X className="h-4 w-4" /></button>
+        </div>
       </div>
       <div className="flex min-h-0 flex-1">
         <aside className="flex w-[82px] shrink-0 flex-col items-stretch border-r border-[#dedede] bg-white py-2">
-          {[
-            { id: 'cleanup' as const, label: 'Cleanup', icon: WandSparkles },
-            { id: 'image' as const, label: 'Uploads', icon: Upload },
-            { id: 'text' as const, label: 'Text', icon: Type },
-            { id: 'crop' as const, label: 'Crop', icon: Crop },
-          ].map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setPanel(id)} className={`flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${panel === id ? 'bg-[#f5eaea] text-[#5c0000]' : 'text-[#202124] hover:bg-[#f7f7f8]'}`}><Icon className="h-5 w-5" />{label}</button>)}
-          <button type="button" onClick={() => document.getElementById('artwork-editor-ai-prompt')?.focus()} className="flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium text-[#202124] hover:bg-[#f7f7f8]"><Bot className="h-5 w-5" />Ask AI</button>
+          <button type="button" onClick={() => setPanel('cleanup')} className={`flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${panel === 'cleanup' ? 'bg-[#eeeeef]' : 'hover:bg-[#f7f7f8]'}`}><Layers3 className="h-5 w-5" />Elements</button>
+          <button type="button" onClick={() => setPanel('image')} className={`flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${panel === 'image' ? 'bg-[#eeeeef]' : 'hover:bg-[#f7f7f8]'}`}><Upload className="h-5 w-5" />Uploads</button>
+          <button type="button" onClick={() => setPanel('cleanup')} className="flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium hover:bg-[#f7f7f8]"><ImageIcon className="h-5 w-5" />Images</button>
+          <button type="button" onClick={() => setPanel('text')} className={`flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${panel === 'text' ? 'bg-[#eeeeef]' : 'hover:bg-[#f7f7f8]'}`}><Type className="h-5 w-5" />Text</button>
+          <button type="button" onClick={() => setPanel('crop')} className={`flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${panel === 'crop' ? 'bg-[#eeeeef]' : 'hover:bg-[#f7f7f8]'}`}><Shapes className="h-5 w-5" />Shapes</button>
+          <button type="button" onClick={() => document.getElementById('artwork-editor-ai-prompt')?.focus()} className="flex h-[70px] flex-col items-center justify-center gap-1 text-[10px] font-medium hover:bg-[#f7f7f8]"><Smile className="h-5 w-5" />Stickers</button>
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
       <div className="z-10 flex min-h-14 shrink-0 items-center justify-center border-b border-[#dedede] bg-[#f7f7f8] px-4 py-2">
         <div className="w-fit max-w-full rounded-2xl border border-[#dedede] bg-white px-3 py-2 shadow-sm">
         {panel === 'cleanup' ? <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setTool('restore')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'restore' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Restore details</button>
-          <button type="button" onClick={() => setTool('erase')} className={`h-8 rounded-full px-3 text-[10px] font-semibold ${tool === 'erase' ? 'bg-[#5c0000] text-white' : 'border border-[#5c0000] text-[#5c0000]'}`}>Erase leftovers</button>
-          <label className="ml-auto flex items-center gap-2 text-[10px] font-semibold text-[#5c0000]">Brush size<input type="range" min="8" max="100" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} className="w-28 accent-[#5c0000]" /></label>
+          <button type="button" onClick={onRemoveBackground} className="h-8 rounded-lg border border-[#d7d0c8] bg-white px-3 text-[10px] font-semibold text-[#202124] hover:bg-[#f3f3f4]">Remove background</button>
+          <span className="h-5 w-px bg-[#dedede]" />
+          <button type="button" onClick={() => setTool('restore')} className={`h-8 rounded-lg px-3 text-[10px] font-semibold ${tool === 'restore' ? 'bg-[#202124] text-white' : 'border border-[#d7d0c8] text-[#202124]'}`}>Restore details</button>
+          <button type="button" onClick={() => setTool('erase')} className={`h-8 rounded-lg px-3 text-[10px] font-semibold ${tool === 'erase' ? 'bg-[#202124] text-white' : 'border border-[#d7d0c8] text-[#202124]'}`}>Erase leftovers</button>
+          <label className="ml-auto flex items-center gap-2 text-[10px] font-semibold text-[#202124]">Brush size<input type="range" min="8" max="100" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} className="w-28 accent-[#202124]" /></label>
         </div> : null}
         {panel === 'crop' ? <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
-          {(['left', 'top', 'right', 'bottom'] as const).map((edge) => <label key={edge} className="text-[9px] font-semibold capitalize text-[#5c0000]">{edge}<input type="range" min="0" max="45" value={cropInsets[edge]} onChange={(event) => setCropInsets((current) => ({ ...current, [edge]: Number(event.target.value) }))} className="block w-full accent-[#5c0000]" /></label>)}
-          <button type="button" onClick={applyCrop} className="col-span-2 h-8 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white sm:col-start-4 sm:col-span-1">Apply crop</button>
+          {(['left', 'top', 'right', 'bottom'] as const).map((edge) => <label key={edge} className="text-[9px] font-semibold capitalize text-[#202124]">{edge}<input type="range" min="0" max="45" value={cropInsets[edge]} onChange={(event) => setCropInsets((current) => ({ ...current, [edge]: Number(event.target.value) }))} className="block w-full accent-[#202124]" /></label>)}
+          <button type="button" onClick={applyCrop} className="col-span-2 h-8 rounded-lg bg-[#202124] px-4 text-[10px] font-semibold text-white sm:col-start-4 sm:col-span-1">Apply crop</button>
         </div> : null}
         {panel === 'text' ? <div className="flex flex-wrap items-center gap-2">
           <input value={textValue} onChange={(event) => setTextValue(event.target.value)} placeholder="Enter text" className="h-8 min-w-40 flex-1 rounded-full border border-[#d7d0c8] px-3 text-xs" />
           <input type="color" value={textColor} onChange={(event) => setTextColor(event.target.value)} aria-label="Text color" className="h-8 w-10" />
-          <label className="flex items-center gap-2 text-[9px] font-semibold text-[#5c0000]">Size<input type="range" min="3" max="30" value={textSize} onChange={(event) => setTextSize(Number(event.target.value))} className="w-24 accent-[#5c0000]" /></label>
-          <label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">X<input type="range" min="5" max="95" value={textPosition.x} onChange={(event) => setTextPosition((current) => ({ ...current, x: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label>
-          <label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">Y<input type="range" min="5" max="95" value={textPosition.y} onChange={(event) => setTextPosition((current) => ({ ...current, y: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label>
-          <button type="button" onClick={applyText} disabled={!textValue.trim()} className="h-8 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white disabled:opacity-40">Add text</button>
+          <label className="flex items-center gap-2 text-[9px] font-semibold text-[#202124]">Size<input type="range" min="3" max="30" value={textSize} onChange={(event) => setTextSize(Number(event.target.value))} className="w-24 accent-[#202124]" /></label>
+          <label className="flex items-center gap-1 text-[9px] font-semibold text-[#202124]">X<input type="range" min="5" max="95" value={textPosition.x} onChange={(event) => setTextPosition((current) => ({ ...current, x: Number(event.target.value) }))} className="w-16 accent-[#202124]" /></label>
+          <label className="flex items-center gap-1 text-[9px] font-semibold text-[#202124]">Y<input type="range" min="5" max="95" value={textPosition.y} onChange={(event) => setTextPosition((current) => ({ ...current, y: Number(event.target.value) }))} className="w-16 accent-[#202124]" /></label>
+          <button type="button" onClick={applyText} disabled={!textValue.trim()} className="h-8 rounded-lg bg-[#202124] px-4 text-[10px] font-semibold text-white disabled:opacity-40">Add text</button>
         </div> : null}
         {panel === 'image' ? <div className="flex flex-wrap items-center gap-2">
           <input ref={extraImageInputRef} type="file" accept="image/png,image/jpeg" onChange={(event) => void chooseExtraImage(event)} className="hidden" />
-          <button type="button" onClick={() => extraImageInputRef.current?.click()} className="h-8 rounded-full border border-[#5c0000] px-4 text-[10px] font-semibold text-[#5c0000]">Choose image</button>
+          <button type="button" onClick={() => extraImageInputRef.current?.click()} className="h-8 rounded-lg border border-[#d7d0c8] px-4 text-[10px] font-semibold text-[#202124]">Choose image</button>
           {overlayUrl ? <><img src={overlayUrl} alt="Additional artwork" className="h-8 w-8 rounded object-contain" /><label className="flex flex-1 items-center gap-2 text-[9px] font-semibold text-[#5c0000]">Size<input type="range" min="10" max="100" value={overlayScale} onChange={(event) => setOverlayScale(Number(event.target.value))} className="w-full accent-[#5c0000]" /></label><label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">X<input type="range" min="5" max="95" value={overlayPosition.x} onChange={(event) => setOverlayPosition((current) => ({ ...current, x: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label><label className="flex items-center gap-1 text-[9px] font-semibold text-[#5c0000]">Y<input type="range" min="5" max="95" value={overlayPosition.y} onChange={(event) => setOverlayPosition((current) => ({ ...current, y: Number(event.target.value) }))} className="w-16 accent-[#5c0000]" /></label><button type="button" onClick={() => void applyExtraImage()} className="h-8 rounded-full bg-[#5c0000] px-4 text-[10px] font-semibold text-white">Add to artwork</button></> : <span className="text-[10px] text-[#8a8580]">Add another logo or image, then set its size and position.</span>}
         </div> : null}
         </div>
       </div>
       <div
-        className="flex min-h-0 flex-1 items-start justify-center overflow-auto overscroll-contain bg-[#f7f7f8] p-8"
-        style={{
-          backgroundColor: '#f7f7f8',
-          backgroundImage:
-            'linear-gradient(45deg, #e2e2e2 25%, transparent 25%), linear-gradient(-45deg, #e2e2e2 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e2e2 75%), linear-gradient(-45deg, transparent 75%, #e2e2e2 75%)',
-          backgroundSize: '24px 24px',
-          backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
-        }}
+        className="flex min-h-0 flex-1 items-start justify-center overflow-auto overscroll-contain bg-[#f5f5f6] p-8"
       >
-        <div className="relative inline-flex max-w-none border-2 border-[#4564ff] bg-white shadow-xl" style={{ width: `${zoom}%` }}>
+        <div className="relative inline-flex max-w-none border-2 border-[#4564ff] shadow-xl" style={{ width: `${zoom}%`, backgroundColor: '#fff', backgroundImage: 'linear-gradient(45deg, #e2e2e2 25%, transparent 25%), linear-gradient(-45deg, #e2e2e2 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e2e2 75%), linear-gradient(-45deg, transparent 75%, #e2e2e2 75%)', backgroundSize: '24px 24px', backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px' }}>
         <canvas
           ref={canvasRef}
           className={`h-auto w-full max-w-none touch-none object-contain ${panel === 'cleanup' ? 'cursor-none' : 'cursor-default'}`}
@@ -1652,17 +1653,17 @@ export function DesignAssistant({
       {cleanupEditorOpen && attachedArtwork && originalAttachedArtwork ? (
         <div className="fixed inset-0 z-[200] flex items-center justify-center overscroll-none bg-black/70 p-4 sm:p-8">
           <div className="flex h-[92dvh] w-full max-w-[1180px] flex-col overflow-hidden rounded-2xl border border-[#dedede] bg-white shadow-2xl">
-            <div className="flex h-11 shrink-0 items-center justify-between border-b border-[#e3ded7] px-4">
-              <div>
-                <p className="text-xs font-semibold tracking-[0.12em] text-[#1c1b1b] uppercase">Artwork editor</p>
-              </div>
-              <button type="button" onClick={() => setCleanupEditorOpen(false)} className="rounded-full p-2 text-[#8a8580] hover:bg-[#f0ece6]" aria-label="Close cleanup preview">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
             <CleanupBrushCanvas
               imageUrl={attachedArtwork.previewUrl}
               originalUrl={originalAttachedArtwork.previewUrl}
+              onClose={() => setCleanupEditorOpen(false)}
+              onRemoveBackground={() => {
+                void previewBackgroundCleanup(Math.max(1, cleanupStrength)).then(
+                  (artwork) => {
+                    if (artwork) void saveBackgroundCleanup(artwork);
+                  },
+                );
+              }}
               onDimensionsChange={(width, height) => {
                 setAttachedArtwork((current) =>
                   current ? { ...current, width, height } : current,
