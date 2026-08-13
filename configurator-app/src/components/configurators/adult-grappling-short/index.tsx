@@ -685,14 +685,26 @@ const RashguardConfiguratorInner = memo(() => {
           toast.error('Could not load that artwork');
           return;
         }
+        const knownTarget = isRashguardArtworkTarget(target)
+          ? target
+          : undefined;
         addArtworkLayer({
           file,
           dimensions: { width: item.imageWidth, height: item.imageHeight },
-          target: isRashguardArtworkTarget(target) ? target : undefined,
+          target: knownTarget,
+          // Placement was chosen in the uploads menu — drop the layer at the
+          // default spot right away and face the camera at it. Leaving it
+          // pending looked like the apply did nothing.
+          placementPending: knownTarget ? false : undefined,
         });
+        if (knownTarget) {
+          setCameraView(
+            knownTarget.toLowerCase().includes('back') ? 'back' : 'front',
+          );
+        }
       })();
     },
-    [addArtworkLayer, uploadedArtwork],
+    [addArtworkLayer, setCameraView, uploadedArtwork],
   );
 
   const uploadArtworkLayerUrls = useCallback(async () => {

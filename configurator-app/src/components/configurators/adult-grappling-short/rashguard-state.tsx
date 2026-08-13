@@ -101,6 +101,7 @@ interface RashguardStateValue {
     file: File;
     dimensions: { width: number; height: number };
     target?: RashguardArtworkTarget;
+    placementPending?: boolean;
   }) => void;
   addTextLayer: (input?: { target?: RashguardArtworkTarget }) => void;
   updateArtworkLayer: (
@@ -371,10 +372,12 @@ export const RashguardStateProvider = memo(
         file,
         dimensions,
         target,
+        placementPending,
       }: {
         file: File;
         dimensions: { width: number; height: number };
         target?: RashguardArtworkTarget;
+        placementPending?: boolean;
       }) => {
         const layer: RashguardArtworkLayer = sanitizeArtworkLayer({
           ...DEFAULT_ARTWORK_LAYER,
@@ -386,7 +389,10 @@ export const RashguardStateProvider = memo(
           filename: file.name,
           file,
           target: target ?? (cameraView === 'back' ? 'rightBackLeg' : 'rightFrontLeg'),
-          placementPending: true,
+          // Default true: the customer clicks the garment to place. False when
+          // the spot was already chosen (uploads menu placement step) — pending
+          // there meant an invisible layer and a dead-feeling apply.
+          placementPending: placementPending ?? true,
         });
         recordUndoSnapshot('add-artwork');
         setArtworkLayers((prev) => [...prev, layer]);
