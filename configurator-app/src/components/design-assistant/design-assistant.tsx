@@ -72,6 +72,7 @@ interface ArtworkAgentResponse {
     operation: 'generate' | 'edit';
   };
   message?: string;
+  requestId?: string;
 }
 
 const readArtworkFile = async (file: File) => {
@@ -108,7 +109,10 @@ const requestArtworkRevision = async (payload: {
   });
   const data = (await response.json().catch(() => ({}))) as ArtworkAgentResponse;
   if (!response.ok || !data.artwork) {
-    throw new Error(data.message || 'Artwork revision failed');
+    const requestSuffix = data.requestId ? ` (reference ${data.requestId})` : '';
+    throw new Error(
+      `${data.message || 'The artwork revision did not finish. Please retry it.'}${requestSuffix}`,
+    );
   }
   return {
     id: data.artwork.id,

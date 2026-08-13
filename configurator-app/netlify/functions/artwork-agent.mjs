@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { getStore } from '@netlify/blobs';
 
+// GPT Image 2 does not support transparent backgrounds. Apparel artwork must
+// retain alpha, so keep this endpoint on GPT Image 1.5 until its replacement
+// supports transparent PNG output.
 const MODEL = process.env.DSPLN_ARTWORK_MODEL || 'gpt-image-1.5';
 const STORE_NAME = 'dspln-preview-images';
 const MAX_PROMPT_LENGTH = 2_000;
@@ -57,7 +60,6 @@ const callImageApi = async ({ apiKey, operation, prompt, source }) => {
     form.set('quality', 'medium');
     form.set('background', 'transparent');
     form.set('output_format', 'png');
-
     return fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}` },
@@ -138,11 +140,33 @@ export default async (request) => {
     const response = await callImageApi({ apiKey, operation, prompt, source });
     const data = await response.json();
     if (!response.ok) {
-      console.error('[artwork-agent] OpenAI error', response.status, data);
+      const requestId = response.headers.get('x-request-id') || undefined;
+      const isDevDeploy = new URL(request.url).hostname.startsWith('dev--');
+      console.error('[artwork-agent] OpenAI error', {
+        status: response.status,
+        requestId,
+        code: data?.error?.code,
+        type: data?.error?.type,
+        message: data?.error?.message,
+      });
       return json(
         {
           error: 'artwork_upstream',
-          message: 'I could not create that artwork revision. Please try a simpler request.',
+          message:
+            response.status === 429
+              ? 'The artwork service is busy right now. Please retry this edit in a moment.'
+              : 'The artwork edit did not finish. Please retry it; your original artwork is still available.',
+          retryable: response.status === 429 || response.status >= 500,
+          requestId,
+          ...(isDevDeploy
+            ? {
+                diagnostic: {
+                  code: data?.error?.code,
+                  type: data?.error?.type,
+                  message: data?.error?.message,
+                },
+              }
+            : {}),
         },
         502,
       );
