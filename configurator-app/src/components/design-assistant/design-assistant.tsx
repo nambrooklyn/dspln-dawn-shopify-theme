@@ -740,6 +740,18 @@ export function DesignAssistant({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [bubbles, busy]);
 
+  useEffect(() => {
+    if (!cleanupEditorOpen) return;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [cleanupEditorOpen]);
+
   const openChat = useCallback(() => {
     setOpen(true);
     setBubbles((prev) =>
@@ -1619,7 +1631,7 @@ export function DesignAssistant({
         </div>
       )}
       {cleanupEditorOpen && attachedArtwork && originalAttachedArtwork ? (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 sm:p-8">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center overscroll-none bg-black/70 p-4 sm:p-8">
           <div className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#e3ded7] px-4 py-3">
               <div>
