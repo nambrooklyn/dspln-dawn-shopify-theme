@@ -138,6 +138,7 @@ export default async (request) => {
     const data = await response.json();
     if (!response.ok) {
       const requestId = response.headers.get('x-request-id') || undefined;
+      const isDevDeploy = new URL(request.url).hostname.startsWith('dev--');
       console.error('[artwork-agent] OpenAI error', {
         status: response.status,
         requestId,
@@ -154,6 +155,15 @@ export default async (request) => {
               : 'The artwork edit did not finish. Please retry it; your original artwork is still available.',
           retryable: response.status === 429 || response.status >= 500,
           requestId,
+          ...(isDevDeploy
+            ? {
+                diagnostic: {
+                  code: data?.error?.code,
+                  type: data?.error?.type,
+                  message: data?.error?.message,
+                },
+              }
+            : {}),
         },
         502,
       );
