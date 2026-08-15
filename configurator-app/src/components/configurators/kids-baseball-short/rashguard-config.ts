@@ -1,16 +1,23 @@
 export const RASHGUARD_MODEL_URL =
-  '/models/kids-baseball-short.glb?v=20260815b';
+  '/models/kids-baseball-short.glb?v=20260815-v2';
 
-// NOTE: no stitch graft. CLO exported this model's topstitching as real mesh
-// inside the single GLB (the 44 Topstitch_* meshes), so it ships as ONE GLB and
-// the Topstitch meshes colour via the 'stitching' part through the name
-// fallback in rashguard-glb-model. Do not re-introduce RASHGUARD_STITCH_GRAFT_URL.
+// NOTE: no stitch graft. The topstitching is real mesh inside the single GLB
+// (the 44 Topstitch_* meshes), coloured via the 'stitching' part through the
+// name fallback in rashguard-glb-model. Do not re-introduce
+// RASHGUARD_STITCH_GRAFT_URL.
 //
-// The four fabric panels came out of CLO named after internal lines
-// ("Internal Line_44927" …). They are renamed to the human names below during
-// asset prep, derived from geometry: lower X = wearer's right, higher Z = front.
-// If the model is re-exported from CLO, name the pattern pieces in CLO first —
-// the internal-line IDs change every export and would break RASHGUARD_MESH_TO_PART.
+// As of the v2 export the stitches are TEXTURED RIBBONS (alphaMode BLEND with
+// an alpha stitch tile) rather than solid tube geometry — 10k tris instead of
+// 277k. They still recolour, because the material's base colour multiplies the
+// texture, but the stitching branch in rashguard-glb-model must honour the
+// alpha or every seam renders as an opaque bar. See the alphaTest there.
+//
+// The v2 export carries real piece names from CLO, so prep keeps them as-is and
+// only cross-checks each against the panel's actual position (lower X =
+// wearer's right, higher Z = front), failing the build on any disagreement.
+// Keep naming the pieces in CLO on future exports: the v1 export used
+// internal-line IDs ("Internal Line_44927") that change every time, which would
+// silently break RASHGUARD_MESH_TO_PART below.
 
 export const RASHGUARD_PRODUCT_CONFIG = {
   productName: 'Kids Baseball Short',
@@ -222,13 +229,16 @@ export function cameraViewToPosition(
   return (useMobileCamera ? MOBILE_CAMERA_POSITIONS : CAMERA_POSITIONS)[view];
 }
 
-// Body panel mesh names → part. The 44 Topstitch_* meshes are routed to
-// 'stitching' by the name fallback in rashguard-glb-model (no need to list them).
+// Body panel mesh names → part. These are the piece names as they come out of
+// CLO — the prep script keeps them rather than renaming, and fails the build if
+// any name disagrees with the panel's actual position. The 44 Topstitch_*
+// meshes are routed to 'stitching' by the name fallback in rashguard-glb-model
+// (no need to list them).
 export const RASHGUARD_MESH_TO_PART: Record<string, RashguardPart> = {
-  'Right Front Leg': 'rightFrontLeg',
-  'Left Front Leg': 'leftFrontLeg',
-  'Right Back Leg': 'rightBackLeg',
-  'Left Back Leg': 'leftBackLeg',
+  'Front Right Leg': 'rightFrontLeg',
+  'Front Left Leg': 'leftFrontLeg',
+  'Back Right Leg': 'rightBackLeg',
+  'Back Left Leg': 'leftBackLeg',
   Stitching: 'stitching',
 };
 

@@ -11,13 +11,25 @@ their deps would otherwise ship to the Netlify build. Install them ad hoc:
 npm i --no-save @gltf-transform/core @gltf-transform/extensions draco3dgltf
 ```
 
-## 1. Prep the GLB
+## One command does everything
 
 ```bash
-node tools/prep-clo-glb.mjs "~/path/Kids Baseball Short.glb" public/models/kids-baseball-short.glb
+node tools/prep-clo-glb.mjs "~/path/Kids Baseball Short.glb" \
+  public/models/kids-baseball-short.glb \
+  src/components/configurators/kids-baseball-short/rashguard-patterns.json
 ```
 
-Does four things, all reported to stdout so you can eyeball them:
+Prepping the model and deriving the patterns **must** happen in one pass, in
+this order, and the script enforces it:
+
+1. rename panels → 2. fix mirrored UVs → 3. **derive patterns** → 4. merge
+   primitives → 5. Draco
+
+Derive before the mirrored-UV fix and the back pieces print mirrored. Derive
+after the merge and the edge band is fused into the surface, which puts small
+tabs back on the cut line (see below). Both mistakes have been shipped once.
+
+Does five things, all reported to stdout so you can eyeball them:
 
 - **Merges primitives.** CLO splits each panel into 3 primitives (outer surface /
   inner surface / edge band) that share the same POSITION/NORMAL/UV accessors —
@@ -43,17 +55,26 @@ Check the winding of any model separately with:
 node tools/check-uv-winding.mjs public/models/kids-baseball-short.glb "leg"
 ```
 
-## 2. Derive the actual-size patterns
-
-```bash
-node tools/make-patterns.mjs public/models/kids-baseball-short.glb \
-  > src/components/configurators/kids-baseball-short/rashguard-patterns.json
-```
+## How the patterns are derived
 
 Rasterises each panel's UV silhouette and traces its contour (a CLO panel is a
 closed shell, so there are no boundary edges to chain), then converts UV units to
 centimetres via the median per-triangle `sqrt(area3D / areaUV)` — fabric is
 near-isometric to its flat pattern.
+
+**Surface primitive only.** CLO splits each panel into outer surface / inner
+surface / edge-thickness band. The band's UV island pokes 1–2 mm past the
+surface island at the piece ends, and rasterising it stamped small rectangular
+tabs onto the printed cut line — they looked like stray quarter-inch extensions
+and were mistaken for seam allowance. They are the panel's *thickness*. Only the
+largest primitive (the surface) is used; outer and inner share a UV island so
+either gives the same silhouette.
+
+**These outlines are the sewn (net) line — no seam allowance, no notches, no
+grainline.** CLO's 3D surface is the finished panel, so allowance never appears
+in the mesh regardless of the CLO setting. If the factory needs allowance on the
+cut file, it has to come from a real pattern export (DXF/AAMA or a 1:1 PDF), not
+from here.
 
 **Accuracy, measured.** Run against the adult-grappling-short, whose
 `rashguard-patterns.json` came from its real pattern PDF, this reproduces every
