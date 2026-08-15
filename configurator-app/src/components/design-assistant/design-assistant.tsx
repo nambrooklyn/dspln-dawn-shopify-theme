@@ -106,6 +106,12 @@ const removeEdgeConnectedLightBackground = async (
   dataUrl: string,
   cleanupStrength = 0,
 ) => {
+  // The slider starts at 1 after the first cleanup, but its minimum must be
+  // identical to the original conservative remover. Only values above 1 add
+  // the aggressive disconnected-pixel pass; remap 1..100 to 0..100 so the
+  // maximum retains its previous reach.
+  const effectiveStrength =
+    cleanupStrength <= 1 ? 0 : ((cleanupStrength - 1) / 99) * 100;
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const next = new Image();
     next.onload = () => resolve(next);
@@ -136,8 +142,8 @@ const removeEdgeConnectedLightBackground = async (
     const blue = data[offset + 2];
     const darkest = Math.min(red, green, blue);
     const lightest = Math.max(red, green, blue);
-    const minimumBrightness = Math.round(224 - cleanupStrength * 1.35);
-    const maximumColorSpread = Math.round(24 + cleanupStrength * 0.36);
+    const minimumBrightness = Math.round(224 - effectiveStrength * 1.35);
+    const maximumColorSpread = Math.round(24 + effectiveStrength * 0.36);
     return (
       darkest >= minimumBrightness &&
       lightest - darkest <= maximumColorSpread
@@ -172,7 +178,7 @@ const removeEdgeConnectedLightBackground = async (
   // A stronger cleanup also removes disconnected neutral pixels, which is
   // necessary for isolated drop-shadow remnants. Recompute from the original
   // for every slider change so cleanup never compounds destructively.
-  if (cleanupStrength > 0) {
+  if (effectiveStrength > 0) {
     for (let index = 0; index < width * height; index += 1) {
       if (isLightBackground(index)) data[index * 4 + 3] = 0;
     }
