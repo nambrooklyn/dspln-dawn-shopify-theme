@@ -61,7 +61,6 @@ import {
 } from './rashguard-state';
 import { createLineDesignId } from '../shared/order-flow';
 import { DesignCommandBar } from '../shared/design-command-bar';
-import { useGenerateTechPack } from '../shared/use-generate-tech-pack';
 import { RashguardShell } from './rashguard-shell';
 import { RashguardViewToggle } from './view-toggle';
 import {
@@ -949,9 +948,6 @@ const RashguardConfiguratorInner = memo(() => {
     uploadArtworkLayerUrls,
   ]);
 
-  // @ts-expect-error - currentDesignName can be null
-  const handleGenerateTechPack = useGenerateTechPack('kids-baseball-short', serialize, {}, currentDesignId, (currentDesignName || undefined));
-
   return (
     <UploadedArtworkProvider value={uploadedArtwork}>
       {isAdminEdit ? (
@@ -986,7 +982,7 @@ const RashguardConfiguratorInner = memo(() => {
         cartActionLabel={isCartEditMode ? 'Update Cart' : 'Add to Cart'}
         cartActionLoadingLabel={isCartEditMode ? 'Updating...' : 'Adding...'}
         skinnyRailContent={
-          <RashguardActionRail onLoginToSave={handleLoginToSave} onGenerateTechPack={isStudioMode() ? handleGenerateTechPack : undefined} />
+          <RashguardActionRail onLoginToSave={handleLoginToSave} />
         }
         railContent={!isStudioMode() ? undefined :
           <RashguardSavedDesignsPanel

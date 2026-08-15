@@ -18,7 +18,7 @@ const railButtonClass =
   'group flex w-full flex-col items-center justify-center gap-1 rounded-r-2xl px-1 py-3 text-[#3f4447] transition-colors hover:bg-white hover:text-[#171717]';
 
 export const RashguardActionRail = memo(
-  ({ onLoginToSave, onGenerateTechPack }: { onLoginToSave?: () => void; onGenerateTechPack?: () => void }) => (
+  ({ onLoginToSave }: { onLoginToSave?: () => void }) => (
     <div className="flex h-full w-full flex-col items-center">
       <div className="w-full space-y-1 pt-3">
         <LockerRailButton className={railButtonClass} />
@@ -49,17 +49,20 @@ export const RashguardActionRail = memo(
           <span className="text-[11px] font-medium leading-none">Uploads</span>
         </button>
 
-        {onGenerateTechPack ? (
-          <button
-            type="button"
-            className={railButtonClass}
-            onClick={onGenerateTechPack}
-            title="Generate tech pack"
-          >
-            <FileText className="h-6 w-6 stroke-[1.7]" />
-            <span className="text-[11px] font-medium leading-none">Tech</span>
-          </button>
-        ) : null}
+        {/* Tech pack: fires the art-file export, which captures the four 3D
+            views live and downloads the full pack (4 render pages + 4
+            actual-size pattern pages). Deliberately NOT the studio
+            useGenerateTechPack route — that one ships no renders, so it
+            produces pattern pages only, and it needs a popup. */}
+        <button
+          type="button"
+          className={railButtonClass}
+          onClick={() => dispatchRailEvent('dspln:rashguard-rail:artfile')}
+          title="Generate tech pack (actual-size art file)"
+        >
+          <FileText className="h-6 w-6 stroke-[1.7]" />
+          <span className="text-[11px] font-medium leading-none">Tech Pack</span>
+        </button>
 
       </div>
 
