@@ -1518,7 +1518,7 @@ export function DesignAssistant({
 
           <form onSubmit={send} className="border-t border-[#eee9e2] p-2.5">
             {attachedArtwork ? (
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#e3ded7] bg-[#faf8f5] p-2">
+              <div className="mb-2 flex items-start gap-2 rounded-xl border border-[#e3ded7] bg-[#faf8f5] p-2">
                 <button
                   type="button"
                   onClick={() => cleanupStrength > 0 && setCleanupEditorOpen(true)}
@@ -1545,7 +1545,13 @@ export function DesignAssistant({
                   <p className="text-[10px] text-[#8a8580]">
                     {attachedArtwork.width} × {attachedArtwork.height}px
                   </p>
-                  <div className="mt-1 flex min-w-0 gap-2">
+                  {/* Stacked, not a single row: the slider, "Enlarge" and
+                      "Undo" used to share one flex line inside this narrow
+                      card, so "Cleanup strength" wrapped mid-phrase and the
+                      buttons overlapped it while the slider collapsed to a
+                      dot. The slider now owns its own full-width row and the
+                      actions sit beneath it. */}
+                  <div className="mt-1 flex min-w-0 flex-col gap-1">
                     {cleanupStrength === 0 ? (
                       <button
                         type="button"
@@ -1554,14 +1560,21 @@ export function DesignAssistant({
                           if (artwork) setCleanupEditorOpen(true);
                         })}
                         disabled={uploadingArtwork}
-                        className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-[#5c0000] px-2.5 text-[9px] font-semibold tracking-[0.02em] text-white hover:bg-[#760000] disabled:opacity-40"
+                        // w-full and wrapping, not a nowrap pill: the text
+                        // column here is only ~145px, and "Remove background"
+                        // needs ~165px at this size, so a nowrap pill either
+                        // overflowed the card or truncated its own label.
+                        className="flex h-6 w-full items-center justify-center whitespace-nowrap rounded-full bg-[#5c0000] px-2 text-center text-[9px]! leading-tight font-semibold tracking-[0.02em] text-white hover:bg-[#760000] disabled:opacity-40"
                       >
                         {uploadingArtwork ? 'Removing…' : 'Remove background'}
                       </button>
                     ) : originalAttachedArtwork ? (
                       <>
-                        <label className="min-w-0 flex-1 text-[8px] font-semibold text-[#5c0000]">
-                          <span className="flex justify-between"><span>Cleanup strength</span><span>{cleanupStrength}%</span></span>
+                        <label className="block min-w-0 text-[9px] font-semibold text-[#5c0000]">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="whitespace-nowrap">Cleanup strength</span>
+                            <span className="shrink-0 tabular-nums">{cleanupStrength}%</span>
+                          </span>
                           <input
                             type="range"
                             min="1"
@@ -1571,29 +1584,31 @@ export function DesignAssistant({
                             onChange={(event) => void previewBackgroundCleanup(Number(event.target.value))}
                             onPointerUp={() => void saveBackgroundCleanup()}
                             onKeyUp={() => void saveBackgroundCleanup()}
-                            className="h-3 w-full accent-[#5c0000]"
+                            className="mt-0.5 block h-3 w-full accent-[#5c0000]"
                           />
                         </label>
-                        <button
-                          type="button"
-                          onClick={() => setCleanupEditorOpen(true)}
-                          className="text-[8px] font-semibold text-[#5c0000] underline"
-                        >
-                          Enlarge
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAttachedArtwork(originalAttachedArtwork);
-                            setCleanupStrength(0);
-                            setCleanupDirty(false);
-                            setCleanupEditorOpen(false);
-                          }}
-                          disabled={uploadingArtwork}
-                          className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full border border-[#5c0000] px-2 text-[8px] font-semibold text-[#5c0000] hover:bg-[#f5eaea] disabled:opacity-40"
-                        >
-                          Undo
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setCleanupEditorOpen(true)}
+                            className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full border border-[#5c0000] px-2 text-[9px]! font-semibold text-[#5c0000] hover:bg-[#f5eaea]"
+                          >
+                            Enlarge
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAttachedArtwork(originalAttachedArtwork);
+                              setCleanupStrength(0);
+                              setCleanupDirty(false);
+                              setCleanupEditorOpen(false);
+                            }}
+                            disabled={uploadingArtwork}
+                            className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full border border-[#5c0000] px-2 text-[9px]! font-semibold text-[#5c0000] hover:bg-[#f5eaea] disabled:opacity-40"
+                          >
+                            Undo
+                          </button>
+                        </div>
                       </>
                     ) : null}
                   </div>
@@ -1608,7 +1623,7 @@ export function DesignAssistant({
                     setCleanupDirty(false);
                     setCleanupEditorOpen(false);
                   }}
-                  className="rounded-full p-1 text-[#8a8580] hover:bg-[#eee9e2]"
+                  className="shrink-0 rounded-full p-1 text-[#8a8580] hover:bg-[#eee9e2]"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
