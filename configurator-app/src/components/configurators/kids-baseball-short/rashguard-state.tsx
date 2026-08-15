@@ -14,12 +14,15 @@ import type { Mesh } from 'three';
 import {
   CAMERA_POSITIONS,
   MOBILE_CAMERA_POSITIONS,
+  PART_CAMERA_PRESETS,
+  PART_CAMERA_SIDE,
   RASHGUARD_ARTWORK_TARGETS,
   RASHGUARD_BASE_PRICE,
   RASHGUARD_DEFAULT_COLORS,
   RASHGUARD_PARTS,
   RASHGUARD_SIZE_OPTIONS,
   nameForHex,
+  type CameraPreset,
   type CameraView,
   type RashguardArtworkTarget,
   type RashguardPart,
@@ -134,6 +137,9 @@ interface RashguardStateValue {
   cameraView: CameraView;
   cameraViewResetKey: number;
   setCameraView: (view: CameraView) => void;
+  /** Hand-tuned framing for the focused part, null = plain front/back view. */
+  cameraPreset: CameraPreset | null;
+  focusPart: (part: RashguardPart) => void;
   artworkTargetMeshes: Partial<Record<RashguardArtworkTarget, Mesh>>;
   setArtworkTargetMeshes: (
     meshes: Partial<Record<RashguardArtworkTarget, Mesh>>,
@@ -274,6 +280,7 @@ export const RashguardStateProvider = memo(
     const [isArtworkDragging, setArtworkDragging] = useState(false);
     const [cameraView, setCameraViewState] = useState<CameraView>('front');
     const [cameraViewResetKey, setCameraViewResetKey] = useState(0);
+    const [cameraPreset, setCameraPreset] = useState<CameraPreset | null>(null);
     const [artworkTargetMeshes, setArtworkTargetMeshesState] = useState<
       Partial<Record<RashguardArtworkTarget, Mesh>>
     >({});
@@ -515,9 +522,25 @@ export const RashguardStateProvider = memo(
       if (view !== latestSnapshotRef.current?.cameraView) {
         recordUndoSnapshot('camera-view');
       }
+      // A plain front/back switch drops any per-part framing, so the toggle
+      // always returns to the straight-on view the customer expects.
+      setCameraPreset(null);
       setCameraViewState(view);
       setCameraViewResetKey((key) => key + 1);
     }, [recordUndoSnapshot]);
+
+    /**
+     * Point the camera at a part's section as the customer focuses it, so they
+     * are looking at the panel they are about to colour. Uses the recorded
+     * preset for that part when there is one, else the plain front/back view.
+     */
+    const focusPart = useCallback((part: RashguardPart) => {
+      const preset = PART_CAMERA_PRESETS[part] ?? null;
+      const side = PART_CAMERA_SIDE[part];
+      setCameraPreset(preset);
+      setCameraViewState((current) => (current === side ? current : side));
+      setCameraViewResetKey((key) => key + 1);
+    }, []);
 
     const setArtworkTargetMeshes = useCallback(
       (meshes: Partial<Record<RashguardArtworkTarget, Mesh>>) => {
@@ -656,6 +679,8 @@ export const RashguardStateProvider = memo(
         cameraView,
         cameraViewResetKey,
         setCameraView,
+        cameraPreset,
+        focusPart,
         artworkTargetMeshes,
         setArtworkTargetMeshes,
         setCanvasEl,
@@ -686,6 +711,8 @@ export const RashguardStateProvider = memo(
         serialize,
         setArtworkTargetMeshes,
         setCameraView,
+        cameraPreset,
+        focusPart,
         setCanvasEl,
         setPartColor,
         setConfiguratorPanel,

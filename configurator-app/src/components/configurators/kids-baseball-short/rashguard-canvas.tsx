@@ -181,6 +181,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
   const {
     cameraView,
     cameraViewResetKey,
+    cameraPreset,
     isArtworkDragging,
   } = useRashguardState();
   const { camera } = useThree();
@@ -192,15 +193,34 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     maxTargetY: 2.75,
   });
 
+  // Expose the live camera + controls for the studio Camera tuner, which reads
+  // them to report the exact framing you are looking at.
+  useEffect(() => {
+    const win = window as unknown as Record<string, unknown>;
+    win.__rashguardCamera = camera;
+    win.__rashguardControls = controlsRef.current;
+    return () => {
+      delete win.__rashguardCamera;
+      delete win.__rashguardControls;
+    };
+  }, [camera, cameraViewResetKey]);
+
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
 
     const startPos = camera.position.clone();
+    // A recorded per-part preset wins; otherwise the plain front/back framing.
+    // Mobile keeps its pulled-in distance for the fallback, but a preset is a
+    // literal position and is used as recorded.
     const targetPos = new Vector3(
-      ...cameraViewToPosition(cameraView, useMobileCamera),
+      ...(cameraPreset
+        ? cameraPreset.position
+        : cameraViewToPosition(cameraView, useMobileCamera)),
     );
-    const targetTgt = new Vector3(...CAMERA_TARGET);
+    const targetTgt = new Vector3(
+      ...(cameraPreset ? cameraPreset.target : CAMERA_TARGET),
+    );
     const startTime = performance.now();
     const duration = 600;
     let raf = 0;
@@ -215,7 +235,7 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [camera, cameraView, cameraViewResetKey, useMobileCamera]);
+  }, [camera, cameraView, cameraPreset, cameraViewResetKey, useMobileCamera]);
 
   useEffect(() => {
     const handlePinch = (event: Event) => {

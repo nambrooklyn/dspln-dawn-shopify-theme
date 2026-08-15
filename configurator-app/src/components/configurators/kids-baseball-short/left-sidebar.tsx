@@ -5,6 +5,8 @@ import {
   RashguardArtworkSections,
   RashguardGarmentSections,
 } from './rashguard-sections';
+import { RashguardCameraTuner } from './camera-tuner';
+import { isStudioMode } from '../shared/studio-mode';
 
 const PANELS = [
   { key: 'garment', label: 'Garment' },
@@ -39,6 +41,8 @@ export const RashguardLeftSidebar = memo(() => {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {/* Owner-only: record per-part camera framing (?edit=admin). */}
+        {isStudioMode() ? <RashguardCameraTuner /> : null}
         {selectedPanel === 'garment' ? (
           <RashguardGarmentSections />
         ) : (
