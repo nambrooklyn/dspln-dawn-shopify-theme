@@ -55,11 +55,13 @@ function RashguardPartColorSection({
   value,
   inUseColors,
   onChange,
+  onFocus,
 }: {
   part: RashguardPart;
   value: string;
   inUseColors: string[];
   onChange: (hex: string) => void;
+  onFocus: () => void;
 }) {
   const currentName =
     RASHGUARD_COLOR_SWATCHES.find(
@@ -69,7 +71,15 @@ function RashguardPartColorSection({
     'Custom';
 
   return (
-    <section className="border-border border-b px-2 py-3">
+    // Focusing a part swings the camera to it, so the customer is looking at
+    // the panel they are about to colour. Pointer-enter would spin the garment
+    // while they merely scroll past, so this fires on interaction: a click
+    // anywhere in the section, or keyboard focus reaching it.
+    <section
+      className="border-border border-b px-2 py-3"
+      onPointerDown={onFocus}
+      onFocusCapture={onFocus}
+    >
       <div className="mb-2 flex items-center justify-between gap-2 max-lg:items-start">
         <div className="flex min-w-0 items-baseline gap-2">
           <h3 className="text-foreground text-[12px] font-semibold tracking-wide uppercase">
@@ -122,7 +132,8 @@ function RashguardPartColorSection({
 }
 
 export const RashguardGarmentSections = memo(() => {
-  const { size, setSize, partColors, setPartColor } = useRashguardState();
+  const { size, setSize, partColors, setPartColor, focusPart } =
+    useRashguardState();
 
   const inUseColors = useMemo(
     () =>
@@ -169,6 +180,7 @@ export const RashguardGarmentSections = memo(() => {
           value={partColors[part]}
           inUseColors={inUseColors}
           onChange={(hex) => setPartColor(part, hex)}
+          onFocus={() => focusPart(part)}
         />
       ))}
     </>

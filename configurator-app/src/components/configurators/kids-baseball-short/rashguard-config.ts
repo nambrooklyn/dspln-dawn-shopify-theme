@@ -229,6 +229,37 @@ export function cameraViewToPosition(
   return (useMobileCamera ? MOBILE_CAMERA_POSITIONS : CAMERA_POSITIONS)[view];
 }
 
+/** A hand-tuned camera framing: where the camera sits and what it looks at. */
+export interface CameraPreset {
+  position: [number, number, number];
+  target: [number, number, number];
+}
+
+/**
+ * Per-part camera framing, used when a customer focuses that part's section in
+ * the sidebar so they're looking at the panel they're about to colour.
+ *
+ * These are RECORDED, not hand-written: open the configurator with ?edit=admin,
+ * pick the part in the Camera tuner panel, orbit/zoom until the framing looks
+ * right, hit COPY, and paste the line back in here. The tuner reads the live
+ * camera, so what you copy is exactly what you saw.
+ *
+ * Any part left out falls back to the plain front/back view below, so this can
+ * be filled in one part at a time.
+ */
+export const PART_CAMERA_PRESETS: Partial<Record<RashguardPart, CameraPreset>> = {
+  // e.g. rightFrontLeg: { position: [-1.2, 1.1, 4.3], target: [-0.3, 1.1, 0] },
+};
+
+/** Which side each part lives on, for the fallback when it has no preset. */
+export const PART_CAMERA_SIDE: Record<RashguardPart, CameraView> = {
+  rightFrontLeg: 'front',
+  leftFrontLeg: 'front',
+  rightBackLeg: 'back',
+  leftBackLeg: 'back',
+  stitching: 'front',
+};
+
 // Body panel mesh names → part. These are the piece names as they come out of
 // CLO — the prep script keeps them rather than renaming, and fails the build if
 // any name disagrees with the panel's actual position. The 44 Topstitch_*
