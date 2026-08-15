@@ -696,7 +696,7 @@ function ArtworkLayerCard({
             <input
               type="range"
               min="0.2"
-              max="4"
+              max="10"
               step="0.025"
               value={layer.scale}
               disabled={layer.locked}
