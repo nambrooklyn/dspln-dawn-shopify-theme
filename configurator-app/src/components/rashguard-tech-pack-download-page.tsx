@@ -7,6 +7,7 @@ import {
 } from './configurators/short-sleeve-rashguard/rashguard-artfile';
 import { generateRashguardArtFile as generateLongSleeveRashguardArtFile } from './configurators/long-sleeve-rashguard/rashguard-artfile';
 import { generateRashguardArtFile as generateAdultGrapplingShortArtFile } from './configurators/adult-grappling-short/rashguard-artfile';
+import { generateRashguardArtFile as generateKidsBaseballShortArtFile } from './configurators/kids-baseball-short/rashguard-artfile';
 import { storeTechPackPdf } from './configurators/shared/tech-pack-store';
 import type {
   RashguardArtworkLayer,
@@ -16,7 +17,8 @@ import type {
 type RashguardSource =
   | 'short-sleeve-rashguard'
   | 'long-sleeve-rashguard'
-  | 'adult-grappling-short';
+  | 'adult-grappling-short'
+  | 'kids-baseball-short';
 
 type SavedArtworkImage = {
   id: string;
@@ -111,7 +113,8 @@ function isRashguardSource(source: string | undefined): source is RashguardSourc
   return (
     source === 'short-sleeve-rashguard' ||
     source === 'long-sleeve-rashguard' ||
-    source === 'adult-grappling-short'
+    source === 'adult-grappling-short' ||
+    source === 'kids-baseball-short'
   );
 }
 
@@ -267,6 +270,12 @@ export function RashguardTechPackDownloadPage() {
           generated = await generateLongSleeveRashguardArtFile(
             sharedInput as unknown as Parameters<
               typeof generateLongSleeveRashguardArtFile
+            >[0],
+          );
+        } else if (source === 'kids-baseball-short') {
+          generated = await generateKidsBaseballShortArtFile(
+            sharedInput as unknown as Parameters<
+              typeof generateKidsBaseballShortArtFile
             >[0],
           );
         } else {
