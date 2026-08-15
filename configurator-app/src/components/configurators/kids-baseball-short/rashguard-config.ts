@@ -22,8 +22,10 @@ export const RASHGUARD_MODEL_URL =
 export const RASHGUARD_PRODUCT_CONFIG = {
   productName: 'Kids Baseball Short',
   productTitle: 'Custom Kids Baseball Short',
-  shopifyProductPath: '/products/custom-kids-baseball-short',
-  shopifyProductHandle: 'custom-kids-baseball-short',
+  // Must match the real Shopify product (dspln.com/products/baseball-short) —
+  // add-to-cart and the product links resolve through this handle.
+  shopifyProductPath: '/products/baseball-short',
+  shopifyProductHandle: 'baseball-short',
   designNamePrefix: 'Kids Baseball Short Design',
   savedDesignIdPrefix: 'kids_baseball_short_saved',
   orderDesignIdPrefix: 'kids_baseball_short_order',
