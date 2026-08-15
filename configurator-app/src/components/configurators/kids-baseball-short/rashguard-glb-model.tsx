@@ -520,6 +520,65 @@ function drawArtworkLayer(
   ctx.restore();
 }
 
+/**
+ * Downsampled alpha masks for placed artwork, so hit-testing can ignore a PNG's
+ * transparent surround. Keyed by image URL. `null` means "asked, but unusable"
+ * (image failed, or the canvas was tainted) — those fall back to the box.
+ */
+const ALPHA_MASK_SIZE = 96;
+const alphaMaskCache = new Map<string, Uint8Array | null>();
+const alphaMaskPending = new Set<string>();
+
+function ensureAlphaMask(url: string) {
+  if (alphaMaskCache.has(url) || alphaMaskPending.has(url)) return;
+  alphaMaskPending.add(url);
+  void loadImageUrl(url).then((image) => {
+    alphaMaskPending.delete(url);
+    if (!image) {
+      alphaMaskCache.set(url, null);
+      return;
+    }
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = ALPHA_MASK_SIZE;
+      canvas.height = ALPHA_MASK_SIZE;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        alphaMaskCache.set(url, null);
+        return;
+      }
+      ctx.drawImage(image, 0, 0, ALPHA_MASK_SIZE, ALPHA_MASK_SIZE);
+      const { data } = ctx.getImageData(0, 0, ALPHA_MASK_SIZE, ALPHA_MASK_SIZE);
+      const mask = new Uint8Array(ALPHA_MASK_SIZE * ALPHA_MASK_SIZE);
+      for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3];
+      alphaMaskCache.set(url, mask);
+    } catch {
+      // Cross-origin artwork taints the canvas; box-only is the safe fallback.
+      alphaMaskCache.set(url, null);
+    }
+  });
+}
+
+/** Alpha at a point inside the layer box, in 0..1 layer-local coordinates. */
+function alphaAtLayerPoint(layer: RashguardArtworkLayer, u: number, v: number) {
+  if (layer.kind !== 'image' || !layer.imageUrl) return 255;
+  const mask = alphaMaskCache.get(layer.imageUrl);
+  if (!mask) return 255; // not built yet, or unusable — treat as opaque
+  const x = Math.min(
+    ALPHA_MASK_SIZE - 1,
+    Math.max(0, Math.round(u * (ALPHA_MASK_SIZE - 1))),
+  );
+  const y = Math.min(
+    ALPHA_MASK_SIZE - 1,
+    Math.max(0, Math.round(v * (ALPHA_MASK_SIZE - 1))),
+  );
+  return mask[y * ALPHA_MASK_SIZE + x];
+}
+
+// Minimum alpha that counts as "on the artwork". Low enough to keep soft edges
+// grabbable, high enough that a transparent surround is not.
+const HIT_ALPHA_THRESHOLD = 16;
+
 function layerContainsPoint(
   layer: RashguardArtworkLayer,
   point: { x: number; y: number },
@@ -533,10 +592,21 @@ function layerContainsPoint(
   const angle = (-layer.rotationDeg * Math.PI) / 180;
   const rotatedX = dx * Math.cos(angle) - dy * Math.sin(angle);
   const rotatedY = dx * Math.sin(angle) + dy * Math.cos(angle);
-  return (
-    Math.abs(rotatedX) <= metrics.width / 2 &&
-    Math.abs(rotatedY) <= metrics.height / 2
-  );
+  if (
+    Math.abs(rotatedX) > metrics.width / 2 ||
+    Math.abs(rotatedY) > metrics.height / 2
+  ) {
+    return false;
+  }
+
+  // Inside the box — but a logo is usually a small mark on a big transparent
+  // sheet, and the box alone made every transparent pixel grab the pointer.
+  // Scaled up (the cap is 10x = ~280% of a panel) that box can cover the whole
+  // garment, so the customer could never click past the artwork to spin the
+  // model. Require actual coverage at the point.
+  const u = rotatedX / metrics.width + 0.5;
+  const v = rotatedY / metrics.height + 0.5;
+  return alphaAtLayerPoint(layer, u, v) >= HIT_ALPHA_THRESHOLD;
 }
 
 function topArtworkLayerAtPoint(
@@ -1310,6 +1380,53 @@ export const RashguardGlbModel = memo(() => {
         };
       })()
     : null;
+
+  // Build the alpha mask for every placed image so hit-testing can tell the
+  // logo from its transparent surround. Cheap and cached per URL; until a mask
+  // is ready that layer just hit-tests by its box, as before.
+  useEffect(() => {
+    artworkLayers.forEach((layer) => {
+      if (layer.kind === 'image' && layer.imageUrl) ensureAlphaMask(layer.imageUrl);
+    });
+  }, [artworkLayers]);
+
+  // An artwork drag used to end ONLY via R3F's onPointerUp on the garment, so
+  // letting go anywhere else — over empty space beside the short, or outside
+  // the canvas entirely — left the drag live. OrbitControls is bound to
+  // `enabled={!isArtworkDragging}`, so the garment then became impossible to
+  // spin, and further pointer moves kept dragging the artwork. The attempted
+  // setPointerCapture in beginDragLayer does not save us: R3F's event.target is
+  // the three.js object, not a DOM node. Ending on the window always fires.
+  useEffect(() => {
+    const endPointerInteraction = (event: PointerEvent) => {
+      let ended = false;
+      if (draggingArtworkLayerIdRef.current) {
+        draggingArtworkLayerIdRef.current = null;
+        dragOffsetRef.current = null;
+        ended = true;
+      }
+      // Resize/rotate capture on real DOM elements, so their own handlers
+      // normally fire first and this is a no-op; it still covers a capture
+      // that never resolved (pointercancel, element unmounted mid-gesture).
+      if (resizingArtworkRef.current?.pointerId === event.pointerId) {
+        suppressResizeClickRef.current = resizingArtworkRef.current.moved;
+        resizingArtworkRef.current = null;
+        ended = true;
+      }
+      if (rotatingArtworkRef.current?.pointerId === event.pointerId) {
+        suppressRotateClickRef.current = rotatingArtworkRef.current.moved;
+        rotatingArtworkRef.current = null;
+        ended = true;
+      }
+      if (ended) setArtworkDragging(false);
+    };
+    window.addEventListener('pointerup', endPointerInteraction);
+    window.addEventListener('pointercancel', endPointerInteraction);
+    return () => {
+      window.removeEventListener('pointerup', endPointerInteraction);
+      window.removeEventListener('pointercancel', endPointerInteraction);
+    };
+  }, [setArtworkDragging]);
 
   const beginDragLayer = (event: ThreeEvent<PointerEvent>) => {
     const hit = artworkTargetHitFromEvent(event);
