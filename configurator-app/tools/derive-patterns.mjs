@@ -23,7 +23,34 @@ const io = new NodeIO()
     'draco3d.decoder': await draco3d.createDecoderModule(),
   });
 
-const RASTER = 1400; // long-side resolution of the UV mask
+// Long-side resolution of the UV mask. At 3600 a ~40cm piece samples at about
+// 0.11mm/px, so the traced contour is finer than the tolerance below and curves
+// stay curves. 1400 (0.27mm/px) visibly faceted the crotch curve.
+const RASTER = 3600;
+
+// Max allowed deviation of the simplified outline from the traced one, in CM of
+// real garment. Expressed physically, not in normalised units — a normalised
+// tolerance means a different real error on every piece, and at 0.0035 it let
+// the cut line wander 1.4mm and flattened curves into straight segments.
+const SIMPLIFY_TOLERANCE_CM = 0.015; // 0.15mm
+
+/** Cyclic moving average, to take the 1px staircase off a traced contour. */
+function smoothClosed(points, window = 5) {
+  if (points.length < window * 2) return points;
+  const half = (window - 1) / 2;
+  const n = points.length;
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    let sx = 0, sy = 0;
+    for (let k = -half; k <= half; k++) {
+      const p = points[(i + k + n) % n];
+      sx += p[0];
+      sy += p[1];
+    }
+    out[i] = [sx / window, sy / window];
+  }
+  return out;
+}
 
 function tri2Area(a, b, c) {
   return Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2;
@@ -243,19 +270,27 @@ export function derivePanel(mesh) {
   // adult-grappling-short patterns.json (extracted from its real pattern PDF),
   // un-flipped V scores 98.5% mean IoU vs 73.7% flipped. Flipping here puts the
   // crotch curve at the hem end and prints an upside-down cut line.
-  const norm = contour.map(([px, py]) => [
+  const norm = smoothClosed(contour).map(([px, py]) => [
     ((px - PAD) / (W - 1 - PAD * 2)),
     ((py - PAD) / (H - 1 - PAD * 2)),
   ]);
-  const outline = simplifyClosed(norm, 0.0035).map(([x, y]) => [
+
+  // Normalised space is anisotropic (x spans widthCm, y spans heightCm), so
+  // convert the physical tolerance using the LARGER dimension — that bounds the
+  // real deviation at or below the target in every direction.
+  const widthCm = wUv * scale * 100;
+  const heightCm = hUv * scale * 100;
+  const tolerance = SIMPLIFY_TOLERANCE_CM / Math.max(widthCm, heightCm);
+
+  const outline = simplifyClosed(norm, tolerance).map(([x, y]) => [
     Number(Math.min(1, Math.max(0, x)).toFixed(5)),
     Number(Math.min(1, Math.max(0, y)).toFixed(5)),
   ]);
   outline.push(outline[0]);
 
   return {
-    widthCm: Number((wUv * scale * 100).toFixed(2)),
-    heightCm: Number((hUv * scale * 100).toFixed(2)),
+    widthCm: Number(widthCm.toFixed(2)),
+    heightCm: Number(heightCm.toFixed(2)),
     outline,
     _debug: {
       scale: Number(scale.toFixed(5)),
