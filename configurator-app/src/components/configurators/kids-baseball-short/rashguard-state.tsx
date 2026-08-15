@@ -214,10 +214,18 @@ function sanitizeArtworkLayer(layer: RashguardArtworkLayer): RashguardArtworkLay
     kind: layer.kind === 'text' ? 'text' : 'image',
     x: clamp(Number.isFinite(layer.x) ? layer.x : DEFAULT_ARTWORK_LAYER.x, 0, 1),
     y: clamp(Number.isFinite(layer.y) ? layer.y : DEFAULT_ARTWORK_LAYER.y, 0, 1),
+    // Max scale is 10 here, vs 4 on the other three garments — deliberate, not
+    // drift. Artwork width is DEFAULT_ARTWORK_WIDTH (0.28) x scale x zone
+    // width, so 4 only reached 112% of a panel and capped all-over prints just
+    // as they filled it; 10 reaches ~280% for true full-bleed. Oversize art is
+    // clipped to the cut outline in both the 3D view and the tech pack, so the
+    // extra is bleed. The other garments move to 10 once this one is live.
+    // The drag handle (rashguard-glb-model) and the Size slider
+    // (rashguard-sections) carry the same ceiling — change all three together.
     scale: clamp(
       Number.isFinite(layer.scale) ? layer.scale : DEFAULT_ARTWORK_LAYER.scale,
       0.2,
-      4,
+      10,
     ),
     rotationDeg: Number.isFinite(layer.rotationDeg) ? layer.rotationDeg : 0,
     visible: layer.visible !== false,

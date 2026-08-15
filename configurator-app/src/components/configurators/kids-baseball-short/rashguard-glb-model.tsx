@@ -1383,7 +1383,7 @@ export const RashguardGlbModel = memo(() => {
     const delta = clientX - resize.startX + clientY - resize.startY;
     if (Math.abs(delta) > 3) resize.moved = true;
     const nextScale = Math.min(
-      4,
+      10,
       Math.max(0.2, resize.startScale * Math.exp(delta / 90)),
     );
     updateArtworkLayer(resize.id, { scale: nextScale });
