@@ -20,7 +20,11 @@ import {
   VerticalCameraControls,
   useVerticalCameraPan,
 } from '../shared/vertical-camera-controls';
-import { CAMERA_TARGET } from './rashguard-config';
+import {
+  CAMERA_POSITIONS,
+  CAMERA_TARGET,
+  MOBILE_CAMERA_POSITIONS,
+} from './rashguard-config';
 import {
   cameraViewToPosition,
   useRashguardState,
@@ -211,16 +215,23 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
 
     const startPos = camera.position.clone();
     // A recorded per-part preset wins; otherwise the plain front/back framing.
-    // Mobile keeps its pulled-in distance for the fallback, but a preset is a
-    // literal position and is used as recorded.
+    const targetTgt = new Vector3(
+      ...(cameraPreset ? cameraPreset.target : CAMERA_TARGET),
+    );
     const targetPos = new Vector3(
       ...(cameraPreset
         ? cameraPreset.position
         : cameraViewToPosition(cameraView, useMobileCamera)),
     );
-    const targetTgt = new Vector3(
-      ...(cameraPreset ? cameraPreset.target : CAMERA_TARGET),
-    );
+    if (cameraPreset && useMobileCamera) {
+      // Presets are recorded on desktop and sit ~5.2 units out, past the
+      // mobile orbit clamp (MOBILE_CAMERA_MAX_DISTANCE), so on a phone the
+      // controls would snap back and fight the tween. Pull the preset in along
+      // its own sight line by the same ratio the built-in views use, which
+      // keeps the recorded angle and just shortens the distance.
+      const ratio = MOBILE_CAMERA_POSITIONS.front[2] / CAMERA_POSITIONS.front[2];
+      targetPos.sub(targetTgt).multiplyScalar(ratio).add(targetTgt);
+    }
     const startTime = performance.now();
     const duration = 600;
     let raf = 0;

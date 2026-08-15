@@ -248,7 +248,13 @@ export interface CameraPreset {
  * be filled in one part at a time.
  */
 export const PART_CAMERA_PRESETS: Partial<Record<RashguardPart, CameraPreset>> = {
-  // e.g. rightFrontLeg: { position: [-1.2, 1.1, 4.3], target: [-0.3, 1.1, 0] },
+  rightFrontLeg: { position: [-1.28, 0.63, 5.04], target: [0, 1.32, 0] },
+  leftFrontLeg: { position: [2.32, 0.63, 4.66], target: [0, 1.32, 0] },
+  rightBackLeg: { position: [-3.57, 1.16, -3.85], target: [0, 1.32, 0] },
+  leftBackLeg: { position: [1.53, 1.32, -5.02], target: [0, 1.32, 0] },
+  // Stitching gets a low, close side view — the seams read best raking across
+  // the garment rather than straight on.
+  stitching: { position: [-4.34, 0.52, 1.73], target: [0, 0.66, 0] },
 };
 
 /** Which side each part lives on, for the fallback when it has no preset. */
