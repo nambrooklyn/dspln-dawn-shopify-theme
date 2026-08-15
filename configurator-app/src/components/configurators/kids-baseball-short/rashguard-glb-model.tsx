@@ -980,9 +980,15 @@ export const RashguardGlbModel = memo(() => {
           mat.transparent = false;
           mat.depthTest = true;
           if (materialPart === 'stitching') {
-            // Real 3D thread geometry (solid tubes, no alpha tile): render
-            // opaque, write depth, and pull slightly forward so it sits cleanly
-            // on the seam without z-fighting the body.
+            // This model's topstitch is TEXTURED RIBBONS (alphaMode BLEND with
+            // an alpha stitch tile), not the solid tube geometry the other
+            // garments use. The dashes live in the texture's alpha, so forcing
+            // opaque here renders every seam as a solid bar. Cut out on alpha
+            // instead: crisp dashes, correct depth, no transparency sorting.
+            // mat.color still tints the stitch — base colour multiplies the map.
+            // Solid-tube models have no map and keep the old opaque path.
+            const hasAlphaTile = !!mat.map;
+            mat.alphaTest = hasAlphaTile ? 0.5 : 0;
             mat.transparent = false;
             mat.depthTest = true;
             mat.depthWrite = true;

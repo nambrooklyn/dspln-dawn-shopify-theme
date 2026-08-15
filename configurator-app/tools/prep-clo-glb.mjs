@@ -13,13 +13,22 @@
  * Panel names must be human-readable because RASHGUARD_MESH_TO_PART keys off
  * them, and CLO's internal-line IDs change on every re-export.
  */
+import fs from 'fs';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, KHRDracoMeshCompression } from '@gltf-transform/extensions';
 import draco3d from 'draco3dgltf';
+import { derivePanel } from './derive-patterns.mjs';
 
 const IN = process.argv[2];
 const OUT = process.argv[3];
-const PANEL_RE = /internal line/i;
+// Optional 3rd arg: write rashguard-patterns.json too. Patterns MUST be derived
+// here, before the primitive merge below — merging fuses the edge/thickness band
+// into the surface, and once fused the band can no longer be excluded from the
+// UV silhouette, which puts small tabs back on the cut line.
+const PATTERNS_OUT = process.argv[4];
+// Panels are matched by CLO's internal-line naming OR by human names, so this
+// works on both an unnamed export and one where the pieces were named in CLO.
+const PANEL_RE = /internal line|leg|front|back|panel/i;
 
 const io = new NodeIO()
   .registerExtensions(ALL_EXTENSIONS)
@@ -42,14 +51,34 @@ for (const node of root.listNodes()) {
 const panels = [];
 for (const mesh of root.listMeshes()) {
   if (!PANEL_RE.test(mesh.getName())) continue;
-  const prim = mesh.listPrimitives()[0];
+  const prims = mesh.listPrimitives();
+  const prim = prims[0];
   const pos = prim.getAttribute('POSITION');
   const min = pos.getMin([]), max = pos.getMax([]);
+
+  // Snapshot the SURFACE primitive's indices now, before the merge below fuses
+  // the edge/thickness band into it. Patterns are derived from this snapshot.
+  // The POSITION/TEXCOORD_0 accessors are shared and mutated in place by the
+  // mirrored-UV fix, so holding references gives us the corrected UVs later.
+  let surfaceIdx = null, surfaceTris = -1;
+  for (const p of prims) {
+    const idx = p.getIndices();
+    const n = idx ? idx.getCount() : 0;
+    if (n > surfaceTris) { surfaceTris = n; surfaceIdx = idx.getArray().slice(); }
+  }
+
   panels.push({
     mesh,
     cx: (min[0] + max[0]) / 2,
     cz: (min[2] + max[2]) / 2,
     cy: (min[1] + max[1]) / 2,
+    surfacePrims: [{
+      getAttribute: (semantic) => prim.getAttribute(semantic),
+      getIndices: () => ({
+        getArray: () => surfaceIdx,
+        getCount: () => surfaceIdx.length,
+      }),
+    }],
   });
 }
 if (panels.length !== 4) {
@@ -59,15 +88,52 @@ if (panels.length !== 4) {
 const centerX = panels.reduce((a, p) => a + p.cx, 0) / panels.length;
 const centerZ = panels.reduce((a, p) => a + p.cz, 0) / panels.length;
 
+// Geometry always decides side/face; the name is then either trusted (when CLO
+// carried real piece names) or synthesised (when it didn't). Word order in CLO
+// is whatever the modeller typed — "Front Right Leg" and "Right Front Leg" are
+// both fine — so side/face are parsed, not pattern-matched as a whole string.
+let mismatches = 0;
 for (const p of panels) {
   const side = p.cx < centerX ? 'Right' : 'Left'; // lower X = wearer's right
   const face = p.cz > centerZ ? 'Front' : 'Back'; // higher Z = front
-  p.newName = `${side} ${face} Leg`;
+  p.side = side;
+  p.face = face;
+  p.partKey = `${side.toLowerCase()}${face}Leg`;
+
+  const current = p.mesh.getName();
+  const named = /left|right/i.test(current) && /front|back/i.test(current);
+  if (named) {
+    // Trust the modeller's name (stable across re-exports) but verify it.
+    const nameSide = /right/i.test(current) ? 'Right' : 'Left';
+    const nameFace = /front/i.test(current) ? 'Front' : 'Back';
+    if (nameSide !== side || nameFace !== face) {
+      mismatches++;
+      console.log(
+        `*** MISMATCH: mesh "${current}" but geometry says ${face} ${side} ` +
+        `(x=${p.cx.toFixed(3)} z=${p.cz.toFixed(3)}) — check the CLO piece names`,
+      );
+    }
+    p.newName = current; // keep it
+    p.renamed = false;
+  } else {
+    p.newName = `${side} ${face} Leg`;
+    p.renamed = true;
+  }
+}
+if (mismatches) {
+  throw new Error(
+    `${mismatches} panel name(s) disagree with geometry — refusing to build a ` +
+    `tech pack that could print mirrored or swapped pieces`,
+  );
 }
 
 const names = new Set(panels.map((p) => p.newName));
 if (names.size !== 4) {
   throw new Error(`panel naming collided: ${[...names].join(', ')}`);
+}
+const keys = new Set(panels.map((p) => p.partKey));
+if (keys.size !== 4) {
+  throw new Error(`part keys collided: ${[...keys].join(', ')}`);
 }
 
 // --- merge primitives + rename ----------------------------------------------
@@ -176,6 +242,33 @@ for (const p of panels) {
   console.log(
     `uv: ${p.newName.padEnd(17)} winding CCW — MIRRORED, flipped U (${ccw} vs ${cw})`,
   );
+}
+
+// --- derive actual-size patterns --------------------------------------------
+// Order matters twice over: this must run AFTER the mirrored-UV fix above (or
+// the back pieces print mirrored) and BEFORE nothing else — the merge already
+// happened, but derivePanel picks the largest primitive, and post-merge there
+// is only one, which re-fuses the edge band. So patterns are derived from the
+// pre-merge primitive list captured below.
+if (PATTERNS_OUT) {
+  const patterns = {};
+  // Fronts first, then backs, so the tech pack pages read front-to-back.
+  const ordered = [...panels].sort((a, b) => b.cz - a.cz || a.cx - b.cx);
+  for (const p of ordered) {
+    const piece = derivePanel({ listPrimitives: () => p.surfacePrims });
+    if (!piece) throw new Error(`no outline derived for ${p.newName}`);
+    const { widthCm, heightCm, outline, _debug } = piece;
+    patterns[p.partKey] = { widthCm, heightCm, outline };
+    console.log(
+      `pattern: ${p.newName.padEnd(17)} ${widthCm} x ${heightCm} cm  ` +
+      `pts=${outline.length} aniso=${_debug.anisotropy}`,
+    );
+  }
+  fs.writeFileSync(PATTERNS_OUT, JSON.stringify(patterns));
+  console.log('wrote', PATTERNS_OUT);
+  console.log('\nRASHGUARD_MESH_TO_PART should be:');
+  for (const p of ordered) console.log(`  '${p.newName}': '${p.partKey}',`);
+  console.log('');
 }
 
 // --- sanity: every remaining mesh is either a named panel or stitching -------

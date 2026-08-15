@@ -156,8 +156,29 @@ function traceContour(mask, W, H) {
   return contour;
 }
 
+/**
+ * CLO exports each panel as 3 primitives sharing the same accessors:
+ *   0 outer surface, 1 inner surface (same UV island), 2 edge/thickness band.
+ * The edge band's UV island pokes a millimetre or two PAST the surface island
+ * at the piece ends, and rasterising it produced small rectangular tabs on the
+ * cut line — the "quarter inch extensions" on the printed pattern. They are not
+ * seam allowance; they are the panel's thickness. Use the surface primitive
+ * only (the one with the most triangles; outer and inner share a UV island, so
+ * either gives the same silhouette).
+ */
+function surfacePrimitive(prims) {
+  let best = prims[0];
+  let bestTris = -1;
+  for (const p of prims) {
+    const idx = p.getIndices();
+    const tris = idx ? idx.getCount() : p.getAttribute('POSITION').getCount();
+    if (tris > bestTris) { bestTris = tris; best = p; }
+  }
+  return best;
+}
+
 export function derivePanel(mesh) {
-  const prims = mesh.listPrimitives();
+  const prims = [surfacePrimitive(mesh.listPrimitives())];
   const uvTris = [];
   const ratios = [];
   let uMin = Infinity, uMax = -Infinity, vMin = Infinity, vMax = -Infinity;
