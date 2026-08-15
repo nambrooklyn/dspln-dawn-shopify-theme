@@ -39,8 +39,12 @@ export function useGenerateTechPack(
   return useCallback(() => {
     if (!isStudioMode() || typeof window === 'undefined') return;
 
+    // Garments on the rashguard plumbing pass their slug through as the source;
+    // the gi-family ones get wrapped in the dspln-*-configurator form.
     const isRashguard =
-      garmentType.includes('rashguard') || garmentType === 'adult-grappling-short';
+      garmentType.includes('rashguard') ||
+      garmentType === 'adult-grappling-short' ||
+      garmentType === 'kids-baseball-short';
     // The tech pack pages route to the right 3D model by configData.source.
     const source = isRashguard ? garmentType : `dspln-${garmentType}-configurator`;
 
