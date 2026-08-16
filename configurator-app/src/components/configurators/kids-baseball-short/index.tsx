@@ -228,6 +228,7 @@ const RashguardConfiguratorInner = memo(() => {
     artworkLayers,
     addArtworkLayer,
     setSelectedPanel,
+    size,
   } = useRashguardState();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
@@ -848,6 +849,14 @@ const RashguardConfiguratorInner = memo(() => {
   }, [artworkLayers]);
 
   const handleAddToCart = useCallback(async () => {
+    // Size is deliberately unselected until the customer picks one (see
+    // rashguard-state), so block here rather than shipping a silent default.
+    // Mirrors the gi flow's getMissingGiSizeMessage guard.
+    if (!size) {
+      toast.error('Please choose a size before adding this short to cart.');
+      setSelectedPanel('garment');
+      return;
+    }
     setIsAddingToCart(true);
     try {
       const spec = serialize();
@@ -945,6 +954,8 @@ const RashguardConfiguratorInner = memo(() => {
     getCanvasEl,
     serialize,
     setCameraView,
+    setSelectedPanel,
+    size,
     uploadArtworkLayerUrls,
   ]);
 
