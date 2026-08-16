@@ -265,7 +265,10 @@ function buildPriceLines(artworkLayers: RashguardArtworkLayer[]) {
 
 export const RashguardStateProvider = memo(
   ({ children }: { children: ReactNode }) => {
-    const [size, setSize] = useState('M');
+    // No size pre-selected: the customer must pick one, matching the gi flow.
+    // A default sized every order silently, so a wrong size could ship without
+    // anyone choosing it. handleAddToCart blocks until this is set.
+    const [size, setSize] = useState('');
     const [selectedPanel, setSelectedPanel] =
       useState<'garment' | 'artwork'>('garment');
     const [partColors, setPartColors] = useState<Record<RashguardPart, string>>(
@@ -634,7 +637,7 @@ export const RashguardStateProvider = memo(
       (state, artworkImages) => {
         undoStackRef.current = [];
         lastHistoryEntryRef.current = null;
-        setSize(isValidSize(state.size) ? state.size : 'M');
+        setSize(isValidSize(state.size) ? state.size : '');
         setPartColors(
           RASHGUARD_PARTS.reduce(
             (acc, part) => {
