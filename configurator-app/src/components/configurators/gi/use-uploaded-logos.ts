@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { GiDraftDocument } from './gi-draft-storage';
 import {
@@ -71,9 +71,21 @@ export function useUploadedLogos({
   defaultDesignName: string;
 }): UploadedLogoItem[] {
   const [uploadedLogos, setUploadedLogos] = useState<UploadedLogoItem[]>([]);
+  // Object URLs for blob-backed saved-design images, kept alive for the whole
+  // session. The old per-rebuild cleanup revoked them every time the logo
+  // state changed — applying one of these images itself triggered a rebuild,
+  // so the slot ended up pointing at an already-revoked URL and the logo
+  // silently never rendered ("older uploads don't work").
+  const objectUrlCacheRef = useRef(new Map<string, string>());
+  useEffect(() => {
+    const cache = objectUrlCacheRef.current;
+    return () => {
+      cache.forEach((url) => URL.revokeObjectURL(url));
+      cache.clear();
+    };
+  }, []);
 
   useEffect(() => {
-    const objectUrls: string[] = [];
     const seen = new Set<string>();
     const items: UploadedLogoItem[] = [];
     const activeName = activeDesignName || defaultDesignName;
@@ -116,8 +128,11 @@ export function useUploadedLogos({
         const key = `${image.filename}|${image.imageWidth}x${image.imageHeight}|${image.blob.size}`;
         if (seen.has(key)) return;
         seen.add(key);
-        const url = URL.createObjectURL(image.blob);
-        objectUrls.push(url);
+        let url = objectUrlCacheRef.current.get(key);
+        if (!url) {
+          url = URL.createObjectURL(image.blob);
+          objectUrlCacheRef.current.set(key, url);
+        }
         items.push({
           key,
           url,
@@ -135,8 +150,11 @@ export function useUploadedLogos({
         const key = `${image.filename}|${image.imageWidth}x${image.imageHeight}|${image.blob.size}`;
         if (seen.has(key)) return;
         seen.add(key);
-        const url = URL.createObjectURL(image.blob);
-        objectUrls.push(url);
+        let url = objectUrlCacheRef.current.get(key);
+        if (!url) {
+          url = URL.createObjectURL(image.blob);
+          objectUrlCacheRef.current.set(key, url);
+        }
         items.push({
           key,
           url,
@@ -153,7 +171,6 @@ export function useUploadedLogos({
     setUploadedLogos(
       items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     );
-    return () => objectUrls.forEach((url) => URL.revokeObjectURL(url));
   }, [
     activeDesignName,
     currentKimonoLogos,

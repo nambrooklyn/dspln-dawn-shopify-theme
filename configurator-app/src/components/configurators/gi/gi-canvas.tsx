@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls } from '@react-three/drei';
@@ -1033,13 +1034,17 @@ Scene.displayName = 'GiCanvasScene';
 
 interface GiCanvasProps {
   className?: string;
+  /** Optional R3F nodes rendered inside the Canvas after the scene —
+   *  used by the v2 minimal shell for its 3D-anchored hotspots. No-op
+   *  for the v1 configurator (never passed there). */
+  overlay?: ReactNode;
 }
 
 /**
  * The 3D scene the merchant interacts with. Sits where the Fabric.js
  * canvas sits in the 2D editor.
  */
-export const GiCanvas = memo(({ className }: GiCanvasProps) => {
+export const GiCanvas = memo(({ className, overlay }: GiCanvasProps) => {
   const { selectLayer, cameraView } = useGiState();
   const [useMobileCamera, setUseMobileCamera] = useState(false);
   const initialPosition = cameraViewToPosition(cameraView, useMobileCamera);
@@ -1101,6 +1106,7 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
         }}
       >
         <Scene useMobileCamera={useMobileCamera} />
+        {overlay}
       </Canvas>
       <ModelLoadingOverlay />
       <div

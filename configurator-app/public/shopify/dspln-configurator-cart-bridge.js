@@ -231,9 +231,52 @@
     }
   }
 
+  // The configurator's hamburger toggles the theme's main menu drawer
+  // (Dawn's <header-drawer><details>). The drawer's open/closed state is
+  // reported back to the iframe so its hamburger/X icon stays in sync even
+  // when the drawer is closed from the theme side (overlay tap, Esc, its
+  // own close button).
+  function menuDrawerDetails() {
+    return (
+      document.querySelector('header-drawer details') ||
+      document.querySelector('.menu-drawer-container')
+    );
+  }
+
+  function setMainMenuOpen(open) {
+    const details = menuDrawerDetails();
+    if (details && 'open' in details) {
+      if (details.open !== open) {
+        details.querySelector('summary')?.click();
+      }
+      return;
+    }
+    if (open) window.location.href = '/';
+  }
+
+  function watchMainMenuState() {
+    const details = menuDrawerDetails();
+    if (!details || !('open' in details)) return;
+    details.addEventListener('toggle', () => {
+      frame?.contentWindow?.postMessage(
+        { type: 'dspln:menu-state', open: details.open },
+        '*',
+      );
+    });
+  }
+  watchMainMenuState();
+
   window.addEventListener('message', async (event) => {
     if (!isAllowedOrigin(event.origin)) return;
     const data = event.data || {};
+    if (data.type === 'dspln:open-menu') {
+      setMainMenuOpen(true);
+      return;
+    }
+    if (data.type === 'dspln:close-menu') {
+      setMainMenuOpen(false);
+      return;
+    }
     if (data.type !== MESSAGE_TYPE) return;
 
     try {

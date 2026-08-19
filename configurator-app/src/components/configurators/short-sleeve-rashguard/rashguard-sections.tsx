@@ -984,60 +984,6 @@ export const RashguardArtworkSections = memo(() => {
                 Upload Image
               </span>
             </label>
-            {chooserOpen && chooserEnabled ? (
-              <div className="border-border bg-background mt-2 rounded-lg border p-2 shadow-sm">
-                <div className="grid max-h-40 grid-cols-3 gap-1.5 overflow-y-auto">
-                  <button
-                    type="button"
-                    onClick={() => chooserFileRef.current?.click()}
-                    className="border-foreground/30 text-muted-foreground hover:border-foreground/60 hover:text-foreground flex aspect-square w-full flex-col items-center justify-center gap-1 rounded border border-dashed"
-                  >
-                    <UploadCloud className="h-4 w-4" />
-                    <span className="text-[10px]">Device</span>
-                  </button>
-                  {savedUploads.map((item) => (
-                    <div key={item.key} className="relative">
-                      <button
-                        type="button"
-                        aria-label="Apply this artwork"
-                        onClick={() => void applyExisting(item)}
-                        className="border-border bg-muted/60 hover:ring-foreground/40 flex aspect-square w-full items-center justify-center overflow-hidden rounded border p-1 hover:ring-2"
-                      >
-                        <img
-                          src={item.url}
-                          alt=""
-                          className="max-h-full max-w-full object-contain"
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Download this artwork"
-                        title="Download this artwork"
-                        onClick={() =>
-                          void downloadArtworkFile(item.url, item.filename)
-                        }
-                        className="bg-background/90 border-border text-foreground absolute top-0.5 right-0.5 rounded border p-0.5"
-                      >
-                        <Download className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <input
-                  ref={chooserFileRef}
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  className="hidden"
-                  onChange={async (event) => {
-                    if (event.target.files) {
-                      await handleFiles(event.target.files);
-                    }
-                    event.target.value = '';
-                    setChooserOpen(false);
-                  }}
-                />
-              </div>
-            ) : null}
           </div>
 
           <div>
@@ -1058,6 +1004,64 @@ export const RashguardArtworkSections = memo(() => {
             </button>
           </div>
         </div>
+
+        {/* Full section width, not inside the Image half-column: there the
+            3-col tiles shrink to ~30px and the corner download button covers
+            them entirely, so every "apply" click hit download instead. */}
+        {chooserOpen && chooserEnabled ? (
+          <div className="border-border bg-background mt-3 rounded-lg border p-2 shadow-sm">
+            <div className="grid max-h-40 grid-cols-3 gap-1.5 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => chooserFileRef.current?.click()}
+                className="border-foreground/30 text-muted-foreground hover:border-foreground/60 hover:text-foreground flex aspect-square w-full flex-col items-center justify-center gap-1 rounded border border-dashed"
+              >
+                <UploadCloud className="h-4 w-4" />
+                <span className="text-[10px]">Device</span>
+              </button>
+              {savedUploads.map((item) => (
+                <div key={item.key} className="relative">
+                  <button
+                    type="button"
+                    aria-label="Apply this artwork"
+                    onClick={() => void applyExisting(item)}
+                    className="border-border bg-muted/60 hover:ring-foreground/40 flex aspect-square w-full items-center justify-center overflow-hidden rounded border p-1 hover:ring-2"
+                  >
+                    <img
+                      src={item.url}
+                      alt=""
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Download this artwork"
+                    title="Download this artwork"
+                    onClick={() =>
+                      void downloadArtworkFile(item.url, item.filename)
+                    }
+                    className="bg-background/90 border-border text-foreground absolute top-0.5 right-0.5 rounded border p-0.5"
+                  >
+                    <Download className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <input
+              ref={chooserFileRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              onChange={async (event) => {
+                if (event.target.files) {
+                  await handleFiles(event.target.files);
+                }
+                event.target.value = '';
+                setChooserOpen(false);
+              }}
+            />
+          </div>
+        ) : null}
       </section>
 
       <RashguardLayerList />

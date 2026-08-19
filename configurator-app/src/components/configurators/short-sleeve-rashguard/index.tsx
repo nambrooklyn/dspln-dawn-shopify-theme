@@ -291,14 +291,26 @@ const RashguardConfiguratorInner = memo(() => {
       if (!item) return;
       void uploadedArtworkToFile(item).then((file) => {
         if (!file) return;
+        const knownTarget = target
+          ? (target as RashguardArtworkTarget)
+          : undefined;
         addArtworkLayer({
           file,
           dimensions: { width: item.imageWidth, height: item.imageHeight },
-          target: target ? (target as RashguardArtworkTarget) : undefined,
+          target: knownTarget,
+          // Placement was chosen in the uploads menu — drop the layer at the
+          // default spot right away and face the camera at it. Leaving it
+          // pending looked like the apply did nothing.
+          placementPending: knownTarget ? false : undefined,
         });
+        if (knownTarget) {
+          setCameraView(
+            knownTarget.toLowerCase().includes('back') ? 'back' : 'front',
+          );
+        }
       });
     },
-    [addArtworkLayer, uploadedArtwork],
+    [addArtworkLayer, setCameraView, uploadedArtwork],
   );
 
   // Loading a saved design changes state asynchronously; the loader flips

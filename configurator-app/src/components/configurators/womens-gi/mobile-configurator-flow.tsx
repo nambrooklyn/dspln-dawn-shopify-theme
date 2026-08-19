@@ -1,11 +1,4 @@
-import {
-  memo,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { useGiState } from './gi-state';
@@ -15,10 +8,12 @@ import {
   GI_PART_PRICES,
   KIMONO_LOGO_SLOT_LABEL,
   KIMONO_LOGO_SLOTS,
+  STUDIO_ONLY_KIMONO_LOGO_SLOTS,
   KIMONO_SUBPART_LABEL,
   KIMONO_SUBPARTS,
   PANT_LOGO_SLOT_LABEL,
   PANT_LOGO_SLOTS,
+  STUDIO_ONLY_PANT_LOGO_SLOTS,
   PANT_SUBPART_LABEL,
   PANT_SUBPARTS,
   KIMONO_SUBPART_CAMERA_VIEW,
@@ -36,19 +31,14 @@ import { SectionKimonoSize } from './part-sections/section-kimono-size';
 import { SectionLogoUpload } from './part-sections/section-logo-upload';
 import { SectionSizeSelect } from './part-sections/section-size-select';
 import { BeltEndTextSection } from './part-sections/belt-sections';
-import {
-  BELT_BASE_SIZES as BELT_SIZE_OPTIONS,
-  CUSTOM_MEASUREMENTS,
-} from './part-sections/size-options';
+import { BELT_BASE_SIZES as BELT_SIZE_OPTIONS, CUSTOM_MEASUREMENTS } from './part-sections/size-options';
 
-const KIMONO_LOGO_PRICE_LABEL: Record<
-  (typeof KIMONO_LOGO_SLOTS)[number],
-  string
-> = {
+const KIMONO_LOGO_PRICE_LABEL: Record<(typeof KIMONO_LOGO_SLOTS)[number], string> = {
   'left-chest': '+$10',
   'left-sleeve': '+$10',
   'right-sleeve': '+$10',
   back: '+$25',
+  'back-skirt': '+$10',
 };
 
 const ADD_ON_PRICE = 10;
@@ -70,9 +60,7 @@ const PREFERRED_MOBILE_STEP_BY_PART: Partial<Record<GiPart, string>> = {
 
 function indexForPart(steps: MobileStep[], part: GiPart) {
   const preferredKey = PREFERRED_MOBILE_STEP_BY_PART[part];
-  const preferredIndex = preferredKey
-    ? steps.findIndex((step) => step.key === preferredKey)
-    : -1;
+  const preferredIndex = preferredKey ? steps.findIndex((step) => step.key === preferredKey) : -1;
 
   if (preferredIndex >= 0) return preferredIndex;
 
@@ -80,23 +68,13 @@ function indexForPart(steps: MobileStep[], part: GiPart) {
   return partIndex >= 0 ? partIndex : 0;
 }
 
-function BeltSizeSection({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function BeltSizeSection({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <section className="border-border border-b px-3 py-3">
       <div className="mb-2 flex items-baseline gap-2">
-        <h3 className="text-foreground text-[12px] font-semibold tracking-wide uppercase">
-          Belt Size
-        </h3>
+        <h3 className="text-foreground text-[12px] font-semibold tracking-wide uppercase">Belt Size</h3>
         <span className="text-muted-foreground">|</span>
-        <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-          {value}
-        </span>
+        <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{value}</span>
       </div>
       <div className="grid grid-cols-5 gap-1">
         {BELT_SIZE_OPTIONS.map((size) => {
@@ -179,9 +157,7 @@ function MobileStepFrame({
           {children}
         </div>
         {description ? (
-          <div className="text-foreground mt-2 text-center text-xs leading-snug">
-            {description}
-          </div>
+          <div className="text-foreground mt-2 text-center text-xs leading-snug">{description}</div>
         ) : null}
       </div>
     </section>
@@ -277,7 +253,7 @@ export const MobileConfiguratorFlow = memo(
             />
           ),
         })),
-        ...KIMONO_LOGO_SLOTS.map<MobileStep>((slot) => {
+        ...KIMONO_LOGO_SLOTS.filter((slot) => !STUDIO_ONLY_KIMONO_LOGO_SLOTS.includes(slot)).map<MobileStep>((slot) => {
           const logo = kimonoLogos[slot];
           return {
             key: `kimono-logo-${slot}`,
@@ -370,9 +346,7 @@ export const MobileConfiguratorFlow = memo(
               color={beltEmbroidery.leftThreadColor}
               onTextChange={(leftEnd) => setBeltEmbroidery({ leftEnd })}
               onFontChange={(leftFont) => setBeltEmbroidery({ leftFont })}
-              onColorChange={(leftThreadColor) =>
-                setBeltEmbroidery({ leftThreadColor })
-              }
+              onColorChange={(leftThreadColor) => setBeltEmbroidery({ leftThreadColor })}
             />
           ),
         },
@@ -390,9 +364,7 @@ export const MobileConfiguratorFlow = memo(
               color={beltEmbroidery.rightThreadColor}
               onTextChange={(rightEnd) => setBeltEmbroidery({ rightEnd })}
               onFontChange={(rightFont) => setBeltEmbroidery({ rightFont })}
-              onColorChange={(rightThreadColor) =>
-                setBeltEmbroidery({ rightThreadColor })
-              }
+              onColorChange={(rightThreadColor) => setBeltEmbroidery({ rightThreadColor })}
             />
           ),
         },
@@ -425,13 +397,7 @@ export const MobileConfiguratorFlow = memo(
           view: 'front',
           title: 'Pant Size',
           part: 'pants',
-          content: (
-            <SectionSizeSelect
-              title="Pant Size"
-              value={pantSize}
-              onChange={setPantSize}
-            />
-          ),
+          content: <SectionSizeSelect title="Pant Size" value={pantSize} onChange={setPantSize} />,
         },
         ...PANT_SUBPARTS.map<MobileStep>((sub) => ({
           key: `pant-${sub}`,
@@ -447,7 +413,7 @@ export const MobileConfiguratorFlow = memo(
             />
           ),
         })),
-        ...PANT_LOGO_SLOTS.map<MobileStep>((slot) => {
+        ...PANT_LOGO_SLOTS.filter((slot) => !STUDIO_ONLY_PANT_LOGO_SLOTS.includes(slot)).map<MobileStep>((slot) => {
           const logo = pantLogos[slot];
           return {
             key: `pant-logo-${slot}`,
@@ -522,9 +488,7 @@ export const MobileConfiguratorFlow = memo(
       setPartVisible,
     ]);
 
-    const requestedStepIndex = steps.findIndex(
-      (candidate) => candidate.key === stepKey,
-    );
+    const requestedStepIndex = steps.findIndex((candidate) => candidate.key === stepKey);
     const stepIndex = requestedStepIndex >= 0 ? requestedStepIndex : 0;
     const step = steps[stepIndex] ?? steps[0];
     const mobileStepPartRef = useRef(selectedPart);
@@ -547,17 +511,13 @@ export const MobileConfiguratorFlow = memo(
         if (!logo || !partVisibility.jacket) return sum;
         return sum + (slot === 'back' ? BACK_LOGO_PRICE : ADD_ON_PRICE);
       }, 0) +
-      (partVisibility.pants
-        ? Object.values(pantLogos).filter(Boolean).length * ADD_ON_PRICE
-        : 0) +
+      (partVisibility.pants ? Object.values(pantLogos).filter(Boolean).length * ADD_ON_PRICE : 0) +
       (partVisibility.belt
-        ? (beltEmbroidery.leftEnd.trim() ? ADD_ON_PRICE : 0) +
-          (beltEmbroidery.rightEnd.trim() ? ADD_ON_PRICE : 0)
+        ? (beltEmbroidery.leftEnd.trim() ? ADD_ON_PRICE : 0) + (beltEmbroidery.rightEnd.trim() ? ADD_ON_PRICE : 0)
         : 0);
     const total =
       Object.entries(partVisibility).reduce(
-        (sum, [part, visible]) =>
-          sum + (visible ? GI_PART_PRICES[part as GiPart] : 0),
+        (sum, [part, visible]) => sum + (visible ? GI_PART_PRICES[part as GiPart] : 0),
         0,
       ) +
       addOnTotal +
@@ -575,12 +535,8 @@ export const MobileConfiguratorFlow = memo(
           title={step.title}
           current={stepIndex + 1}
           total={steps.length}
-          onPrevious={() =>
-            setStepKey(steps[Math.max(0, stepIndex - 1)].key)
-          }
-          onNext={() =>
-            setStepKey(steps[Math.min(steps.length - 1, stepIndex + 1)].key)
-          }
+          onPrevious={() => setStepKey(steps[Math.max(0, stepIndex - 1)].key)}
+          onNext={() => setStepKey(steps[Math.min(steps.length - 1, stepIndex + 1)].key)}
           description={step.description}
         >
           {step.content}
@@ -596,9 +552,7 @@ export const MobileConfiguratorFlow = memo(
               <p className="text-foreground min-w-0 truncate text-left text-base font-semibold tracking-[0.08em] uppercase">
                 Womens Custom Gi Suit
               </p>
-              <p className="text-foreground shrink-0 text-right text-base font-semibold">
-                ${total.toFixed(2)}
-              </p>
+              <p className="text-foreground shrink-0 text-right text-base font-semibold">${total.toFixed(2)}</p>
             </div>
             <button
               type="button"
