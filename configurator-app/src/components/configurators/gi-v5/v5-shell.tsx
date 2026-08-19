@@ -354,7 +354,7 @@ export const GiV5Shell = memo(
               type="button"
               aria-label="Open design assistant"
               onClick={() => setAssistantSignal((n) => n + 1)}
-              className="absolute right-4 bottom-6 z-40 h-12 w-12 transition hover:scale-110"
+              className="absolute bottom-6 left-4 z-40 h-12 w-12 transition hover:scale-110"
             >
               <AssistantBubbleIcon className="h-full w-full drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)]" />
             </button>
