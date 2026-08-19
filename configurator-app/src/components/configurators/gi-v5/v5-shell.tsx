@@ -121,7 +121,6 @@ export const GiV5Shell = memo(
     const {
       setCameraView,
       partVisibility,
-      setPartVisible,
       kimonoLogos,
       pantLogos,
       serialize,
@@ -312,11 +311,9 @@ export const GiV5Shell = memo(
                       : `Add ${GI_PART_DISPLAY[part]} for $${GI_PART_PRICES[part]}`
                   }
                   aria-pressed={isActive}
-                  onClick={() => {
-                    // Ghost ⊕ = removed part; tapping re-adds and opens it.
-                    if (!included) setPartVisible(part, true);
-                    handleRailTap(part);
-                  }}
+                  // Ghost ⊕ = removed part; tapping just opens its menu —
+                  // re-adding is the explicit Add toggle in there.
+                  onClick={() => handleRailTap(part)}
                   className={`pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border transition ${
                     isActive
                       ? 'dspln-v5-plus is-active border-black bg-black text-white'
