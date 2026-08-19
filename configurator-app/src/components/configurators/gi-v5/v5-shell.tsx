@@ -411,7 +411,7 @@ export const GiV5Shell = memo(
               window.location.href = '/';
             }
           }}
-          className="absolute top-5 left-5 z-40 flex h-11 w-11 items-center justify-center text-black transition hover:opacity-60"
+          className="absolute top-2 left-2 z-40 flex h-11 w-11 items-center justify-center text-black transition hover:opacity-60"
         >
           {menuOpen ? (
             <X className="h-7 w-7" />
