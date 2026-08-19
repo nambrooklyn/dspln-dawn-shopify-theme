@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 
 import { GiStateProvider, useGiState } from '../gi/gi-state';
 import type { GiSerializedState } from '../gi/gi-state';
+import type { CameraView } from '../gi/gi-config';
 import {
   AUTO_GI_DRAFT_ID,
   createDraftLogoObjectUrls,
@@ -210,8 +211,11 @@ export interface GiMinimalShellProps {
 
 const GiV2ConfiguratorInner = memo(({
   Shell,
+  homeView,
 }: {
   Shell: ComponentType<GiMinimalShellProps>;
+  /** Camera view restored designs land on (default 'front'). */
+  homeView?: CameraView;
 }) => {
   const { getCanvasEl, serialize, hydrate, kimonoLogos, pantLogos, setCameraView } =
     useGiState();
@@ -249,6 +253,7 @@ const GiV2ConfiguratorInner = memo(({
                 pant: cartImagesToLogoImages(configData.images.pant),
               }
             : undefined,
+          homeView,
         );
         return;
       }
@@ -292,7 +297,7 @@ const GiV2ConfiguratorInner = memo(({
           : await readGiDraftDocument(AUTO_GI_DRAFT_ID);
         if (!isActive) return;
         if (draft) {
-          hydrate(draft.spec, createDraftLogoObjectUrls(draft));
+          hydrate(draft.spec, createDraftLogoObjectUrls(draft), homeView);
         }
         draftReadyRef.current = true;
       } catch {
@@ -455,10 +460,11 @@ GiV2ConfiguratorInner.displayName = 'GiV2ConfiguratorInner';
 export function createGiMinimalConfigurator(
   Shell: ComponentType<GiMinimalShellProps>,
   displayName: string,
+  homeView?: CameraView,
 ) {
   const Configurator = memo(() => (
     <GiStateProvider>
-      <GiV2ConfiguratorInner Shell={Shell} />
+      <GiV2ConfiguratorInner Shell={Shell} homeView={homeView} />
     </GiStateProvider>
   ));
   Configurator.displayName = displayName;

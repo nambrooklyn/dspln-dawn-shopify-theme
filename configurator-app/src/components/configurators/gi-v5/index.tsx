@@ -9,4 +9,7 @@ import { GiV5Shell } from './v5-shell';
 export const GiV5Configurator = createGiMinimalConfigurator(
   GiV5Shell,
   'GiV5Configurator',
+  // Rest wider than 'front' — hydration lands here instead of stomping the
+  // shell's zoomed-out default.
+  'front-far',
 );

@@ -51,8 +51,10 @@ import { renderTextImage } from '../shared/text-image';
 import type { GiTextLayer } from './gi-state';
 
 const CAMERA_MIN_DISTANCE = 1.2;
-const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
-const MOBILE_CAMERA_MAX_DISTANCE = 3.35;
+// Ceilings must cover the farthest preset view ('front-far' rests at 3.75
+// desktop / 4.6 mobile) or OrbitControls snaps the camera back every frame.
+const DESKTOP_CAMERA_MAX_DISTANCE = 4.2;
+const MOBILE_CAMERA_MAX_DISTANCE = 4.9;
 const CAMERA_PAN_EVENT = 'dspln:configurator-camera:pan';
 const CAMERA_VERTICAL_PAN_STEP = 0.22;
 // The model spans roughly floor-to-head in this range. These wider limits
