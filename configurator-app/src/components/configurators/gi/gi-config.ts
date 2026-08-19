@@ -420,7 +420,7 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   [number, number, number]
 > = {
   front: [0, 1.25, 3.35],
-  'front-far': [0, 1.25, 4.6],
+  'front-far': [0, 1.25, 3.98],
   back: [0, 1.25, -3.35],
   left: [-3.35, 1.25, 0],
   right: [3.35, 1.25, 0],
