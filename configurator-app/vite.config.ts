@@ -6,6 +6,9 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig({
   server: {
     port: 3002,
+    // Listen on the LAN too so phones on the same wifi can open the dev
+    // configurator directly (http://<mac-ip>:3002/...).
+    host: true,
     allowedHosts: ['.trycloudflare.com'],
   },
   plugins: [tailwindcss(), tsconfigPaths(), react()],
