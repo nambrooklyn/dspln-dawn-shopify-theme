@@ -44,7 +44,7 @@ function AssistantBubbleIcon({ className }: { className?: string }) {
       />
       {/* Inner art scaled toward center so it keeps a margin from the
           bubble's edges. */}
-      <g transform="translate(50 43) scale(0.78) translate(-50 -43)">
+      <g transform="translate(50 43) scale(0.78) translate(-56 -40)">
         <path
           fill="#fff"
           d="M33 20c2.6 13.4 6.6 17.4 20 20-13.4 2.6-17.4 6.6-20 20-2.6-13.4-6.6-17.4-20-20 13.4-2.6 17.4-6.6 20-20Z"
