@@ -203,7 +203,9 @@ export const GiV2LogoPanel = memo(
 
     return (
       <div className={`${panelCardClass} px-4 py-3`}>
-        <PanelHeader title={label} detail={filename} onClose={onClose} />
+        {/* No filename detail — the thumbnail already shows what's placed
+            and long machine names ballooned the panel. */}
+        <PanelHeader title={label} onClose={onClose} />
         <div className="flex items-center gap-2">
           {imageUrl ? (
             <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-black/10 bg-black/5 p-1">
