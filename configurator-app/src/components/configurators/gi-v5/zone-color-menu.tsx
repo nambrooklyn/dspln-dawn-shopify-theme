@@ -189,7 +189,10 @@ export const GiV5ZoneColorMenu = memo(
             setScenePartVisible(part, false);
             onRemoved?.();
           }}
-          className="flex h-8 items-center border-l border-black/15 px-4 text-[9px] font-semibold tracking-[0.1em] whitespace-nowrap text-black/60 uppercase transition hover:bg-black hover:text-white"
+          // fontSize inline: the app's `font: inherit` reset on buttons
+          // overrides Tailwind text utilities (span sibling is unaffected).
+          style={{ fontSize: '9px' }}
+          className="flex h-8 items-center border-l border-black/15 px-4 font-semibold tracking-[0.1em] whitespace-nowrap text-black/60 uppercase transition hover:bg-black hover:text-white"
         >
           Remove {GI_PART_DISPLAY[part]}
         </button>
