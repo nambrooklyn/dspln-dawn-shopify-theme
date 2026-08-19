@@ -145,8 +145,9 @@ function SwatchRow({
 }
 
 export const GiV5ZoneColorMenu = memo(
-  ({ part, onRemoved }: { part: GiPart; onRemoved?: () => void }) => {
+  ({ part }: { part: GiPart }) => {
   const {
+    partVisibility,
     kimonoSubColors,
     setKimonoSubColor,
     pantSubColors,
@@ -172,32 +173,45 @@ export const GiV5ZoneColorMenu = memo(
     part === 'jacket' ? kimonoSize : part === 'pants' ? pantSize : beltSize;
   const showCustomNotes =
     part !== 'belt' && activeSize === CUSTOM_MEASUREMENTS;
+  const included = partVisibility[part];
 
   return (
     <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl border border-white/30 bg-white/25 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl backdrop-saturate-150">
-      {/* Add / Remove segmented pill — frosted, matching the theme. The menu
-          only shows for an included part, so ADD reads as the active state
-          and REMOVE is the available action (rail ghost re-adds). */}
-      <div className="mb-0.5 flex self-center overflow-hidden rounded-full border border-white/30 bg-white/15 shadow-[0_2px_10px_rgba(0,0,0,0.07)] backdrop-blur-2xl backdrop-saturate-150">
-        <span className="flex h-8 items-center bg-black px-4 text-[9px] font-semibold tracking-[0.1em] whitespace-nowrap text-white uppercase">
-          Add {GI_PART_DISPLAY[part]} +${GI_PART_PRICES[part]}
-        </span>
-        <button
-          type="button"
-          onClick={() => {
-            setPartVisible(part, false);
-            setScenePartVisible(part, false);
-            onRemoved?.();
-          }}
-          // fontSize inline: the app's `font: inherit` reset on buttons
-          // overrides Tailwind text utilities (span sibling is unaffected).
-          style={{ fontSize: '9px' }}
-          className="flex h-8 items-center border-l border-black/15 px-4 font-semibold tracking-[0.1em] whitespace-nowrap text-black/60 uppercase transition hover:bg-black hover:text-white"
-        >
-          Remove {GI_PART_DISPLAY[part]}
-        </button>
+      {/* Add / Remove segmented toggle (Safari-tab style): the current state
+          is a white chip, the other segment a quiet action. Removing keeps
+          the menu open with the options hidden — tap Add to bring them back;
+          the menu only closes on tap-away. */}
+      <div className="mb-0.5 flex self-center rounded-full border border-black/10 bg-black/5 p-0.5 backdrop-blur-2xl">
+        {[
+          { added: true, label: `Add ${GI_PART_DISPLAY[part]} +$${GI_PART_PRICES[part]}` },
+          { added: false, label: `Remove ${GI_PART_DISPLAY[part]}` },
+        ].map(({ added, label }) => {
+          const isCurrent = included === added;
+          return (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={isCurrent}
+              onClick={() => {
+                if (isCurrent) return;
+                setPartVisible(part, added);
+                if (!added) setScenePartVisible(part, false);
+              }}
+              // fontSize inline: the app's `font: inherit` reset on buttons
+              // overrides Tailwind text utilities.
+              style={{ fontSize: '10px' }}
+              className={`flex h-7 items-center rounded-full px-3.5 font-medium whitespace-nowrap transition ${
+                isCurrent
+                  ? 'border border-black/10 bg-white text-black shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
+                  : 'text-black/50 hover:text-black'
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
-      {part === 'jacket' ? (
+      {!included ? null : part === 'jacket' ? (
         <>
           {KIMONO_ROWS.map(({ sub, label }) => (
             <SwatchRow
@@ -258,7 +272,7 @@ export const GiV5ZoneColorMenu = memo(
           />
         </>
       )}
-      {showCustomNotes ? (
+      {included && showCustomNotes ? (
         <textarea
           value={customSizeNotes}
           onChange={(event) => setCustomSizeNotes(event.target.value)}
