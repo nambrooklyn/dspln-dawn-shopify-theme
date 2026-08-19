@@ -57,7 +57,7 @@ function PanelHeader({
   return (
     <div className="mb-2.5 flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-baseline gap-2">
-        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-black">
+        <span className="text-[11px] font-bold tracking-[0.12em] whitespace-nowrap text-black uppercase">
           {title}
         </span>
         {detail ? (
@@ -218,9 +218,12 @@ export const GiV2LogoPanel = memo(
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex h-10 items-center gap-2 rounded-full border border-black/10 bg-white px-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-black transition hover:bg-black hover:text-white"
+            // fontSize inline: the app's `font: inherit` reset on buttons
+            // overrides Tailwind text utilities.
+            style={{ fontSize: '10px' }}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-black/10 bg-white/80 px-3 font-medium whitespace-nowrap text-black shadow-[0_1px_4px_rgba(0,0,0,0.1)] transition hover:bg-black hover:text-white"
           >
-            <ImagePlus className="h-4 w-4" />
+            <ImagePlus className="h-3.5 w-3.5" />
             {imageUrl ? 'Replace Logo' : 'Upload Logo'}
           </button>
           {imageUrl ? (
@@ -229,9 +232,9 @@ export const GiV2LogoPanel = memo(
               onClick={onRemove}
               aria-label="Remove logo"
               title="Remove logo"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-red-700 transition hover:bg-red-700 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white/80 text-red-700 shadow-[0_1px_4px_rgba(0,0,0,0.1)] transition hover:bg-red-700 hover:text-white"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
           ) : null}
         </div>
