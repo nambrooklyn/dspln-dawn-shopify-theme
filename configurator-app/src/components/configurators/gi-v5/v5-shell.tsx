@@ -29,6 +29,45 @@ import {
 } from '../gi-v3/quiet-hotspots';
 import { GiV5ZoneColorMenu } from './zone-color-menu';
 import { GiV5CartDrawer } from './cart-drawer';
+import {
+  DesignAssistant,
+  shouldShowDesignAssistant,
+} from '../../design-assistant/design-assistant';
+
+/** Speech-bubble AI mark (Nam's reference): sparkles + "AI" in brand red. */
+function AssistantBubbleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 90" className={className} aria-hidden="true">
+      <path
+        fill="#5c0000"
+        d="M50 1C22.4 1 1 19.4 1 43.5c0 24 21.4 42.4 49 42.4 7 0 13.7-1.2 19.8-3.4L88 89l-5.6-16.4C92.9 64.9 99 54.8 99 43.5 99 19.4 77.6 1 50 1Z"
+      />
+      <path
+        fill="#fff"
+        d="M33 20c2.6 13.4 6.6 17.4 20 20-13.4 2.6-17.4 6.6-20 20-2.6-13.4-6.6-17.4-20-20 13.4-2.6 17.4-6.6 20-20Z"
+      />
+      <path
+        fill="#fff"
+        d="M56 12c1.5 7.7 3.8 10 11.5 11.5C59.8 25 57.5 27.3 56 35c-1.5-7.7-3.8-10-11.5-11.5C52.2 22 54.5 19.7 56 12Z"
+      />
+      <path
+        fill="#fff"
+        d="M56 45c1.5 7.7 3.8 10 11.5 11.5C59.8 58 57.5 60.3 56 68c-1.5-7.7-3.8-10-11.5-11.5C52.2 55 54.5 52.7 56 45Z"
+      />
+      <text
+        x="79"
+        y="52"
+        textAnchor="middle"
+        fill="#fff"
+        fontFamily="Arial, Helvetica, sans-serif"
+        fontSize="30"
+        fontWeight="700"
+      >
+        AI
+      </text>
+    </svg>
+  );
+}
 
 /**
  * V5 shell — a fixed vertical rail of labelled ⊕ markers (Kimono / Belt /
@@ -85,6 +124,8 @@ export const GiV5Shell = memo(
     const [activeAnchor, setActiveAnchor] = useState<GiV2Anchor | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+    const [showAssistant] = useState(shouldShowDesignAssistant);
+    const [assistantSignal, setAssistantSignal] = useState(0);
     const [baseView] = useState<CameraView>('front-far');
 
     // Rest at the slightly wider default framing on mount.
@@ -304,6 +345,25 @@ export const GiV5Shell = memo(
               {isAddingToCart ? '…' : `$${total}`}
             </span>
           </div>
+        ) : null}
+
+        {/* Design assistant — floating AI bubble, bottom right */}
+        {showAssistant ? (
+          <>
+            <button
+              type="button"
+              aria-label="Open design assistant"
+              onClick={() => setAssistantSignal((n) => n + 1)}
+              className="absolute right-4 bottom-6 z-40 h-12 w-12 transition hover:scale-110"
+            >
+              <AssistantBubbleIcon className="h-full w-full drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)]" />
+            </button>
+            <DesignAssistant
+              placement="mobile"
+              hideLauncher
+              openSignal={assistantSignal}
+            />
+          </>
         ) : null}
 
         {/* Order summary drawer */}

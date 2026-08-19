@@ -153,6 +153,11 @@ const nameOfHex = (hex: string) =>
 
 interface DesignAssistantProps {
   placement?: 'desktop' | 'mobile';
+  /** Hide the built-in launcher — the host renders its own trigger. */
+  hideLauncher?: boolean;
+  /** Increment to open the chat from an external trigger (with
+   * hideLauncher). 0/undefined = no-op. */
+  openSignal?: number;
   productKey?: GiAssistantProductKey;
   useProductState?: () => unknown;
   productContext?: AssistantProductContext;
@@ -272,6 +277,8 @@ const GI_ASSISTANT_PROFILES: Record<
 
 export function DesignAssistant({
   placement = 'mobile',
+  hideLauncher = false,
+  openSignal = 0,
   productKey = 'mens',
   useProductState,
   productContext,
@@ -322,6 +329,11 @@ export function DesignAssistant({
           ],
     );
   }, [activeProductContext]);
+
+  // External trigger (hideLauncher hosts): each increment opens the chat.
+  useEffect(() => {
+    if (openSignal > 0) openChat();
+  }, [openSignal, openChat]);
 
   const processArtworkFile = useCallback(async (file: File) => {
     setArtworkError('');
@@ -832,6 +844,7 @@ export function DesignAssistant({
   return (
     <>
       {!open ? (
+        hideLauncher ? null : (
         <button
           type="button"
           onClick={openChat}
@@ -863,6 +876,7 @@ export function DesignAssistant({
             <span className="text-lg text-[#8a8580]" aria-hidden="true">&#8964;</span>
           )}
         </button>
+        )
       ) : (
         <div
           onDragEnter={handleArtworkDragOver}
