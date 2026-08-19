@@ -290,11 +290,11 @@ export const GiV5Shell = memo(
               aria-label={`${cartActionLabel} — $${total}`}
               onClick={onAddToCart}
               disabled={isAddingToCart}
-              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-black bg-black text-white shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition hover:scale-110 disabled:opacity-60"
+              className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-black bg-black text-white shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition hover:scale-110 disabled:opacity-60"
             >
-              <ShoppingBag className="h-4 w-4" />
+              <ShoppingBag className="h-5 w-5" />
             </button>
-            <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-black">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black">
               {isAddingToCart ? '…' : `$${total}`}
             </span>
           </div>
