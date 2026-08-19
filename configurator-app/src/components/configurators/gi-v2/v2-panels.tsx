@@ -103,11 +103,11 @@ function SwatchGrid({
             aria-label={swatch.name}
             aria-pressed={isActive}
             onClick={() => onChange(swatch.hex)}
-            className={`h-8 w-8 rounded-full transition-transform ${
+            className={`h-[22px] w-[22px] rounded-[4px] transition-transform ${
               isActive
-                ? 'ring-2 ring-[#5c0000] ring-offset-2 ring-offset-white'
-                : 'hover:scale-110'
-            } ${isWhite ? 'border border-black/25' : 'border border-black/5'}`}
+                ? 'ring-2 ring-[#5c0000] ring-offset-1 ring-offset-white'
+                : 'hover:scale-125'
+            } ${isWhite ? 'border border-black/30' : 'border border-black/10'}`}
             style={{ backgroundColor: swatch.hex }}
           />
         );
