@@ -3,6 +3,8 @@ import { memo } from 'react';
 import {
   BELT_COLOR_SWATCHES,
   GI_COLOR_SWATCHES,
+  GI_PART_DISPLAY,
+  GI_PART_PRICES,
   KIMONO_SUBPART_CAMERA_VIEW,
   PANT_SUBPART_CAMERA_VIEW,
   type GiPart,
@@ -142,7 +144,8 @@ function SwatchRow({
   );
 }
 
-export const GiV5ZoneColorMenu = memo(({ part }: { part: GiPart }) => {
+export const GiV5ZoneColorMenu = memo(
+  ({ part, onRemoved }: { part: GiPart; onRemoved?: () => void }) => {
   const {
     kimonoSubColors,
     setKimonoSubColor,
@@ -159,6 +162,8 @@ export const GiV5ZoneColorMenu = memo(({ part }: { part: GiPart }) => {
     customSizeNotes,
     setCustomSizeNotes,
     setCameraView,
+    setPartVisible,
+    setScenePartVisible,
   } = useGiState();
 
   // The top-right Sizes pill is gone (Nam's call) — the custom-measurement
@@ -170,6 +175,18 @@ export const GiV5ZoneColorMenu = memo(({ part }: { part: GiPart }) => {
 
   return (
     <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl border border-white/30 bg-white/25 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl backdrop-saturate-150">
+      {/* Quiet remove line — the rail keeps a ghost ⊕ to re-add. */}
+      <button
+        type="button"
+        onClick={() => {
+          setPartVisible(part, false);
+          setScenePartVisible(part, false);
+          onRemoved?.();
+        }}
+        className="self-start text-[9px] font-semibold uppercase tracking-[0.12em] text-black/40 transition hover:text-[#5c0000]"
+      >
+        − Remove {GI_PART_DISPLAY[part]} (−${GI_PART_PRICES[part]})
+      </button>
       {part === 'jacket' ? (
         <>
           {KIMONO_ROWS.map(({ sub, label }) => (
