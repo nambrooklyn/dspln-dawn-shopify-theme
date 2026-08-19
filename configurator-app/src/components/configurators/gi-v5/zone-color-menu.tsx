@@ -178,10 +178,11 @@ export const GiV5ZoneColorMenu = memo(
   return (
     <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl border border-white/30 bg-white/25 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl backdrop-saturate-150">
       {/* Add / Remove segmented toggle (Safari-tab style): the current state
-          is a white chip, the other segment a quiet action. Removing keeps
-          the menu open with the options hidden — tap Add to bring them back;
-          the menu only closes on tap-away. */}
-      <div className="mb-0.5 flex self-center rounded-full border border-black/10 bg-black/5 p-0.5 backdrop-blur-2xl">
+          is a white chip, the other segment a quiet action. Removing hides
+          only the 3D part — the menu and options stay so Add/Remove can be
+          toggled freely; the menu only closes on tap-away. Aligned with the
+          swatch grid (label column is w-14 + gap-2 = 4rem). */}
+      <div className="mb-0.5 ml-16 flex rounded-lg border border-black/10 bg-black/5 p-0.5 backdrop-blur-2xl">
         {[
           { added: true, label: `Add ${GI_PART_DISPLAY[part]} +$${GI_PART_PRICES[part]}` },
           { added: false, label: `Remove ${GI_PART_DISPLAY[part]}` },
@@ -200,7 +201,7 @@ export const GiV5ZoneColorMenu = memo(
               // fontSize inline: the app's `font: inherit` reset on buttons
               // overrides Tailwind text utilities.
               style={{ fontSize: '10px' }}
-              className={`flex h-7 items-center rounded-full px-3.5 font-medium whitespace-nowrap transition ${
+              className={`flex h-7 flex-1 items-center justify-center rounded-md px-2 font-medium whitespace-nowrap transition ${
                 isCurrent
                   ? 'border border-black/10 bg-white text-black shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
                   : 'text-black/50 hover:text-black'
@@ -211,7 +212,7 @@ export const GiV5ZoneColorMenu = memo(
           );
         })}
       </div>
-      {!included ? null : part === 'jacket' ? (
+      {part === 'jacket' ? (
         <>
           {KIMONO_ROWS.map(({ sub, label }) => (
             <SwatchRow
@@ -272,7 +273,7 @@ export const GiV5ZoneColorMenu = memo(
           />
         </>
       )}
-      {included && showCustomNotes ? (
+      {showCustomNotes ? (
         <textarea
           value={customSizeNotes}
           onChange={(event) => setCustomSizeNotes(event.target.value)}
