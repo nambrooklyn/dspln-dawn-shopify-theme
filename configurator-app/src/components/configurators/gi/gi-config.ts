@@ -389,8 +389,8 @@ export type CameraView =
 // wearer-relative, positions are camera-relative.
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   front: [0, 1.25, 3.75],
-  // v5's resting view — slightly wider than 'front' so the full gi breathes.
-  'front-far': [0, 1.25, 4.4],
+  // v5's resting view — wider than 'front' so the full gi breathes.
+  'front-far': [0, 1.25, 5.2],
   back: [0, 1.25, -3.75],
   left: [-3.75, 1.25, 0],
   right: [3.75, 1.25, 0],
@@ -419,7 +419,7 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   [number, number, number]
 > = {
   front: [0, 1.25, 3.35],
-  'front-far': [0, 1.25, 3.95],
+  'front-far': [0, 1.25, 4.6],
   back: [0, 1.25, -3.35],
   left: [-3.35, 1.25, 0],
   right: [3.35, 1.25, 0],
