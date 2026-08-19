@@ -13,6 +13,7 @@ import { Menu as MenuIcon, Plus, ShoppingBag, X } from 'lucide-react';
 import { GiCanvas } from '../gi/gi-canvas';
 import {
   GI_PART_DISPLAY,
+  GI_PART_PRICES,
   PART_CAMERA_VIEW,
   type CameraView,
   type GiPart,
@@ -120,6 +121,7 @@ export const GiV5Shell = memo(
     const {
       setCameraView,
       partVisibility,
+      setPartVisible,
       kimonoLogos,
       pantLogos,
       serialize,
@@ -152,10 +154,6 @@ export const GiV5Shell = memo(
     const downPosRef = useRef<{ x: number; y: number } | null>(null);
 
     const resolvedAnchors = useResolvedGiAnchors();
-    const visibleRailParts = useMemo(
-      () => RAIL_PARTS.filter((part) => partVisibility[part]),
-      [partVisibility],
-    );
 
     const filledIds = useMemo(() => {
       const ids = new Set<string>();
@@ -295,23 +293,40 @@ export const GiV5Shell = memo(
               {activeAnchor ? (
                 <GiAnchorPanel anchor={activeAnchor} onClose={closePanel} />
               ) : (
-                <GiV5ZoneColorMenu part={activePart} />
+                <GiV5ZoneColorMenu
+                  part={activePart}
+                  onRemoved={() => {
+                    setActivePart(null);
+                    setCameraView(baseView);
+                  }}
+                />
               )}
             </div>
           ) : null}
-          {visibleRailParts.map((part) => {
+          {RAIL_PARTS.map((part) => {
             const isActive = activePart === part;
+            const included = partVisibility[part];
             return (
               <div key={part} className="relative flex flex-col items-center gap-1">
                 <button
                   type="button"
-                  aria-label={`Customize ${GI_PART_DISPLAY[part]}`}
+                  aria-label={
+                    included
+                      ? `Customize ${GI_PART_DISPLAY[part]}`
+                      : `Add ${GI_PART_DISPLAY[part]} for $${GI_PART_PRICES[part]}`
+                  }
                   aria-pressed={isActive}
-                  onClick={() => handleRailTap(part)}
-                  className={`dspln-v5-plus pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                  onClick={() => {
+                    // Ghost ⊕ = removed part; tapping re-adds and opens it.
+                    if (!included) setPartVisible(part, true);
+                    handleRailTap(part);
+                  }}
+                  className={`pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border transition ${
                     isActive
-                      ? 'is-active border-black bg-black text-white'
-                      : 'border-black/30 bg-white/30 text-black/70 backdrop-blur-md hover:border-black hover:text-black'
+                      ? 'dspln-v5-plus is-active border-black bg-black text-white'
+                      : included
+                        ? 'dspln-v5-plus border-black/30 bg-white/30 text-black/70 backdrop-blur-md hover:border-black hover:text-black'
+                        : 'border-dashed border-black/25 bg-white/10 text-black/30 backdrop-blur-md hover:border-black/60 hover:text-black/70'
                   }`}
                 >
                   {isActive ? (
@@ -321,11 +336,17 @@ export const GiV5Shell = memo(
                   )}
                 </button>
                 <span
-                  className={`text-[8px] font-semibold uppercase tracking-[0.14em] ${
-                    isActive ? 'text-black' : 'text-black/40'
+                  className={`text-[8px] font-semibold uppercase tracking-[0.14em] whitespace-nowrap ${
+                    isActive
+                      ? 'text-black'
+                      : included
+                        ? 'text-black/40'
+                        : 'text-black/30'
                   }`}
                 >
-                  {GI_PART_DISPLAY[part]}
+                  {included
+                    ? GI_PART_DISPLAY[part]
+                    : `${GI_PART_DISPLAY[part]} · +$${GI_PART_PRICES[part]}`}
                 </span>
               </div>
             );

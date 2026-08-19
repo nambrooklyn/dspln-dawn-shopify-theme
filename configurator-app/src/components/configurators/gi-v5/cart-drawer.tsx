@@ -183,7 +183,19 @@ export const GiV5CartDrawer = memo(
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-14 pb-3">
-            {PART_ORDER.filter((part) => partVisibility[part]).map((part) => (
+            {PART_ORDER.map((part) =>
+              !partVisibility[part] ? (
+                // Removed part — struck-through header only, like the live
+                // site's sidebar.
+                <div
+                  key={part}
+                  className="border-t border-black/10 py-3 first:border-t-0"
+                >
+                  <span className="text-[12px] font-bold text-black/35 line-through">
+                    {GI_PART_DISPLAY[part]}
+                  </span>
+                </div>
+              ) : (
               <div
                 key={part}
                 className="border-t border-black/10 py-3 first:border-t-0"
@@ -212,7 +224,8 @@ export const GiV5CartDrawer = memo(
                   ))}
                 </div>
               </div>
-            ))}
+              ),
+            )}
 
             {spec.customSizing ? (
               <div className="border-t border-black/10 py-3">
