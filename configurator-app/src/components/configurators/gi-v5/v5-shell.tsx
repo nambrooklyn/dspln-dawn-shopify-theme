@@ -355,9 +355,9 @@ export const GiV5Shell = memo(
               type="button"
               aria-label={`Review order — $${total}`}
               onClick={() => setCartDrawerOpen(true)}
-              className="pointer-events-auto flex h-11 w-11 items-center justify-center text-black/45 transition hover:text-black"
+              className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/45 text-white shadow-[0_4px_16px_rgba(0,0,0,0.15)] transition hover:bg-black"
             >
-              <ShoppingBag className="h-6 w-6" />
+              <ShoppingBag className="h-5 w-5" />
             </button>
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">
               {isAddingToCart ? '…' : `$${total}`}
