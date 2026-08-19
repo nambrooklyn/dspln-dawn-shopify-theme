@@ -42,29 +42,33 @@ function AssistantBubbleIcon({ className }: { className?: string }) {
         fill="#5c0000"
         d="M50 1C22.4 1 1 19.4 1 43.5c0 24 21.4 42.4 49 42.4 7 0 13.7-1.2 19.8-3.4L88 89l-5.6-16.4C92.9 64.9 99 54.8 99 43.5 99 19.4 77.6 1 50 1Z"
       />
-      <path
-        fill="#fff"
-        d="M33 20c2.6 13.4 6.6 17.4 20 20-13.4 2.6-17.4 6.6-20 20-2.6-13.4-6.6-17.4-20-20 13.4-2.6 17.4-6.6 20-20Z"
-      />
-      <path
-        fill="#fff"
-        d="M56 12c1.5 7.7 3.8 10 11.5 11.5C59.8 25 57.5 27.3 56 35c-1.5-7.7-3.8-10-11.5-11.5C52.2 22 54.5 19.7 56 12Z"
-      />
-      <path
-        fill="#fff"
-        d="M56 45c1.5 7.7 3.8 10 11.5 11.5C59.8 58 57.5 60.3 56 68c-1.5-7.7-3.8-10-11.5-11.5C52.2 55 54.5 52.7 56 45Z"
-      />
-      <text
-        x="79"
-        y="52"
-        textAnchor="middle"
-        fill="#fff"
-        fontFamily="Arial, Helvetica, sans-serif"
-        fontSize="30"
-        fontWeight="700"
-      >
-        AI
-      </text>
+      {/* Inner art scaled toward center so it keeps a margin from the
+          bubble's edges. */}
+      <g transform="translate(50 43) scale(0.78) translate(-50 -43)">
+        <path
+          fill="#fff"
+          d="M33 20c2.6 13.4 6.6 17.4 20 20-13.4 2.6-17.4 6.6-20 20-2.6-13.4-6.6-17.4-20-20 13.4-2.6 17.4-6.6 20-20Z"
+        />
+        <path
+          fill="#fff"
+          d="M56 12c1.5 7.7 3.8 10 11.5 11.5C59.8 25 57.5 27.3 56 35c-1.5-7.7-3.8-10-11.5-11.5C52.2 22 54.5 19.7 56 12Z"
+        />
+        <path
+          fill="#fff"
+          d="M56 45c1.5 7.7 3.8 10 11.5 11.5C59.8 58 57.5 60.3 56 68c-1.5-7.7-3.8-10-11.5-11.5C52.2 55 54.5 52.7 56 45Z"
+        />
+        <text
+          x="79"
+          y="52"
+          textAnchor="middle"
+          fill="#fff"
+          fontFamily="Arial, Helvetica, sans-serif"
+          fontSize="30"
+          fontWeight="700"
+        >
+          AI
+        </text>
+      </g>
     </svg>
   );
 }
