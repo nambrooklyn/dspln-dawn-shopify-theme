@@ -175,18 +175,25 @@ export const GiV5ZoneColorMenu = memo(
 
   return (
     <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl border border-white/30 bg-white/25 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl backdrop-saturate-150">
-      {/* Quiet remove line — the rail keeps a ghost ⊕ to re-add. */}
-      <button
-        type="button"
-        onClick={() => {
-          setPartVisible(part, false);
-          setScenePartVisible(part, false);
-          onRemoved?.();
-        }}
-        className="self-start text-[9px] font-semibold uppercase tracking-[0.12em] text-black/40 transition hover:text-[#5c0000]"
-      >
-        − Remove {GI_PART_DISPLAY[part]} (−${GI_PART_PRICES[part]})
-      </button>
+      {/* Add / Remove segmented pill — frosted, matching the theme. The menu
+          only shows for an included part, so ADD reads as the active state
+          and REMOVE is the available action (rail ghost re-adds). */}
+      <div className="mb-0.5 flex self-center overflow-hidden rounded-full border border-white/30 bg-white/15 shadow-[0_2px_10px_rgba(0,0,0,0.07)] backdrop-blur-2xl backdrop-saturate-150">
+        <span className="flex h-8 items-center bg-black px-4 text-[9px] font-semibold tracking-[0.1em] whitespace-nowrap text-white uppercase">
+          Add {GI_PART_DISPLAY[part]} +${GI_PART_PRICES[part]}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setPartVisible(part, false);
+            setScenePartVisible(part, false);
+            onRemoved?.();
+          }}
+          className="flex h-8 items-center border-l border-black/15 px-4 text-[9px] font-semibold tracking-[0.1em] whitespace-nowrap text-black/60 uppercase transition hover:bg-black hover:text-white"
+        >
+          Remove {GI_PART_DISPLAY[part]}
+        </button>
+      </div>
       {part === 'jacket' ? (
         <>
           {KIMONO_ROWS.map(({ sub, label }) => (
