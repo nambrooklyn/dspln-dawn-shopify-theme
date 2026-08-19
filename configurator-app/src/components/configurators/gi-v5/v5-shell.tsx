@@ -263,12 +263,23 @@ export const GiV5Shell = memo(
         <style>{QUIET_HOTSPOT_STYLES + V5_EXTRA_STYLES}</style>
 
         {/* Header layer — sits UNDER the transparent canvas so the 3D model
-            overlaps the wordmark as it moves (Vectary-style). */}
+            overlaps the wordmark as it moves (Vectary-style). A transparent
+            click target ABOVE the canvas makes the logo navigate to the
+            store's home page (the visual stays behind the model). */}
         <img
           src="/logos/dspln-wordmark-black.png"
           alt="DSPLN"
           draggable={false}
-          className="pointer-events-none absolute top-5 left-1/2 z-0 w-[48%] max-w-56 -translate-x-1/2 select-none"
+          className="pointer-events-none absolute top-5 left-1/2 z-0 w-[36%] max-w-[10.5rem] -translate-x-1/2 select-none"
+        />
+        <a
+          aria-label="DSPLN home"
+          href={(() => {
+            const shop = new URLSearchParams(window.location.search).get('shop');
+            return shop ? `https://${shop}/` : '/';
+          })()}
+          target={window.parent === window ? undefined : '_top'}
+          className="absolute top-4 left-1/2 z-20 h-9 w-[36%] max-w-[10.5rem] -translate-x-1/2"
         />
 
         <GiCanvas
