@@ -182,7 +182,7 @@ export const GiV5CartDrawer = memo(
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-10 pb-3">
+          <div className="min-h-0 flex-1 overflow-y-auto px-14 pb-3">
             {PART_ORDER.filter((part) => partVisibility[part]).map((part) => (
               <div
                 key={part}
@@ -229,7 +229,7 @@ export const GiV5CartDrawer = memo(
           </div>
 
           {/* Commit button — same inset margins as the rows */}
-          <div className="border-t border-black/10 px-10 pt-3 pb-5">
+          <div className="border-t border-black/10 px-14 pt-3 pb-5">
             <button
               type="button"
               onClick={onAddToCart}
