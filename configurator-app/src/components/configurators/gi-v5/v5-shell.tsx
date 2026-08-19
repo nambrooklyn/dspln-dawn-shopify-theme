@@ -167,7 +167,9 @@ export const GiV5Shell = memo(
     }, [kimonoLogos, pantLogos]);
 
     const markers = useMemo(() => {
-      if (!activePart) return [];
+      // No markers on a removed part — its meshes are hidden, so squares
+      // would float in empty space.
+      if (!activePart || !partVisibility[activePart]) return [];
       return resolvedAnchors
         .filter(
           (anchor) =>
@@ -180,7 +182,7 @@ export const GiV5Shell = memo(
               anchor.kind === 'belt-end'),
         )
         .map((anchor) => anchorToMarker(anchor, filledIds));
-    }, [activePart, filledIds, resolvedAnchors]);
+    }, [activePart, filledIds, partVisibility, resolvedAnchors]);
 
     const handleRailTap = useCallback(
       (part: GiPart) => {
