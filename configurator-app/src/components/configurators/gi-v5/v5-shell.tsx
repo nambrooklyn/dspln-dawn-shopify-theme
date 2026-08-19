@@ -28,6 +28,7 @@ import {
   type QuietMarker,
 } from '../gi-v3/quiet-hotspots';
 import { GiV5ZoneColorMenu } from './zone-color-menu';
+import { GiV5CartDrawer } from './cart-drawer';
 
 /**
  * V5 shell — a fixed vertical rail of labelled ⊕ markers (Kimono / Belt /
@@ -83,6 +84,7 @@ export const GiV5Shell = memo(
     const [activePart, setActivePart] = useState<GiPart | null>(null);
     const [activeAnchor, setActiveAnchor] = useState<GiV2Anchor | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
     const [baseView] = useState<CameraView>('front-far');
 
     // Rest at the slightly wider default framing on mount.
@@ -286,16 +288,15 @@ export const GiV5Shell = memo(
 
         </div>
 
-        {/* Add to cart — bag circle in the upper right, hidden while a part
-            is being edited so it never competes with the menu. */}
+        {/* Bag — upper right, hidden while a part is being edited. Opens the
+            order-summary drawer; the drawer's full-width button commits. */}
         {!activePart ? (
           <div className="absolute top-4 right-4 z-40 flex flex-col items-center gap-1">
             <button
               type="button"
-              aria-label={`${cartActionLabel} — $${total}`}
-              onClick={onAddToCart}
-              disabled={isAddingToCart}
-              className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-black bg-black text-white shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition hover:scale-110 disabled:opacity-60"
+              aria-label={`Review order — $${total}`}
+              onClick={() => setCartDrawerOpen(true)}
+              className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-black bg-black text-white shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition hover:scale-110"
             >
               <ShoppingBag className="h-5 w-5" />
             </button>
@@ -304,6 +305,16 @@ export const GiV5Shell = memo(
             </span>
           </div>
         ) : null}
+
+        {/* Order summary drawer */}
+        <GiV5CartDrawer
+          open={cartDrawerOpen}
+          onClose={() => setCartDrawerOpen(false)}
+          onAddToCart={onAddToCart}
+          isAddingToCart={Boolean(isAddingToCart)}
+          cartActionLabel={cartActionLabel}
+          cartActionLoadingLabel={cartActionLoadingLabel}
+        />
 
         {/* Hamburger — toggles the Shopify theme's main menu drawer (via the
             cart-bridge postMessage listener), showing an X while the drawer
