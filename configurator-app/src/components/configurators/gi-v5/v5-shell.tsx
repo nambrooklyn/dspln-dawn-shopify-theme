@@ -83,6 +83,13 @@ export const GiV5Shell = memo(
     const [activePart, setActivePart] = useState<GiPart | null>(null);
     const [activeAnchor, setActiveAnchor] = useState<GiV2Anchor | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [baseView] = useState<CameraView>('front-far');
+
+    // Rest at the slightly wider default framing on mount.
+    useEffect(() => {
+      setCameraView(baseView);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // The theme's cart-bridge reports the menu drawer's real open/closed
     // state, so the hamburger/X stays right even when the drawer is closed
@@ -95,8 +102,6 @@ export const GiV5Shell = memo(
       window.addEventListener('message', onMessage);
       return () => window.removeEventListener('message', onMessage);
     }, []);
-    // Fixed home view — the user orbits freely; collapsing returns here.
-    const [baseView] = useState<CameraView>('front');
     const downPosRef = useRef<{ x: number; y: number } | null>(null);
 
     const resolvedAnchors = useResolvedGiAnchors();
@@ -214,7 +219,7 @@ export const GiV5Shell = memo(
         {/* Header layer — sits UNDER the transparent canvas so the 3D model
             overlaps the wordmark as it moves (Vectary-style). */}
         <img
-          src="/logos/dspln-wordmark-dark.png"
+          src="/logos/dspln-wordmark-black.png"
           alt="DSPLN"
           draggable={false}
           className="pointer-events-none absolute top-5 left-1/2 z-0 w-[48%] max-w-56 -translate-x-1/2 select-none"
