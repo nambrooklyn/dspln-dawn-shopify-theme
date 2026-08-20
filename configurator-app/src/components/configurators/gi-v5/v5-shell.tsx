@@ -150,26 +150,16 @@ export const GiV5Shell = memo(
     const [showAssistant] = useState(shouldShowDesignAssistant);
     const [assistantSignal, setAssistantSignal] = useState(0);
     const [baseView] = useState<CameraView>('front-far');
-    // First-visit onboarding, three beats: rail buttons drop in, the screen
-    // dims with a one-line hint, then the Kimono menu opens itself. Any tap
-    // fast-forwards. Never shown again after that (persisted).
-    const [firstVisit] = useState(() => {
-      try {
-        return !window.localStorage.getItem('dspln-v5-intro-seen');
-      } catch {
-        return false;
-      }
-    });
+    // Onboarding, three beats on every page load (Nam's call — was
+    // first-visit-only): rail buttons drop in, the screen dims with a
+    // one-line hint, then the Kimono menu opens itself. Any tap
+    // fast-forwards.
+    const [firstVisit] = useState(true);
     const [showIntro, setShowIntro] = useState(false);
     const introDoneRef = useRef(false);
     const dismissIntro = useCallback(() => {
       introDoneRef.current = true;
       setShowIntro(false);
-      try {
-        window.localStorage.setItem('dspln-v5-intro-seen', '1');
-      } catch {
-        // Private mode — the overlay just shows again next visit.
-      }
     }, []);
 
     // Rest at the slightly wider default framing on mount.
