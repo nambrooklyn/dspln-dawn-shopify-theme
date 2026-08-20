@@ -483,7 +483,7 @@ export const GiV5Shell = memo(
         {cornerStep > 0 ? (
           <div className="dspln-v5-intro-overlay pointer-events-none absolute inset-0 z-[25] bg-black/40">
             {cornerStep === 1 ? (
-              <div className="absolute top-16 left-4 flex flex-col items-start gap-1">
+              <div className="absolute inset-x-0 top-14 flex items-center justify-center gap-2">
                 <span className="dspln-v5-intro-arrow text-lg text-white">↖</span>
                 <span
                   style={{ fontSize: '10px' }}
@@ -494,18 +494,18 @@ export const GiV5Shell = memo(
               </div>
             ) : null}
             {cornerStep === 2 ? (
-              <div className="absolute top-20 right-4 flex flex-col items-end gap-1">
-                <span className="dspln-v5-intro-arrow text-lg text-white">↗</span>
+              <div className="absolute inset-x-0 top-14 flex items-center justify-center gap-2">
                 <span
                   style={{ fontSize: '10px' }}
                   className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
                 >
                   Review &amp; add to cart
                 </span>
+                <span className="dspln-v5-intro-arrow text-lg text-white">↗</span>
               </div>
             ) : null}
             {cornerStep === 3 ? (
-              <div className="absolute right-4 bottom-24 flex flex-col items-end gap-1">
+              <div className="absolute inset-x-0 bottom-32 flex items-center justify-center gap-2">
                 <span
                   style={{ fontSize: '10px' }}
                   className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
@@ -516,14 +516,14 @@ export const GiV5Shell = memo(
               </div>
             ) : null}
             {cornerStep === 4 ? (
-              <div className="absolute bottom-24 left-4 flex flex-col items-start gap-1">
+              <div className="absolute inset-x-0 bottom-32 flex items-center justify-center gap-2">
+                <span className="dspln-v5-intro-arrow text-lg text-white">↙</span>
                 <span
                   style={{ fontSize: '10px' }}
                   className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
                 >
                   AI designs it for you
                 </span>
-                <span className="dspln-v5-intro-arrow text-lg text-white">↙</span>
               </div>
             ) : null}
           </div>
