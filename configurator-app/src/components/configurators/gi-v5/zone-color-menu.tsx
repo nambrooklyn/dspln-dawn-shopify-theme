@@ -1,4 +1,5 @@
 import { memo, useState } from 'react';
+import { X } from 'lucide-react';
 
 import {
   BELT_COLOR_SWATCHES,
@@ -179,7 +180,7 @@ function SwatchRow({
 }
 
 export const GiV5ZoneColorMenu = memo(
-  ({ part }: { part: GiPart }) => {
+  ({ part, onClose }: { part: GiPart; onClose?: () => void }) => {
   const {
     partVisibility,
     kimonoSubColors,
@@ -210,7 +211,19 @@ export const GiV5ZoneColorMenu = memo(
   const included = partVisibility[part];
 
   return (
-    <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl border border-white/30 bg-white/25 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl backdrop-saturate-150">
+    <div className="pointer-events-auto relative flex flex-col gap-2 rounded-2xl border border-white/30 bg-white/25 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] backdrop-blur-2xl backdrop-saturate-150">
+      {/* Close — returns to the zoomed-out full view. Tap-away also works,
+          but nobody discovers that; the X is the visible exit. */}
+      {onClose ? (
+        <button
+          type="button"
+          aria-label="Close and return to full view"
+          onClick={onClose}
+          className="absolute top-1.5 left-1.5 flex h-7 w-7 items-center justify-center rounded-full text-black/45 transition hover:bg-black/5 hover:text-black"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      ) : null}
       {/* Add / Remove segmented toggle (Safari-tab style): the current state
           is a white chip, the other segment a quiet action. Removing hides
           only the 3D part — the menu and options stay so Add/Remove can be
