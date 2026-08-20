@@ -1,4 +1,5 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
+{{ 'dspln-line-item-properties.css' | asset_url | stylesheet_tag }}
 
 {%- style -%}
   /* DSPLN: configurator line-item properties as a tidy label/value grid
@@ -116,26 +117,11 @@
                         </span>
                       {%- endunless -%}
                       {%- if property_size != 0 -%}
-                        <div class="dspln-order-properties">
-                          {%- for property in line_item.properties -%}
-                            {% assign property_first_char = property.first | slice: 0 %}
-                            {%- assign dspln_prop_value = property.last | strip -%}
-                            {%- if dspln_prop_value != blank
-                              and property_first_char != '_'
-                              and dspln_prop_value != 'No logo'
-                              and dspln_prop_value != 'No Text'
-                              and dspln_prop_value != 'No text' -%}
-                              <span class="dspln-order-property__name">{{ property.first | escape }}</span>
-                              <span class="dspln-order-property__value">
-                                {%- if property.last contains '/uploads/' -%}
-                                  <a href="{{ property.last }}">{{ property.last | split: '/' | last }}</a>
-                                {%- else -%}
-                                  {{ property.last }}
-                                {%- endif -%}
-                              </span>
-                            {%- endif -%}
-                          {%- endfor -%}
-                        </div>
+                        {%- comment -%}
+                          Same renderer the cart uses — grouped Kimono/Belt/
+                          Pant sections, identical labels and styling.
+                        {%- endcomment -%}
+                        {%- render 'dspln-line-item-properties', item: line_item -%}
                       {%- endif -%}
                     </div>
                   {%- endunless -%}
