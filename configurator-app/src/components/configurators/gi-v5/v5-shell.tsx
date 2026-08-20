@@ -392,10 +392,14 @@ export const GiV5Shell = memo(
               >
                 Tap a square to place your logo
               </span>
-              {/* Double-headed horizontal arrow — the squares flank it. */}
-              <span className="flex items-center text-white" aria-hidden="true">
+              {/* Double-headed horizontal arrow — the squares flank it.
+                  Dropped to sit level with the squares' centers. */}
+              <span
+                className="dspln-v5-intro-arrow mt-4 flex items-center text-white"
+                aria-hidden="true"
+              >
                 <span className="text-lg leading-none">←</span>
-                <span className="mx-1 h-px w-14 bg-white" />
+                <span className="mx-1 h-px w-7 bg-white" />
                 <span className="text-lg leading-none">→</span>
               </span>
             </div>
