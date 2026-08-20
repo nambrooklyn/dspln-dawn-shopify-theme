@@ -293,7 +293,7 @@ export const GiV5Shell = memo(
         setTimeout(() => {
           if (!hintsCancelledRef.current) setShowHints(true);
         }, 5400),
-        setTimeout(() => setShowHints(false), 12000),
+        setTimeout(() => setShowHints(false), 8700),
         // Beat 5: close the menu, zoom back out, then tour the corners
         // clockwise, ~2s each.
         setTimeout(() => {
@@ -302,17 +302,17 @@ export const GiV5Shell = memo(
             setCameraView(baseView);
             setCornerStep(1);
           }
-        }, 12400),
+        }, 9100),
         setTimeout(() => {
           if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 2 : 0));
-        }, 14400),
+        }, 11100),
         setTimeout(() => {
           if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 3 : 0));
-        }, 16400),
+        }, 13100),
         setTimeout(() => {
           if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 4 : 0));
-        }, 18400),
-        setTimeout(() => setCornerStep(0), 20400),
+        }, 15100),
+        setTimeout(() => setCornerStep(0), 17100),
       ];
       return () => timers.forEach(clearTimeout);
       // eslint-disable-next-line react-hooks/exhaustive-deps
