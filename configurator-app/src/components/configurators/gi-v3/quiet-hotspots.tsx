@@ -55,7 +55,15 @@ div[aria-label="Move model vertically"] button {
   border: none !important;
   background: transparent;
 }
-div[aria-label="Move model vertically"] button:hover {
+/* hover only where a real pointer exists — touch browsers (Android
+   Chrome) otherwise leave the tapped button stuck black. :active still
+   gives tap feedback everywhere and releases correctly. */
+@media (hover: hover) {
+  div[aria-label="Move model vertically"] button:hover {
+    background: rgba(0, 0, 0, 0.85);
+  }
+}
+div[aria-label="Move model vertically"] button:active {
   background: rgba(0, 0, 0, 0.85);
 }
 @keyframes dspln-v3-pulse {

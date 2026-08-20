@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 
 import {
   BELT_COLOR_SWATCHES,
@@ -40,9 +40,10 @@ const PANT_ROWS: Array<{ sub: PantSubPart; label: string }> = [
 ];
 
 /**
- * Native size dropdown, grouped: one <optgroup> per size family (A00, A0, …)
- * so the browser renders a labelled gap between groups, with Custom
- * Measurements alone at the very bottom.
+ * Custom size picker: a frosted popup sheet that looks identical on every
+ * platform. (The native <select> renders as a jarring fullscreen black list
+ * on Android Chrome — only a custom control keeps the iOS-style feel
+ * everywhere.) Grouped one section per size family, Custom at the bottom.
  */
 function SizeMatrix({
   value,
@@ -56,48 +57,81 @@ function SizeMatrix({
   withVariants: boolean;
   allowCustom: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+
+  const pick = (size: string) => {
+    onChange(size);
+    setOpen(false);
+  };
+
+  const optionRow = (size: string, label: string) => (
+    <button
+      key={size}
+      type="button"
+      onClick={() => pick(size)}
+      aria-pressed={value === size}
+      style={{ fontSize: '13px' }}
+      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition ${
+        value === size
+          ? 'bg-black text-white'
+          : 'text-black hover:bg-black/5 active:bg-black/10'
+      }`}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div className="flex items-center gap-2">
       <span className="w-14 shrink-0 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-black/55">
         Size
       </span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        // w-0 + flex-1: the select fills the row but its content can NEVER
-        // widen the menu card (a long selected label used to balloon it).
-        // fontSize is inline because the app's unlayered `font: inherit`
-        // reset on form elements beats Tailwind's layered text utilities.
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
         style={{ fontSize: '13px' }}
-        className="h-7 w-0 min-w-0 flex-1 truncate rounded-md border border-black/10 bg-white/80 px-1.5 text-black"
+        className="flex h-7 w-0 min-w-0 flex-1 items-center justify-between rounded-md border border-black/10 bg-white/80 px-1.5 text-black"
         aria-label="Size"
       >
-        <option value="" disabled>
-          Select size…
-        </option>
-        {withVariants ? (
-          BASE_SIZES.map((base) => (
-            <optgroup key={base} label={base}>
-              <option value={`${base}S`}>{base}S — Slim</option>
-              <option value={base}>{base} — Regular</option>
-              <option value={`${base}L`}>{base}L — Long</option>
-            </optgroup>
-          ))
-        ) : (
-          <optgroup label="Belt sizes">
-            {BASE_SIZES.map((base) => (
-              <option key={base} value={base}>
-                {base}
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {allowCustom ? (
-          <optgroup label="—">
-            <option value={CUSTOM_MEASUREMENTS}>Custom +$25</option>
-          </optgroup>
-        ) : null}
-      </select>
+        <span className="truncate">{value || 'Select size…'}</span>
+        <span aria-hidden="true" className="text-black/40">
+          ⌄
+        </span>
+      </button>
+
+      {open ? (
+        <div className="fixed inset-0 z-[70]">
+          <button
+            type="button"
+            aria-label="Close size picker"
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 h-full w-full cursor-default bg-black/25"
+          />
+          <div className="absolute inset-x-6 bottom-8 mx-auto max-h-[60dvh] max-w-sm overflow-y-auto rounded-2xl border border-white/40 bg-white/90 p-2 shadow-[0_12px_48px_rgba(0,0,0,0.3)] backdrop-blur-2xl backdrop-saturate-150">
+            {withVariants ? (
+              BASE_SIZES.map((base) => (
+                <div key={base} className="mb-1 border-b border-black/5 pb-1 last:border-b-0">
+                  <div className="px-3 pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-black/35">
+                    {base}
+                  </div>
+                  {optionRow(`${base}S`, `${base}S — Slim`)}
+                  {optionRow(base, `${base} — Regular`)}
+                  {optionRow(`${base}L`, `${base}L — Long`)}
+                </div>
+              ))
+            ) : (
+              <div>
+                {BASE_SIZES.map((base) => optionRow(base, base))}
+              </div>
+            )}
+            {allowCustom ? (
+              <div className="mt-1 border-t border-black/10 pt-1">
+                {optionRow(CUSTOM_MEASUREMENTS, 'Custom Measurements +$25')}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
