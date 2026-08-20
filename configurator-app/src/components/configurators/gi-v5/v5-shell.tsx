@@ -172,6 +172,30 @@ export const GiV5Shell = memo(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Chatra live chat (same ID as the theme) — its default bubble docks
+    // bottom-right. Skipped when embedded: the Shopify parent page already
+    // loads Chatra, and two widgets would stack.
+    useEffect(() => {
+      if (window.parent !== window) return;
+      const w = window as unknown as {
+        ChatraID?: string;
+        Chatra?: { (...args: unknown[]): void; q?: unknown[] };
+      };
+      if (w.ChatraID) return;
+      w.ChatraID = 'f7ADGR9D2eHaJjNcN';
+      const chatra: { (...args: unknown[]): void; q?: unknown[] } =
+        w.Chatra ??
+        function (...args: unknown[]) {
+          chatra.q = chatra.q ?? [];
+          chatra.q.push(args);
+        };
+      w.Chatra = chatra;
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = 'https://call.chatra.io/chatra.js';
+      document.head.appendChild(script);
+    }, []);
+
     // The theme's cart-bridge reports the menu drawer's real open/closed
     // state, so the hamburger/X stays right even when the drawer is closed
     // from the theme side (overlay tap, Esc, its own close button).
