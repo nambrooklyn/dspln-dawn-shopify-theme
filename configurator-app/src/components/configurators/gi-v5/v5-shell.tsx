@@ -459,7 +459,13 @@ export const GiV5Shell = memo(
               {activeAnchor ? (
                 <GiAnchorPanel anchor={activeAnchor} onClose={closePanel} />
               ) : (
-                <GiV5ZoneColorMenu part={activePart} />
+                <GiV5ZoneColorMenu
+                  part={activePart}
+                  onClose={() => {
+                    setActivePart(null);
+                    setCameraView(baseView);
+                  }}
+                />
               )}
             </div>
           ) : null}
