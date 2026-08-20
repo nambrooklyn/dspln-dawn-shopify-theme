@@ -30,6 +30,7 @@ import {
 } from '../gi-v3/quiet-hotspots';
 import { GiV5ZoneColorMenu } from './zone-color-menu';
 import { GiV5CartDrawer } from './cart-drawer';
+import { GiV5BurgerDrawer } from './burger-drawer';
 import {
   DesignAssistant,
   shouldShowDesignAssistant,
@@ -154,7 +155,7 @@ export const GiV5Shell = memo(
     } = useGiState();
     const [activePart, setActivePart] = useState<GiPart | null>(null);
     const [activeAnchor, setActiveAnchor] = useState<GiV2Anchor | null>(null);
-    const [menuOpen, setMenuOpen] = useState(false);
+    const [burgerOpen, setBurgerOpen] = useState(false);
     const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
     const [showAssistant] = useState(shouldShowDesignAssistant);
     const [assistantSignal, setAssistantSignal] = useState(0);
@@ -208,17 +209,6 @@ export const GiV5Shell = memo(
       document.head.appendChild(script);
     }, []);
 
-    // The theme's cart-bridge reports the menu drawer's real open/closed
-    // state, so the hamburger/X stays right even when the drawer is closed
-    // from the theme side (overlay tap, Esc, its own close button).
-    useEffect(() => {
-      const onMessage = (event: MessageEvent) => {
-        const data = event.data as { type?: string; open?: boolean } | null;
-        if (data?.type === 'dspln:menu-state') setMenuOpen(Boolean(data.open));
-      };
-      window.addEventListener('message', onMessage);
-      return () => window.removeEventListener('message', onMessage);
-    }, []);
     const downPosRef = useRef<{ x: number; y: number } | null>(null);
 
     const resolvedAnchors = useResolvedGiAnchors();
@@ -651,31 +641,21 @@ export const GiV5Shell = memo(
           cartActionLoadingLabel={cartActionLoadingLabel}
         />
 
-        {/* Hamburger — toggles the Shopify theme's main menu drawer (via the
-            cart-bridge postMessage listener), showing an X while the drawer
-            is open. Plain navigation fallback when the app runs standalone. */}
+        {/* Hamburger — the customer's PERSONAL drawer (designs, uploads,
+            save & share, account). Site navigation lives on the wordmark. */}
         <button
           type="button"
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          onClick={() => {
-            if (window.parent !== window) {
-              window.parent.postMessage(
-                { type: menuOpen ? 'dspln:close-menu' : 'dspln:open-menu' },
-                '*',
-              );
-              setMenuOpen((prev) => !prev);
-            } else {
-              window.location.href = '/';
-            }
-          }}
+          aria-label="Open your studio menu"
+          onClick={() => setBurgerOpen(true)}
           className="absolute top-2 left-2 z-40 flex h-11 w-11 items-center justify-center text-black/45 transition hover:text-black"
         >
-          {menuOpen ? (
-            <X className="h-7 w-7" />
-          ) : (
-            <MenuIcon className="h-7 w-7" />
-          )}
+          <MenuIcon className="h-7 w-7" />
         </button>
+
+        <GiV5BurgerDrawer
+          open={burgerOpen}
+          onClose={() => setBurgerOpen(false)}
+        />
 
 
       </div>
