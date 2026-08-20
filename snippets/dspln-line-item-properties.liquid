@@ -96,6 +96,20 @@
               assign is_flat_group_property = true
             endif
 
+            comment
+              Legacy inclusion flags ("Kimono: Add Kimono", "Belt: NO") from
+              older orders carry no information the size/color rows lack —
+              and the bare-group fallback below would mislabel them as
+              "Size". Hide them.
+            endcomment
+            if property_key == group_key
+              assign flag_value = property_value | downcase
+              assign flag_head = flag_value | slice: 0, 4
+              if flag_value == 'yes' or flag_value == 'no' or flag_head == 'add '
+                assign is_internal = true
+              endif
+            endif
+
             if group_key == 'rashguard' and is_rashguard_line_item and is_grappling_short_line_item == false
               if property_key == 'front body color' or property_key == 'back body color' or property_key == 'left sleeve color' or property_key == 'right sleeve color' or property_key == 'neck band color' or property_key == 'stitching color' or property_key == 'artwork layers' or property_key contains 'artwork layer'
                 assign is_flat_group_property = true
