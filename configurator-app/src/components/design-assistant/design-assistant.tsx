@@ -800,8 +800,15 @@ export function DesignAssistant({
   }, [activeProductContext]);
 
   // External trigger (hideLauncher hosts): each increment opens the chat.
+  // Track the last handled value in a ref — openChat's identity changes on
+  // re-renders, and without the guard the effect re-fired and re-opened the
+  // chat immediately after the X closed it.
+  const lastOpenSignalRef = useRef(0);
   useEffect(() => {
-    if (openSignal > 0) openChat();
+    if (openSignal > 0 && openSignal !== lastOpenSignalRef.current) {
+      lastOpenSignalRef.current = openSignal;
+      openChat();
+    }
   }, [openSignal, openChat]);
 
   const processArtworkFile = useCallback(async (file: File) => {
