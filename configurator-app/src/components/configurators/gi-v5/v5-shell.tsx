@@ -134,6 +134,7 @@ function anchorToMarker(anchor: GiV2Anchor, filledIds: Set<string>): QuietMarker
     square,
     filled: square && filledIds.has(anchor.id),
     plane: anchor.plane,
+    caption: anchor.kind === 'belt-end' ? 'Tap to add text' : undefined,
   };
 }
 
@@ -252,16 +253,17 @@ export const GiV5Shell = memo(
       (part: GiPart) => {
         dismissIntro();
         setActiveAnchor(null);
-        setActivePart((prev) => {
-          if (prev === part) {
-            setCameraView(baseView);
-            return null;
-          }
+        // Camera moves OUTSIDE the state updater — a setState inside another
+        // updater is a side effect during render (React warns loudly).
+        if (activePart === part) {
+          setCameraView(baseView);
+          setActivePart(null);
+        } else {
           setCameraView(PART_CAMERA_VIEW[part]);
-          return part;
-        });
+          setActivePart(part);
+        }
       },
-      [baseView, dismissIntro, setCameraView],
+      [activePart, baseView, dismissIntro, setCameraView],
     );
 
     // Intro choreography: beat 1 is the rail drop-in (pure CSS, ~0.9s),
