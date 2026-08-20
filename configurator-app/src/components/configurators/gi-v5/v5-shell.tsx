@@ -161,6 +161,10 @@ export const GiV5Shell = memo(
       introDoneRef.current = true;
       setShowIntro(false);
     }, []);
+    // Beat 4: after the Kimono menu opens, two callouts name the app's two
+    // verbs (squares = logos, swatches = colors). Any tap clears them.
+    const [showHints, setShowHints] = useState(false);
+    const hintsCancelledRef = useRef(false);
 
     // Rest at the slightly wider default framing on mount.
     useEffect(() => {
@@ -241,9 +245,15 @@ export const GiV5Shell = memo(
           handleRailTap('jacket');
         }
       }, 4600);
+      const showCallouts = setTimeout(() => {
+        if (!hintsCancelledRef.current) setShowHints(true);
+      }, 5400);
+      const hideCallouts = setTimeout(() => setShowHints(false), 12000);
       return () => {
         clearTimeout(dim);
         clearTimeout(openKimono);
+        clearTimeout(showCallouts);
+        clearTimeout(hideCallouts);
       };
     }, [dismissIntro, firstVisit, handleRailTap]);
 
@@ -270,6 +280,9 @@ export const GiV5Shell = memo(
 
     const handlePointerDown = useCallback((event: ReactPointerEvent) => {
       downPosRef.current = { x: event.clientX, y: event.clientY };
+      // Any interaction clears (or pre-empts) the beat-4 callouts.
+      hintsCancelledRef.current = true;
+      setShowHints(false);
     }, []);
 
     const handleRootClick = useCallback(
@@ -365,6 +378,32 @@ export const GiV5Shell = memo(
               <span className="dspln-v5-intro-arrow text-xl text-white">↓</span>
             </span>
           </button>
+        ) : null}
+
+        {/* Beat-4 callouts: the two verbs, pointing at their targets. The
+            overlay is pointer-transparent so the menu and squares stay live;
+            it sits under the rail/menu (z-30) so they stay bright. */}
+        {showHints ? (
+          <div className="dspln-v5-intro-overlay pointer-events-none absolute inset-0 z-[25] bg-black/30">
+            <div className="absolute top-[11%] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1">
+              <span
+                style={{ fontSize: '10px' }}
+                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+              >
+                Tap a square to place your logo
+              </span>
+              <span className="dspln-v5-intro-arrow text-lg text-white">↓</span>
+            </div>
+            <div className="absolute bottom-[21rem] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1">
+              <span
+                style={{ fontSize: '10px' }}
+                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+              >
+                Tap a swatch to change colors
+              </span>
+              <span className="dspln-v5-intro-arrow text-lg text-white">↓</span>
+            </div>
+          </div>
         ) : null}
 
         {/* ⊕ rail — horizontal, bottom center */}
