@@ -1,6 +1,26 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
 
 {%- style -%}
+  /* DSPLN: configurator line-item properties as a tidy label/value grid
+     (they used to render as one long centered list). */
+  .dspln-order-properties {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 1.2rem;
+    row-gap: 0.2rem;
+    margin-top: 0.6rem;
+    text-align: left;
+    font-size: 1.2rem;
+    line-height: 1.4;
+  }
+  .dspln-order-property__name {
+    color: rgba(var(--color-foreground), 0.6);
+    white-space: nowrap;
+  }
+  .dspln-order-property__value {
+    color: rgb(var(--color-foreground));
+    overflow-wrap: anywhere;
+  }
   .section-{{ section.id }}-padding {
     padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
     padding-bottom: {{ section.settings.padding_bottom | times: 0.75 | round: 0 }}px;
@@ -55,18 +75,21 @@
                 data-label="{{ 'customer.order.product' | t }}"
               >
                 <div>
+                  {%- assign dspln_clean_title = line_item.title | split: ' - tda_price' | first -%}
                   {%- if line_item.url != blank -%}
-                    <a href="{{ line_item.url }}">{{ line_item.title | escape }}</a>
+                    <a href="{{ line_item.url }}">{{ dspln_clean_title | escape }}</a>
                   {%- else -%}
-                    <p>{{ line_item.title | escape }}</p>
+                    <p>{{ dspln_clean_title | escape }}</p>
                   {%- endif -%}
                   {%- assign property_size = line_item.properties | size -%}
                   {%- unless line_item.selling_plan_allocation == null and property_size == 0 -%}
                     <div class="properties">
                       {%- unless line_item.product.has_only_default_variant -%}
-                        <span>
-                          {{ line_item.variant.title | escape }}
-                        </span>
+                        {%- unless line_item.variant.title contains 'tda_price' -%}
+                          <span>
+                            {{ line_item.variant.title | escape }}
+                          </span>
+                        {%- endunless -%}
                       {%- endunless -%}
                       {%- unless line_item.selling_plan_allocation == null -%}
                         <span>
@@ -74,19 +97,26 @@
                         </span>
                       {%- endunless -%}
                       {%- if property_size != 0 -%}
-                        {%- for property in line_item.properties -%}
-                          {% assign property_first_char = property.first | slice: 0 %}
-                          {%- if property.last != blank and property_first_char != '_' -%}
-                            <span>{{ property.first }}:</span>
-                            <span>
-                              {%- if property.last contains '/uploads/' -%}
-                                <a href="{{ property.last }}">{{ property.last | split: '/' | last }}</a>
-                              {%- else -%}
-                                {{ property.last }}
-                              {%- endif -%}
-                            </span>
-                          {%- endif -%}
-                        {%- endfor -%}
+                        <div class="dspln-order-properties">
+                          {%- for property in line_item.properties -%}
+                            {% assign property_first_char = property.first | slice: 0 %}
+                            {%- assign dspln_prop_value = property.last | strip -%}
+                            {%- if dspln_prop_value != blank
+                              and property_first_char != '_'
+                              and dspln_prop_value != 'No logo'
+                              and dspln_prop_value != 'No Text'
+                              and dspln_prop_value != 'No text' -%}
+                              <span class="dspln-order-property__name">{{ property.first | escape }}</span>
+                              <span class="dspln-order-property__value">
+                                {%- if property.last contains '/uploads/' -%}
+                                  <a href="{{ property.last }}">{{ property.last | split: '/' | last }}</a>
+                                {%- else -%}
+                                  {{ property.last }}
+                                {%- endif -%}
+                              </span>
+                            {%- endif -%}
+                          {%- endfor -%}
+                        </div>
                       {%- endif -%}
                     </div>
                   {%- endunless -%}
