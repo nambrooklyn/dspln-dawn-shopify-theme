@@ -92,6 +92,24 @@ const V5_EXTRA_STYLES = `
   animation: dspln-v5-ring 2.8s ease-out infinite;
 }
 .dspln-v5-plus.is-active { animation: none; }
+@keyframes dspln-v5-intro-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+.dspln-v5-intro-arrow { animation: dspln-v5-intro-bob 1.2s ease-in-out infinite; }
+@keyframes dspln-v5-drop {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dspln-v5-drop {
+  opacity: 0;
+  animation: dspln-v5-drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes dspln-v5-intro-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.dspln-v5-intro-overlay { animation: dspln-v5-intro-fade 0.4s ease-out; }
 `;
 
 const TAP_SLOP_PX = 8;
@@ -132,6 +150,27 @@ export const GiV5Shell = memo(
     const [showAssistant] = useState(shouldShowDesignAssistant);
     const [assistantSignal, setAssistantSignal] = useState(0);
     const [baseView] = useState<CameraView>('front-far');
+    // First-visit onboarding, three beats: rail buttons drop in, the screen
+    // dims with a one-line hint, then the Kimono menu opens itself. Any tap
+    // fast-forwards. Never shown again after that (persisted).
+    const [firstVisit] = useState(() => {
+      try {
+        return !window.localStorage.getItem('dspln-v5-intro-seen');
+      } catch {
+        return false;
+      }
+    });
+    const [showIntro, setShowIntro] = useState(false);
+    const introDoneRef = useRef(false);
+    const dismissIntro = useCallback(() => {
+      introDoneRef.current = true;
+      setShowIntro(false);
+      try {
+        window.localStorage.setItem('dspln-v5-intro-seen', '1');
+      } catch {
+        // Private mode — the overlay just shows again next visit.
+      }
+    }, []);
 
     // Rest at the slightly wider default framing on mount.
     useEffect(() => {
@@ -185,6 +224,7 @@ export const GiV5Shell = memo(
 
     const handleRailTap = useCallback(
       (part: GiPart) => {
+        dismissIntro();
         setActiveAnchor(null);
         setActivePart((prev) => {
           if (prev === part) {
@@ -195,8 +235,27 @@ export const GiV5Shell = memo(
           return part;
         });
       },
-      [baseView, setCameraView],
+      [baseView, dismissIntro, setCameraView],
     );
+
+    // Intro choreography: beat 1 is the rail drop-in (pure CSS, ~0.9s),
+    // beat 2 dims the screen with the hint, beat 3 opens the Kimono menu.
+    useEffect(() => {
+      if (!firstVisit) return;
+      const dim = setTimeout(() => {
+        if (!introDoneRef.current) setShowIntro(true);
+      }, 1100);
+      const openKimono = setTimeout(() => {
+        if (!introDoneRef.current) {
+          dismissIntro();
+          handleRailTap('jacket');
+        }
+      }, 4600);
+      return () => {
+        clearTimeout(dim);
+        clearTimeout(openKimono);
+      };
+    }, [dismissIntro, firstVisit, handleRailTap]);
 
     const handleMarkerSelect = useCallback(
       (marker: QuietMarker) => {
@@ -293,8 +352,33 @@ export const GiV5Shell = memo(
           }
         />
 
+        {/* First-visit onboarding: dim everything except the rail (which
+            sits above this overlay), one line + arrow pointing at it. Any
+            tap dismisses it forever. */}
+        {showIntro ? (
+          <button
+            type="button"
+            aria-label="Dismiss intro"
+            onClick={() => {
+              dismissIntro();
+              handleRailTap('jacket');
+            }}
+            className="dspln-v5-intro-overlay absolute inset-0 z-[25] block h-full w-full cursor-default bg-black/45"
+          >
+            <span className="absolute bottom-28 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2">
+              <span
+                style={{ fontSize: '12px' }}
+                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+              >
+                Tap a piece to customize
+              </span>
+              <span className="dspln-v5-intro-arrow text-xl text-white">↓</span>
+            </span>
+          </button>
+        ) : null}
+
         {/* ⊕ rail — horizontal, bottom center */}
-        <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 flex-row items-end gap-6">
+        <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 flex-row items-end gap-6">
           {/* Everything for the open part docks ABOVE the rail, horizontally
               centered: the all-zones color menu by default, swapped for the
               hotspot panel (logo upload / belt embroidery) while one is
@@ -309,11 +393,15 @@ export const GiV5Shell = memo(
               )}
             </div>
           ) : null}
-          {RAIL_PARTS.map((part) => {
+          {RAIL_PARTS.map((part, index) => {
             const isActive = activePart === part;
             const included = partVisibility[part];
             return (
-              <div key={part} className="relative flex flex-col items-center gap-1">
+              <div
+                key={part}
+                className={`relative flex flex-col items-center gap-1 ${firstVisit ? 'dspln-v5-drop' : ''}`}
+                style={firstVisit ? { animationDelay: `${0.2 + index * 0.18}s` } : undefined}
+              >
                 <button
                   type="button"
                   aria-label={
