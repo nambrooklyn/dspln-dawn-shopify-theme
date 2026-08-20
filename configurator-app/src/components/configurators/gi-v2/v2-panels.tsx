@@ -223,7 +223,7 @@ export const GiV2LogoPanel = memo(
             // fontSize inline: the app's `font: inherit` reset on buttons
             // overrides Tailwind text utilities.
             style={{ fontSize: '10px' }}
-            className="flex h-8 items-center gap-1.5 rounded-lg border border-black/10 bg-white/80 px-3 font-medium whitespace-nowrap text-black shadow-[0_1px_4px_rgba(0,0,0,0.1)] transition hover:bg-black hover:text-white"
+            className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/10 bg-white/80 px-3 font-medium whitespace-nowrap text-black shadow-[0_1px_4px_rgba(0,0,0,0.1)] transition hover:bg-black hover:text-white"
           >
             <ImagePlus className="h-3.5 w-3.5" />
             {imageUrl ? 'Replace Logo' : 'Upload Logo'}
