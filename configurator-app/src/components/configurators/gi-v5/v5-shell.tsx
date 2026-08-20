@@ -173,8 +173,9 @@ export const GiV5Shell = memo(
     // Beat 4: after the Kimono menu opens, two callouts name the app's two
     // verbs (squares = logos, swatches = colors). Any tap clears them.
     const [showHints, setShowHints] = useState(false);
-    // Beat 5: one screen naming all four corners (burger / bag / AI / chat).
-    const [showCorners, setShowCorners] = useState(false);
+    // Beat 5: the corner tour — one corner at a time, clockwise
+    // (burger → bag → chat → AI). 0 = off, 1-4 = current corner.
+    const [cornerStep, setCornerStep] = useState(0);
     const hintsCancelledRef = useRef(false);
 
     // Rest at the slightly wider default framing on mount.
@@ -293,15 +294,25 @@ export const GiV5Shell = memo(
           if (!hintsCancelledRef.current) setShowHints(true);
         }, 5400),
         setTimeout(() => setShowHints(false), 12000),
-        // Beat 5: close the menu, zoom back out, name the corners.
+        // Beat 5: close the menu, zoom back out, then tour the corners
+        // clockwise, ~2s each.
         setTimeout(() => {
           if (!hintsCancelledRef.current) {
             setActivePart(null);
             setCameraView(baseView);
-            setShowCorners(true);
+            setCornerStep(1);
           }
         }, 12400),
-        setTimeout(() => setShowCorners(false), 18500),
+        setTimeout(() => {
+          if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 2 : 0));
+        }, 14400),
+        setTimeout(() => {
+          if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 3 : 0));
+        }, 16400),
+        setTimeout(() => {
+          if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 4 : 0));
+        }, 18400),
+        setTimeout(() => setCornerStep(0), 20400),
       ];
       return () => timers.forEach(clearTimeout);
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -333,7 +344,7 @@ export const GiV5Shell = memo(
       // Any interaction clears (or pre-empts) the guided callouts.
       hintsCancelledRef.current = true;
       setShowHints(false);
-      setShowCorners(false);
+      setCornerStep(0);
     }, []);
 
     const handleRootClick = useCallback(
@@ -466,47 +477,55 @@ export const GiV5Shell = memo(
           </div>
         ) : null}
 
-        {/* Beat-5 corner tour: one dim screen naming all four corners. The
-            corner controls themselves (z-40 / Chatra's own stack) stay
-            bright above the dim. */}
-        {showCorners ? (
+        {/* Beat-5 corner tour: one corner at a time, clockwise. The corner
+            controls themselves (z-40 / Chatra's own stack) stay bright above
+            the dim. */}
+        {cornerStep > 0 ? (
           <div className="dspln-v5-intro-overlay pointer-events-none absolute inset-0 z-[25] bg-black/40">
-            <div className="absolute top-16 left-4 flex flex-col items-start gap-1">
-              <span className="dspln-v5-intro-arrow text-lg text-white">↖</span>
-              <span
-                style={{ fontSize: '10px' }}
-                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
-              >
-                Your saved designs
-              </span>
-            </div>
-            <div className="absolute top-20 right-4 flex flex-col items-end gap-1">
-              <span className="dspln-v5-intro-arrow text-lg text-white">↗</span>
-              <span
-                style={{ fontSize: '10px' }}
-                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
-              >
-                Review &amp; add to cart
-              </span>
-            </div>
-            <div className="absolute bottom-24 left-4 flex flex-col items-start gap-1">
-              <span
-                style={{ fontSize: '10px' }}
-                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
-              >
-                AI designs it for you
-              </span>
-              <span className="dspln-v5-intro-arrow text-lg text-white">↙</span>
-            </div>
-            <div className="absolute right-4 bottom-24 flex flex-col items-end gap-1">
-              <span
-                style={{ fontSize: '10px' }}
-                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
-              >
-                Questions? Chat with us
-              </span>
-              <span className="dspln-v5-intro-arrow text-lg text-white">↘</span>
-            </div>
+            {cornerStep === 1 ? (
+              <div className="absolute top-16 left-4 flex flex-col items-start gap-1">
+                <span className="dspln-v5-intro-arrow text-lg text-white">↖</span>
+                <span
+                  style={{ fontSize: '10px' }}
+                  className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+                >
+                  Your saved designs
+                </span>
+              </div>
+            ) : null}
+            {cornerStep === 2 ? (
+              <div className="absolute top-20 right-4 flex flex-col items-end gap-1">
+                <span className="dspln-v5-intro-arrow text-lg text-white">↗</span>
+                <span
+                  style={{ fontSize: '10px' }}
+                  className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+                >
+                  Review &amp; add to cart
+                </span>
+              </div>
+            ) : null}
+            {cornerStep === 3 ? (
+              <div className="absolute right-4 bottom-24 flex flex-col items-end gap-1">
+                <span
+                  style={{ fontSize: '10px' }}
+                  className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+                >
+                  Questions? Chat with us
+                </span>
+                <span className="dspln-v5-intro-arrow text-lg text-white">↘</span>
+              </div>
+            ) : null}
+            {cornerStep === 4 ? (
+              <div className="absolute bottom-24 left-4 flex flex-col items-start gap-1">
+                <span
+                  style={{ fontSize: '10px' }}
+                  className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+                >
+                  AI designs it for you
+                </span>
+                <span className="dspln-v5-intro-arrow text-lg text-white">↙</span>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
