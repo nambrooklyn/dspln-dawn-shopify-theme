@@ -173,6 +173,8 @@ export const GiV5Shell = memo(
     // Beat 4: after the Kimono menu opens, two callouts name the app's two
     // verbs (squares = logos, swatches = colors). Any tap clears them.
     const [showHints, setShowHints] = useState(false);
+    // Beat 5: one screen naming all four corners (burger / bag / AI / chat).
+    const [showCorners, setShowCorners] = useState(false);
     const hintsCancelledRef = useRef(false);
 
     // Rest at the slightly wider default framing on mount.
@@ -267,29 +269,43 @@ export const GiV5Shell = memo(
     );
 
     // Intro choreography: beat 1 is the rail drop-in (pure CSS, ~0.9s),
-    // beat 2 dims the screen with the hint, beat 3 opens the Kimono menu.
+    // beat 2 dims the screen with the hint, beat 3 opens the Kimono menu,
+    // beat 4 names squares/swatches, beat 5 names the four corners.
+    // The timeline is scheduled ONCE on mount and cleaned up only on
+    // unmount — handleRailTap goes through a ref because its identity
+    // changes when beat 3 opens the menu (dep-driven cleanup used to
+    // cancel or replay the remaining beats).
+    const railTapRef = useRef(handleRailTap);
+    railTapRef.current = handleRailTap;
     useEffect(() => {
       if (!firstVisit) return;
-      const dim = setTimeout(() => {
-        if (!introDoneRef.current) setShowIntro(true);
-      }, 1100);
-      const openKimono = setTimeout(() => {
-        if (!introDoneRef.current) {
-          dismissIntro();
-          handleRailTap('jacket');
-        }
-      }, 4600);
-      const showCallouts = setTimeout(() => {
-        if (!hintsCancelledRef.current) setShowHints(true);
-      }, 5400);
-      const hideCallouts = setTimeout(() => setShowHints(false), 12000);
-      return () => {
-        clearTimeout(dim);
-        clearTimeout(openKimono);
-        clearTimeout(showCallouts);
-        clearTimeout(hideCallouts);
-      };
-    }, [dismissIntro, firstVisit, handleRailTap]);
+      const timers = [
+        setTimeout(() => {
+          if (!introDoneRef.current) setShowIntro(true);
+        }, 1100),
+        setTimeout(() => {
+          if (!introDoneRef.current) {
+            dismissIntro();
+            railTapRef.current('jacket');
+          }
+        }, 4600),
+        setTimeout(() => {
+          if (!hintsCancelledRef.current) setShowHints(true);
+        }, 5400),
+        setTimeout(() => setShowHints(false), 12000),
+        // Beat 5: close the menu, zoom back out, name the corners.
+        setTimeout(() => {
+          if (!hintsCancelledRef.current) {
+            setActivePart(null);
+            setCameraView(baseView);
+            setShowCorners(true);
+          }
+        }, 12400),
+        setTimeout(() => setShowCorners(false), 18500),
+      ];
+      return () => timers.forEach(clearTimeout);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [firstVisit]);
 
     const handleMarkerSelect = useCallback(
       (marker: QuietMarker) => {
@@ -314,9 +330,10 @@ export const GiV5Shell = memo(
 
     const handlePointerDown = useCallback((event: ReactPointerEvent) => {
       downPosRef.current = { x: event.clientX, y: event.clientY };
-      // Any interaction clears (or pre-empts) the beat-4 callouts.
+      // Any interaction clears (or pre-empts) the guided callouts.
       hintsCancelledRef.current = true;
       setShowHints(false);
+      setShowCorners(false);
     }, []);
 
     const handleRootClick = useCallback(
@@ -445,6 +462,50 @@ export const GiV5Shell = memo(
                 Tap a swatch to change colors
               </span>
               <span className="dspln-v5-intro-arrow text-lg text-white">↓</span>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Beat-5 corner tour: one dim screen naming all four corners. The
+            corner controls themselves (z-40 / Chatra's own stack) stay
+            bright above the dim. */}
+        {showCorners ? (
+          <div className="dspln-v5-intro-overlay pointer-events-none absolute inset-0 z-[25] bg-black/40">
+            <div className="absolute top-16 left-4 flex flex-col items-start gap-1">
+              <span className="dspln-v5-intro-arrow text-lg text-white">↖</span>
+              <span
+                style={{ fontSize: '10px' }}
+                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+              >
+                Your saved designs
+              </span>
+            </div>
+            <div className="absolute top-20 right-4 flex flex-col items-end gap-1">
+              <span className="dspln-v5-intro-arrow text-lg text-white">↗</span>
+              <span
+                style={{ fontSize: '10px' }}
+                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+              >
+                Review &amp; add to cart
+              </span>
+            </div>
+            <div className="absolute bottom-24 left-4 flex flex-col items-start gap-1">
+              <span
+                style={{ fontSize: '10px' }}
+                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+              >
+                AI designs it for you
+              </span>
+              <span className="dspln-v5-intro-arrow text-lg text-white">↙</span>
+            </div>
+            <div className="absolute right-4 bottom-24 flex flex-col items-end gap-1">
+              <span
+                style={{ fontSize: '10px' }}
+                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+              >
+                Questions? Chat with us
+              </span>
+              <span className="dspln-v5-intro-arrow text-lg text-white">↘</span>
             </div>
           </div>
         ) : null}
