@@ -3,6 +3,15 @@
 {%- style -%}
   /* DSPLN: configurator line-item properties as a tidy label/value grid
      (they used to render as one long centered list). */
+  .dspln-order-preview {
+    display: block;
+    width: 120px;
+    height: auto;
+    margin-bottom: 0.8rem;
+    border-radius: 10px;
+    border: 1px solid rgba(var(--color-foreground), 0.08);
+    background: #fff;
+  }
   .dspln-order-properties {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
@@ -76,6 +85,16 @@
               >
                 <div>
                   {%- assign dspln_clean_title = line_item.title | split: ' - tda_price' | first -%}
+                  {%- assign dspln_preview_url = line_item.properties['_preview_image_url'] -%}
+                  {%- if dspln_preview_url != blank -%}
+                    <img
+                      class="dspln-order-preview"
+                      src="{{ dspln_preview_url }}"
+                      alt="{{ dspln_clean_title | escape }} — design preview"
+                      loading="lazy"
+                      width="120"
+                    >
+                  {%- endif -%}
                   {%- if line_item.url != blank -%}
                     <a href="{{ line_item.url }}">{{ dspln_clean_title | escape }}</a>
                   {%- else -%}
