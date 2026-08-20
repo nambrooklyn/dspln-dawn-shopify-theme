@@ -110,6 +110,14 @@ const V5_EXTRA_STYLES = `
   to { opacity: 1; }
 }
 .dspln-v5-intro-overlay { animation: dspln-v5-intro-fade 0.4s ease-out; }
+/* Chatra's collapsed bubble: mirror the AI assistant bubble exactly
+   (48px, 16px from the side, 24px from the bottom) for symmetry. */
+#chatra:not(.chatra--expanded) {
+  width: 48px !important;
+  height: 48px !important;
+  right: 16px !important;
+  bottom: 24px !important;
+}
 `;
 
 const TAP_SLOP_PX = 8;
