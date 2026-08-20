@@ -30,6 +30,8 @@ export interface QuietMarker {
   square?: boolean;
   /** square already has a logo — solid ✓ */
   filled?: boolean;
+  /** tiny label rendered under the dot (e.g. "Tap to add text") */
+  caption?: string;
   /** print footprint on the fabric — squares with this render as a plane
    *  lying ON the garment (true position, tilt, and logo size) instead of a
    *  camera-facing billboard */
@@ -138,6 +140,23 @@ div[aria-label="Move model vertically"] button:active {
   border-style: solid;
   background: rgba(255, 255, 255, 0.85);
   animation: none;
+}
+.dspln-v3-hotspot-caption {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 7px;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #fff;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.9),
+    0 1px 2px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
 }
 .dspln-v3-hotspot-plus {
   font-size: 11px;
@@ -401,7 +420,10 @@ const QuietHotspot = memo(
         zIndexRange={[30, 10]}
         style={{ pointerEvents: 'none' }}
       >
-        <div ref={wrapperRef} style={{ transition: 'opacity 120ms linear' }}>
+        <div
+          ref={wrapperRef}
+          style={{ position: 'relative', transition: 'opacity 120ms linear' }}
+        >
           <button
             type="button"
             aria-label={marker.label}
@@ -423,6 +445,11 @@ const QuietHotspot = memo(
               </span>
             ) : null}
           </button>
+          {marker.caption ? (
+            <span className="dspln-v3-hotspot-caption" aria-hidden="true">
+              {marker.caption}
+            </span>
+          ) : null}
         </div>
       </Html>
     );
