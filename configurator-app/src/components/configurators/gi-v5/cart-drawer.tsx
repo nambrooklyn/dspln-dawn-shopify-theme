@@ -1,6 +1,8 @@
 import { memo, useMemo } from 'react';
 import { X } from 'lucide-react';
 
+import { useDrawerDialog } from './use-drawer-dialog';
+
 import {
   GI_PART_DISPLAY,
   GI_PART_PRICES,
@@ -18,6 +20,7 @@ import {
   type KimonoLogoSlot,
 } from '../gi/gi-config';
 import { useGiState } from '../gi/gi-state';
+import { formatUsd } from './money';
 
 /**
  * Order-summary drawer: tapping the bag opens this instead of adding to
@@ -32,15 +35,15 @@ const BACK_LOGO_PRICE = 25;
 
 function kimonoLogoPrice(slot: KimonoLogoSlot, filename: string | undefined) {
   if (!filename) return 'No logo';
-  return `$${slot === 'back' ? BACK_LOGO_PRICE : ADD_ON_PRICE}.00`;
+  return formatUsd(slot === 'back' ? BACK_LOGO_PRICE : ADD_ON_PRICE);
 }
 
 function logoPrice(filename: string | undefined) {
-  return filename ? `$${ADD_ON_PRICE}.00` : 'No logo';
+  return filename ? formatUsd(ADD_ON_PRICE) : 'No logo';
 }
 
 function textPrice(value: string) {
-  return value.trim() ? `$${ADD_ON_PRICE}.00` : 'No text';
+  return value.trim() ? formatUsd(ADD_ON_PRICE) : 'No text';
 }
 
 function colorName(hex: string) {
@@ -78,6 +81,8 @@ export const GiV5CartDrawer = memo(
       serialize,
     } = useGiState();
 
+    const panelRef = useDrawerDialog(open, onClose);
+
     // Same row construction as the live site's PriceSidebar.
     const details = useMemo<
       Record<GiPart, Array<{ label: string; value: string }>>
@@ -95,7 +100,7 @@ export const GiV5CartDrawer = memo(
           })),
           ...textLayers.map((layer, index) => ({
             label: `Text ${index + 1}: ${layer.text}`,
-            value: `$${ADD_ON_PRICE}.00`,
+            value: formatUsd(ADD_ON_PRICE),
           })),
         ],
         belt: [
@@ -167,7 +172,14 @@ export const GiV5CartDrawer = memo(
         />
 
         {/* Bottom sheet */}
-        <div className="absolute right-0 bottom-0 left-0 flex max-h-[78dvh] flex-col rounded-t-3xl border border-white/40 bg-white/85 shadow-[0_-12px_48px_rgba(0,0,0,0.25)] backdrop-blur-2xl backdrop-saturate-150">
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Your Gi — order summary"
+          tabIndex={-1}
+          className="absolute right-0 bottom-0 left-0 flex max-h-[78dvh] flex-col rounded-t-3xl border border-white/40 bg-white/85 shadow-[0_-12px_48px_rgba(0,0,0,0.25)] backdrop-blur-2xl backdrop-saturate-150 outline-none"
+        >
           <div className="flex items-center justify-between px-5 pt-4 pb-1">
             <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-black">
               Your Gi
@@ -182,7 +194,7 @@ export const GiV5CartDrawer = memo(
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-14 pb-3">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-3">
             {PART_ORDER.map((part) =>
               !partVisibility[part] ? (
                 // Removed part — struck-through header only, like the live
@@ -205,7 +217,7 @@ export const GiV5CartDrawer = memo(
                     {GI_PART_DISPLAY[part]}
                   </span>
                   <span className="text-[12px] font-semibold text-black">
-                    ${GI_PART_PRICES[part]}.00
+                    {formatUsd(GI_PART_PRICES[part])}
                   </span>
                 </div>
                 <div className="flex flex-col gap-[5px]">
@@ -234,7 +246,7 @@ export const GiV5CartDrawer = memo(
                     Custom Sizing
                   </span>
                   <span className="text-[12px] font-semibold text-black">
-                    ${spec.customSizing.price}.00
+                    {formatUsd(spec.customSizing.price)}
                   </span>
                 </div>
               </div>
@@ -242,7 +254,7 @@ export const GiV5CartDrawer = memo(
           </div>
 
           {/* Commit button — same inset margins as the rows */}
-          <div className="border-t border-black/10 px-14 pt-3 pb-5">
+          <div className="border-t border-black/10 px-6 pt-3 pb-5">
             <button
               type="button"
               onClick={onAddToCart}
@@ -250,7 +262,8 @@ export const GiV5CartDrawer = memo(
               className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-black text-[12px] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-black/85 disabled:opacity-60"
             >
               {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
-              <span className="text-white/50">·</span>${spec.price.total}.00
+              <span className="text-white/50">·</span>
+              {formatUsd(spec.price.total)}
             </button>
           </div>
         </div>

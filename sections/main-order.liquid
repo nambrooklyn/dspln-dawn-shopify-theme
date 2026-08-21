@@ -1,8 +1,18 @@
 {{ 'customer.css' | asset_url | stylesheet_tag }}
+{{ 'dspln-line-item-properties.css' | asset_url | stylesheet_tag }}
 
 {%- style -%}
   /* DSPLN: configurator line-item properties as a tidy label/value grid
      (they used to render as one long centered list). */
+  .dspln-order-preview {
+    display: block;
+    width: 120px;
+    height: auto;
+    margin-bottom: 0.8rem;
+    border-radius: 10px;
+    border: 1px solid rgba(var(--color-foreground), 0.08);
+    background: #fff;
+  }
   .dspln-order-properties {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
@@ -76,6 +86,16 @@
               >
                 <div>
                   {%- assign dspln_clean_title = line_item.title | split: ' - tda_price' | first -%}
+                  {%- assign dspln_preview_url = line_item.properties['_preview_image_url'] -%}
+                  {%- if dspln_preview_url != blank -%}
+                    <img
+                      class="dspln-order-preview"
+                      src="{{ dspln_preview_url }}"
+                      alt="{{ dspln_clean_title | escape }} — design preview"
+                      loading="lazy"
+                      width="120"
+                    >
+                  {%- endif -%}
                   {%- if line_item.url != blank -%}
                     <a href="{{ line_item.url }}">{{ dspln_clean_title | escape }}</a>
                   {%- else -%}
@@ -97,26 +117,11 @@
                         </span>
                       {%- endunless -%}
                       {%- if property_size != 0 -%}
-                        <div class="dspln-order-properties">
-                          {%- for property in line_item.properties -%}
-                            {% assign property_first_char = property.first | slice: 0 %}
-                            {%- assign dspln_prop_value = property.last | strip -%}
-                            {%- if dspln_prop_value != blank
-                              and property_first_char != '_'
-                              and dspln_prop_value != 'No logo'
-                              and dspln_prop_value != 'No Text'
-                              and dspln_prop_value != 'No text' -%}
-                              <span class="dspln-order-property__name">{{ property.first | escape }}</span>
-                              <span class="dspln-order-property__value">
-                                {%- if property.last contains '/uploads/' -%}
-                                  <a href="{{ property.last }}">{{ property.last | split: '/' | last }}</a>
-                                {%- else -%}
-                                  {{ property.last }}
-                                {%- endif -%}
-                              </span>
-                            {%- endif -%}
-                          {%- endfor -%}
-                        </div>
+                        {%- comment -%}
+                          Same renderer the cart uses — grouped Kimono/Belt/
+                          Pant sections, identical labels and styling.
+                        {%- endcomment -%}
+                        {%- render 'dspln-line-item-properties', item: line_item -%}
                       {%- endif -%}
                     </div>
                   {%- endunless -%}
