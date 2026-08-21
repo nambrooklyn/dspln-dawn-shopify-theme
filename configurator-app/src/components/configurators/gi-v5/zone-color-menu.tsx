@@ -1,4 +1,5 @@
 import { memo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 import {
@@ -13,6 +14,7 @@ import {
   type PantSubPart,
 } from '../gi/gi-config';
 import { useGiState } from '../gi/gi-state';
+import { formatUsd } from './money';
 import {
   BASE_SIZES,
   CUSTOM_MEASUREMENTS,
@@ -100,7 +102,8 @@ function SizeMatrix({
         </span>
       </button>
 
-      {open ? (
+      {open
+        ? createPortal(
         <div className="fixed inset-0 z-[70]">
           <button
             type="button"
@@ -131,8 +134,10 @@ function SizeMatrix({
               </div>
             ) : null}
           </div>
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -231,8 +236,14 @@ export const GiV5ZoneColorMenu = memo(
           swatch grid (label column is w-14 + gap-2 = 4rem). */}
       <div className="mb-0.5 ml-16 flex rounded-lg border border-black/10 bg-black/5 p-0.5 backdrop-blur-2xl">
         {[
-          { added: true, label: `Add ${GI_PART_DISPLAY[part]} +$${GI_PART_PRICES[part]}` },
-          { added: false, label: `Remove ${GI_PART_DISPLAY[part]}` },
+          {
+            added: true,
+            // The current segment states what IS; the other states the action.
+            label: included
+              ? `Included · ${formatUsd(GI_PART_PRICES[part], { compact: true })}`
+              : `Add · +${formatUsd(GI_PART_PRICES[part], { compact: true })}`,
+          },
+          { added: false, label: included ? 'Remove' : 'Removed' },
         ].map(({ added, label }) => {
           const isCurrent = included === added;
           return (

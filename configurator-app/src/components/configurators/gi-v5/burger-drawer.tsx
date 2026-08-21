@@ -1,34 +1,71 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Check,
+  ChevronDown,
   Copy,
   ExternalLink,
   Images,
   Layers,
   RotateCcw,
   Share2,
+  Trash2,
   User,
   X,
 } from 'lucide-react';
 
 import {
   AUTO_GI_DRAFT_ID,
+  createDraftLogoObjectUrls,
   deleteGiDraftDocument,
+  listSavedGiDesigns,
   readGiDraftDocument,
+  type GiDraftDocument,
 } from '../gi/gi-draft-storage';
 import {
+  deleteGiCloudDesign,
   getGiCloudOwnerContext,
+  listGiCloudDesigns,
   saveGiCloudDesignRecord,
 } from '../gi/gi-cloud-designs';
+import { useGiState, type KimonoLogo } from '../gi/gi-state';
 import { storefrontOrigin } from '../shared/storefront-links';
 import { lockerUrl } from '../shared/dspln-rail-links';
+import type { KimonoLogoSlot, PantLogoSlot } from '../gi/gi-config';
+import {
+  APPLY_TARGETS,
+  useUploadedLogos,
+  type LogoApplyTarget,
+  type UploadedLogoItem,
+} from '../gi/use-uploaded-logos';
+import { currentGiProductConfig } from '../shared/gi-product-config';
+import { useDrawerDialog } from './use-drawer-dialog';
 
 /**
  * The burger drawer — the customer's PERSONAL hub (Nam's call: the burger is
  * "your stuff", not site navigation; the wordmark is the way back to the
- * store). Phase 1: working links to the existing account pages, cloud
- * Save & Share, and start-over. Inline design/upload lists come later.
+ * store).
+ *
+ * Designs and uploads now expand INLINE rather than linking out: leaving the
+ * configurator mid-design is exactly what a personal hub should not require.
+ * Both sections still offer the full account page as a footer link. Data
+ * comes from the same stores the v1 rail reads — local drafts, cloud designs
+ * for signed-in customers, and every image embedded in them.
  */
+
+
+
+const PRODUCT_CONFIG = currentGiProductConfig();
+
+function formatSavedTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 const rowClass =
   'pointer-events-auto flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-black transition hover:bg-black/5 active:bg-black/10';
@@ -52,6 +89,66 @@ function LinkRow({
   );
 }
 
+function SectionHeader({
+  icon,
+  label,
+  count,
+  open,
+  onToggle,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  count: number | null;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className={rowClass}
+      style={rowLabelStyle}
+    >
+      <span className="text-black/50">{icon}</span>
+      <span className="font-medium">{label}</span>
+      {count ? (
+        <span
+          style={{ fontSize: '9px' }}
+          className="rounded-full bg-black/10 px-1.5 py-0.5 font-semibold text-black/55"
+        >
+          {count}
+        </span>
+      ) : null}
+      <ChevronDown
+        className={`ml-auto h-3.5 w-3.5 text-black/30 transition-transform ${open ? 'rotate-180' : ''}`}
+      />
+    </button>
+  );
+}
+
+function SectionNote({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: '10px' }} className="px-6 pb-2 text-black/35">
+      {children}
+    </p>
+  );
+}
+
+function SectionFooterLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_top"
+      style={{ fontSize: '9px' }}
+      className="flex items-center gap-1 px-6 pb-2 font-semibold tracking-[0.12em] text-black/35 uppercase transition hover:text-black"
+    >
+      {label}
+      <ExternalLink className="h-2.5 w-2.5" />
+    </a>
+  );
+}
+
 export const GiV5BurgerDrawer = memo(
   ({ open, onClose }: { open: boolean; onClose: () => void }) => {
     const [shareState, setShareState] = useState<
@@ -61,6 +158,118 @@ export const GiV5BurgerDrawer = memo(
       | { phase: 'error'; message: string }
     >({ phase: 'idle' });
     const [confirmReset, setConfirmReset] = useState(false);
+    const [designsOpen, setDesignsOpen] = useState(false);
+    const [uploadsOpen, setUploadsOpen] = useState(false);
+    const [designs, setDesigns] = useState<GiDraftDocument[]>([]);
+    const [designsLoading, setDesignsLoading] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [applyFor, setApplyFor] = useState<UploadedLogoItem | null>(null);
+
+    const { hydrate, kimonoLogos, pantLogos, setKimonoLogo, setPantLogo } =
+      useGiState();
+
+    const panelRef = useDrawerDialog(open, onClose);
+
+    // The shell renders this drawer unconditionally and it bails with
+    // `return null` AFTER its hooks, so it never unmounts and state
+    // persists. "Start a New Design" left half-armed would then wipe the
+    // draft on a single tap the next time the drawer opened (#2).
+    useEffect(() => {
+      if (open) return;
+      setConfirmReset(false);
+      setShareState({ phase: 'idle' });
+      setConfirmDeleteId(null);
+      setApplyFor(null);
+    }, [open]);
+
+    // Designs are read fresh each time the drawer opens — cheap, and it
+    // avoids showing a list that went stale while the customer worked.
+    const refreshDesigns = useCallback(async () => {
+      setDesignsLoading(true);
+      const [local, cloud] = await Promise.all([
+        listSavedGiDesigns().catch(() => [] as GiDraftDocument[]),
+        listGiCloudDesigns(getGiCloudOwnerContext()).catch(
+          () => [] as GiDraftDocument[],
+        ),
+      ]);
+      // Cloud wins on id collisions: it is the copy the customer can share.
+      const byId = new Map<string, GiDraftDocument>();
+      [...cloud, ...local].forEach((design) => {
+        if (!byId.has(design.id)) byId.set(design.id, design);
+      });
+      setDesigns(
+        [...byId.values()].sort((a, b) =>
+          b.updatedAt.localeCompare(a.updatedAt),
+        ),
+      );
+      setDesignsLoading(false);
+    }, []);
+
+    useEffect(() => {
+      if (!open) return;
+      let active = true;
+      void (async () => {
+        await refreshDesigns();
+        if (!active) setDesignsLoading(false);
+      })();
+      return () => {
+        active = false;
+      };
+    }, [open, refreshDesigns]);
+
+    const uploads = useUploadedLogos({
+      savedDesigns: designs,
+      currentKimonoLogos: kimonoLogos,
+      currentPantLogos: pantLogos,
+      defaultDesignName: PRODUCT_CONFIG.designNamePrefix,
+    });
+
+    const handleLoadDesign = useCallback(
+      (design: GiDraftDocument) => {
+        // 'front-far' is v5's resting framing — the default 'front' would
+        // stomp the shell's zoomed-out view on restore.
+        hydrate(design.spec, createDraftLogoObjectUrls(design), 'front-far');
+        onClose();
+      },
+      [hydrate, onClose],
+    );
+
+    const handleDeleteDesign = useCallback(
+      async (id: string) => {
+        if (confirmDeleteId !== id) {
+          setConfirmDeleteId(id);
+          return;
+        }
+        setConfirmDeleteId(null);
+        // Same pair the v1 rail deletes — local draft and cloud record.
+        await Promise.allSettled([
+          deleteGiDraftDocument(id),
+          deleteGiCloudDesign(id, getGiCloudOwnerContext()),
+        ]);
+        await refreshDesigns();
+      },
+      [confirmDeleteId, refreshDesigns],
+    );
+
+    const handleApplyUpload = useCallback(
+      (item: UploadedLogoItem, target: LogoApplyTarget) => {
+        const logo: KimonoLogo = {
+          imageUrl: item.url,
+          filename: item.filename,
+          imageWidth: item.imageWidth,
+          imageHeight: item.imageHeight,
+        };
+        const [group, slot] = target.split(':');
+        if (group === 'kimono') {
+          setKimonoLogo(slot as KimonoLogoSlot, logo);
+        } else {
+          setPantLogo(slot as PantLogoSlot, logo);
+        }
+        setApplyFor(null);
+        onClose();
+      },
+      [onClose, setKimonoLogo, setPantLogo],
+    );
 
     const owner = useMemo(
       () => (open ? getGiCloudOwnerContext() : null),
@@ -139,7 +348,14 @@ export const GiV5BurgerDrawer = memo(
         />
 
         {/* Left sheet */}
-        <div className="absolute top-0 bottom-0 left-0 flex w-72 max-w-[85vw] flex-col rounded-r-3xl border border-white/40 bg-white/85 shadow-[12px_0_48px_rgba(0,0,0,0.25)] backdrop-blur-2xl backdrop-saturate-150">
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Your Studio"
+          tabIndex={-1}
+          className="absolute top-0 bottom-0 left-0 flex w-72 max-w-[85vw] flex-col rounded-r-3xl border border-white/40 bg-white/85 shadow-[12px_0_48px_rgba(0,0,0,0.25)] backdrop-blur-2xl backdrop-saturate-150 outline-none"
+        >
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
             <span className="text-[12px] font-bold tracking-[0.16em] text-black uppercase">
               Your Studio
@@ -163,16 +379,169 @@ export const GiV5BurgerDrawer = memo(
           </p>
 
           <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
-            <LinkRow
+            {/* My Designs — inline, tap to restore */}
+            <SectionHeader
               icon={<Layers className="h-4 w-4" />}
               label="My Designs"
-              href={`${locker}?page=designs`}
+              count={designs.length}
+              open={designsOpen}
+              onToggle={() => setDesignsOpen((wasOpen) => !wasOpen)}
             />
-            <LinkRow
+            {designsOpen ? (
+              <>
+                {designsLoading && !designs.length ? (
+                  <SectionNote>Loading…</SectionNote>
+                ) : !designs.length ? (
+                  <SectionNote>
+                    Nothing saved yet — use Save &amp; Share below to keep this
+                    one.
+                  </SectionNote>
+                ) : (
+                  <div className="flex flex-col">
+                    {designs.map((design) => (
+                      <div
+                        key={design.id}
+                        className="flex items-center gap-2 rounded-xl px-3 py-1.5 transition hover:bg-black/5"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleLoadDesign(design)}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                        >
+                          <span className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-black/10 bg-white">
+                            {design.thumbnailUrl ? (
+                              <img
+                                src={design.thumbnailUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : null}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span
+                              style={{ fontSize: '11px' }}
+                              className="block truncate font-medium text-black"
+                            >
+                              {design.name}
+                            </span>
+                            <span
+                              style={{ fontSize: '9px' }}
+                              className="block text-black/40"
+                            >
+                              {formatSavedTime(design.updatedAt)}
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={
+                            confirmDeleteId === design.id
+                              ? `Confirm delete ${design.name}`
+                              : `Delete ${design.name}`
+                          }
+                          onClick={() => void handleDeleteDesign(design.id)}
+                          onBlur={() => setConfirmDeleteId(null)}
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${
+                            confirmDeleteId === design.id
+                              ? 'bg-red-50 text-red-800'
+                              : 'text-black/30 hover:bg-black/5 hover:text-black'
+                          }`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {confirmDeleteId ? (
+                  <SectionNote>Tap the bin again to delete for good.</SectionNote>
+                ) : null}
+                <SectionFooterLink
+                  href={`${locker}?page=designs`}
+                  label="Open full page"
+                />
+              </>
+            ) : null}
+
+            {/* My Uploads — inline, tap an image then pick where it goes */}
+            <SectionHeader
               icon={<Images className="h-4 w-4" />}
               label="My Uploads"
-              href={`${locker}?page=uploads`}
+              count={uploads.length}
+              open={uploadsOpen}
+              onToggle={() => setUploadsOpen((wasOpen) => !wasOpen)}
             />
+            {uploadsOpen ? (
+              <>
+                {!uploads.length ? (
+                  <SectionNote>
+                    No artwork yet — upload a logo from any placement square.
+                  </SectionNote>
+                ) : applyFor ? (
+                  <div className="px-3 pb-2">
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <span className="h-8 w-8 shrink-0 overflow-hidden rounded-md border border-black/10 bg-white p-0.5">
+                        <img
+                          src={applyFor.url}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      </span>
+                      <span
+                        style={{ fontSize: '10px' }}
+                        className="min-w-0 flex-1 truncate text-black/55"
+                      >
+                        Place on…
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="Cancel placement"
+                        onClick={() => setApplyFor(null)}
+                        className="flex h-6 w-6 items-center justify-center rounded-md text-black/40 transition hover:bg-black/5 hover:text-black"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {APPLY_TARGETS.map((target) => (
+                        <button
+                          key={target.value}
+                          type="button"
+                          onClick={() => handleApplyUpload(applyFor, target.value)}
+                          style={{ fontSize: '10px' }}
+                          className="rounded-md border border-black/10 bg-white/70 px-2 py-1.5 text-black transition hover:bg-black hover:text-white"
+                        >
+                          {target.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5 px-3 pb-2">
+                    {uploads.map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setApplyFor(item)}
+                        title={item.filename}
+                        aria-label={`Place ${item.filename}`}
+                        className="aspect-square overflow-hidden rounded-md border border-black/10 bg-white p-1 transition hover:border-black/40"
+                      >
+                        <img
+                          src={item.url}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <SectionFooterLink
+                  href={`${locker}?page=uploads`}
+                  label="Open full page"
+                />
+              </>
+            ) : null}
 
             {/* Save & share — the drawer's one action */}
             <button
