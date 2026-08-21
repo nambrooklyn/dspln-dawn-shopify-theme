@@ -18,6 +18,8 @@ import { LongSleeveRashguardConfigurator } from './long-sleeve-rashguard';
 import { ShortSleeveRashguardConfigurator } from './short-sleeve-rashguard';
 import { ShortSleeveRashguardV2Configurator } from './short-sleeve-rashguard-v2';
 import { WomensGiConfigurator } from './womens-gi';
+import { WomensGiV5Configurator } from './womens-gi-v5';
+import { KidsGiV5Configurator } from './kids-gi-v5';
 
 /**
  * Map of configurator slug → React component.
@@ -34,9 +36,10 @@ export const CONFIGURATOR_REGISTRY: Record<string, ComponentType> = {
   'gi-v4': GiV4Configurator,
   // v5: fixed ⊕ rail left of the model with leader lines per part.
   'gi-v5': GiV5Configurator,
-  // Same v5 shell, sibling gi products (config picked by slug).
-  'womens-gi-v5': GiV5Configurator,
-  'kids-gi-v5': GiV5Configurator,
+  // V5 shells mounted on the sibling product pipelines (own mesh maps,
+  // materials, anchors — the shared gi pipeline only fits the mens GLB).
+  'womens-gi-v5': WomensGiV5Configurator,
+  'kids-gi-v5': KidsGiV5Configurator,
   'mens-kimono': MensKimonoConfigurator,
   'mens-belt': MensBeltConfigurator,
   'mens-pant': MensPantConfigurator,

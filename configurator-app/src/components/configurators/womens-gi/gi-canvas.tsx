@@ -1,4 +1,5 @@
-import { memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls } from '@react-three/drei';
 import { ModelLoadingOverlay } from '../shared/model-loading-overlay';
@@ -41,8 +42,8 @@ import { VerticalCameraControls, useVerticalCameraPan } from '../shared/vertical
 import { IN_TO_WORLD, ProjectedDecal, decalLoadStarted, decalLoadSettled } from '../shared/projected-decal';
 
 const CAMERA_MIN_DISTANCE = 1.2;
-const DESKTOP_CAMERA_MAX_DISTANCE = 5.0;
-const MOBILE_CAMERA_MAX_DISTANCE = 4.6;
+const DESKTOP_CAMERA_MAX_DISTANCE = 5.6;
+const MOBILE_CAMERA_MAX_DISTANCE = 5.5;
 
 // Surface normal for each slot — derived from the slot's plane
 // rotation (Y axis only, for our four anchors). Used to push the
@@ -915,6 +916,8 @@ const Scene = memo(({ useMobileCamera }: { useMobileCamera: boolean }) => {
 Scene.displayName = 'GiCanvasScene';
 
 interface GiCanvasProps {
+  /** Rendered INSIDE the R3F canvas — v5 hotspot layers pin to 3D points. */
+  overlay?: ReactNode;
   className?: string;
 }
 
@@ -922,7 +925,7 @@ interface GiCanvasProps {
  * The 3D scene the merchant interacts with. Sits where the Fabric.js
  * canvas sits in the 2D editor.
  */
-export const GiCanvas = memo(({ className }: GiCanvasProps) => {
+export const GiCanvas = memo(({ className, overlay }: GiCanvasProps) => {
   const { selectLayer, cameraView } = useGiState();
   const [useMobileCamera, setUseMobileCamera] = useState(false);
   const initialPosition = cameraViewToPosition(cameraView, useMobileCamera);
@@ -973,6 +976,7 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
         }}
       >
         <Scene useMobileCamera={useMobileCamera} />
+        {overlay}
       </Canvas>
       <ModelLoadingOverlay />
       <VerticalCameraControls />

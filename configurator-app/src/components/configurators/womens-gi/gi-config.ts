@@ -317,6 +317,7 @@ export const BELT_EMBROIDERY_DEFAULT = {
 
 export type CameraView =
   | 'front'
+  | 'front-far'
   | 'back'
   | 'left'
   | 'right'
@@ -344,6 +345,8 @@ export type CameraView =
 // (head to feet) with the women's GLB sitting lower in the viewport.
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   front: [0, 1.55, 4.8],
+  // v5's wider resting view.
+  'front-far': [0, 1.55, 4.8],
   back: [0, 1.55, -4.8],
   left: [-4.8, 1.55, 0],
   right: [4.8, 1.55, 0],
@@ -372,6 +375,7 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
 
 export const MOBILE_CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   front: [0, 1.55, 4.35],
+  'front-far': [0, 1.55, 5.15],
   back: [0, 1.55, -4.35],
   left: [-4.35, 1.55, 0],
   right: [4.35, 1.55, 0],
@@ -406,6 +410,7 @@ export const CAMERA_TARGET: [number, number, number] = [0, 1.55, 0];
 
 export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   front: CAMERA_TARGET,
+  'front-far': CAMERA_TARGET,
   back: CAMERA_TARGET,
   left: CAMERA_TARGET,
   right: CAMERA_TARGET,
