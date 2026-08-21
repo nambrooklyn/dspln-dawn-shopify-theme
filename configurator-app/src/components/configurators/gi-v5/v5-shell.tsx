@@ -32,6 +32,7 @@ import { formatUsd } from './money';
 import { GiV5ZoneColorMenu } from './zone-color-menu';
 import { GiV5CartDrawer } from './cart-drawer';
 import { GiV5BurgerDrawer } from './burger-drawer';
+import { GiV5StudioSheet, type StudioSheetTab } from './studio-sheet';
 import {
   DesignAssistant,
   shouldShowDesignAssistant,
@@ -211,6 +212,7 @@ export const GiV5Shell = memo(
     const [activePart, setActivePart] = useState<GiPart | null>(null);
     const [activeAnchor, setActiveAnchor] = useState<GiV2Anchor | null>(null);
     const [burgerOpen, setBurgerOpen] = useState(false);
+    const [studioTab, setStudioTab] = useState<StudioSheetTab | null>(null);
     const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
     const [showAssistant] = useState(shouldShowDesignAssistant);
     const [assistantSignal, setAssistantSignal] = useState(0);
@@ -726,6 +728,18 @@ export const GiV5Shell = memo(
         <GiV5BurgerDrawer
           open={burgerOpen}
           onClose={() => setBurgerOpen(false)}
+          onOpenStudio={(tab) => {
+            setBurgerOpen(false);
+            setStudioTab(tab);
+          }}
+        />
+
+        {/* Studio Sheet — designs/uploads gallery; the gi stays visible
+            above it so restores and placements happen live in view. */}
+        <GiV5StudioSheet
+          tab={studioTab}
+          onTabChange={setStudioTab}
+          onClose={() => setStudioTab(null)}
         />
 
 
