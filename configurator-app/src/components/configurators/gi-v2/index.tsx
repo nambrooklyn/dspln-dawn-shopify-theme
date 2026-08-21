@@ -15,6 +15,7 @@ import {
   AUTO_GI_DRAFT_ID,
   createDraftLogoObjectUrls,
   createGiDraftDocument,
+  listSavedGiDesigns,
   readGiDraftDocument,
   saveGiDraftDocument,
   type GiDraftDocument,
@@ -43,6 +44,9 @@ import {
   type ShopifyCartLine,
 } from '../shared/shopify-cart-simulator';
 import { currentGiProductConfig } from '../shared/gi-product-config';
+import { listGiCloudDesigns } from '../gi/gi-cloud-designs';
+import { UploadedLogosProvider } from '../gi/uploaded-logos-context';
+import { useUploadedLogos } from '../gi/use-uploaded-logos';
 import { GiV2Shell } from './v2-shell';
 
 /**
@@ -228,6 +232,35 @@ const GiV2ConfiguratorInner = memo(({
   const [cloudOwnerContext] = useState(() => getGiCloudOwnerContext());
   const [currentDesignName] = useState(formatDesignName);
   const draftReadyRef = useRef(false);
+
+  // The customer's uploaded-artwork library (current design + every saved
+  // design, local and cloud) — the logo panels offer these as one-tap
+  // re-apply thumbnails.
+  const [savedDesigns, setSavedDesigns] = useState<GiDraftDocument[]>([]);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const [localResult, cloudResult] = await Promise.allSettled([
+        listSavedGiDesigns(),
+        listGiCloudDesigns(cloudOwnerContext),
+      ]);
+      if (!active) return;
+      const local =
+        localResult.status === 'fulfilled' ? localResult.value : [];
+      const cloud =
+        cloudResult.status === 'fulfilled' ? cloudResult.value : [];
+      setSavedDesigns([...local, ...cloud]);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [cloudOwnerContext]);
+  const uploadedLogos = useUploadedLogos({
+    savedDesigns,
+    currentKimonoLogos: kimonoLogos,
+    currentPantLogos: pantLogos,
+    defaultDesignName: currentDesignName,
+  });
 
   // Hydrate: cart-edit messages from the Shopify parent.
   useEffect(() => {
@@ -434,7 +467,7 @@ const GiV2ConfiguratorInner = memo(({
   ]);
 
   return (
-    <>
+    <UploadedLogosProvider value={uploadedLogos}>
       <Shell
         onAddToCart={handleAddToCart}
         isAddingToCart={isAddingToCart}
@@ -447,7 +480,7 @@ const GiV2ConfiguratorInner = memo(({
         onClose={() => setCartOpen(false)}
         onClear={() => setCartLines([])}
       />
-    </>
+    </UploadedLogosProvider>
   );
 });
 
