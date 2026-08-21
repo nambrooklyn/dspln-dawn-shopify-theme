@@ -28,6 +28,7 @@ import {
   QuietHotspotsLayer,
   type QuietMarker,
 } from '../gi-v3/quiet-hotspots';
+import { formatUsd } from './money';
 import { GiV5ZoneColorMenu } from './zone-color-menu';
 import { GiV5CartDrawer } from './cart-drawer';
 import { GiV5BurgerDrawer } from './burger-drawer';
@@ -111,6 +112,19 @@ const V5_EXTRA_STYLES = `
   to { opacity: 1; }
 }
 .dspln-v5-intro-overlay { animation: dspln-v5-intro-fade 0.4s ease-out; }
+/* Reduced motion: no looping pulse, no bobbing arrows, no drop-in. The
+   scripted intro is skipped outright in the timeline effect — an
+   auto-advancing tour is itself a motion/timing problem, not just an
+   animated one. */
+@media (prefers-reduced-motion: reduce) {
+  .dspln-v5-plus,
+  .dspln-v5-intro-arrow,
+  .dspln-v5-drop,
+  .dspln-v5-intro-overlay {
+    animation: none !important;
+  }
+  .dspln-v5-drop { opacity: 1; }
+}
 /* Chatra's collapsed bubble: mirror the AI assistant bubble exactly
    (48px, 16px from the side, 24px from the bottom) for symmetry. */
 #chatra:not(.chatra--expanded) {
@@ -124,6 +138,47 @@ const V5_EXTRA_STYLES = `
 const TAP_SLOP_PX = 8;
 
 const RAIL_PARTS: GiPart[] = ['jacket', 'belt', 'pants'];
+
+type CornerId = 'studio' | 'bag' | 'chat' | 'ai';
+
+/**
+ * Beat-5 corner tour. Clockwise from the top left; `edge` places the caption
+ * and `arrow` points back at the control. Which corners run is decided at
+ * runtime — Chatra is skipped when embedded and the AI bubble can be turned
+ * off with ?assistant=0, and a tour that names an empty corner is worse than
+ * no tour (#8).
+ */
+const CORNER_TOUR: Record<
+  CornerId,
+  { text: string; edge: 'top' | 'bottom'; arrow: string; arrowFirst: boolean }
+> = {
+  studio: {
+    text: 'Your saved designs',
+    edge: 'top',
+    arrow: '\u2196',
+    arrowFirst: true,
+  },
+  bag: {
+    text: 'Review & add to cart',
+    edge: 'top',
+    arrow: '\u2197',
+    arrowFirst: false,
+  },
+  chat: {
+    text: 'Questions? Chat with us',
+    edge: 'bottom',
+    arrow: '\u2198',
+    arrowFirst: false,
+  },
+  ai: {
+    text: 'AI designs it for you',
+    edge: 'bottom',
+    arrow: '\u2199',
+    arrowFirst: true,
+  },
+};
+
+const CORNER_STEP_MS = 2000;
 
 function anchorToMarker(anchor: GiV2Anchor, filledIds: Set<string>): QuietMarker {
   const square = anchor.kind === 'kimono-logo' || anchor.kind === 'pant-logo';
@@ -160,11 +215,25 @@ export const GiV5Shell = memo(
     const [showAssistant] = useState(shouldShowDesignAssistant);
     const [assistantSignal, setAssistantSignal] = useState(0);
     const [baseView] = useState<CameraView>('front-far');
+    // Chatra only loads standalone (see the effect below) — when embedded,
+    // the Shopify parent owns the widget and there is nothing in our
+    // bottom-right corner to point at.
+    const [chatEnabled] = useState(
+      () => typeof window !== 'undefined' && window.parent === window,
+    );
     // Onboarding, three beats on every page load (Nam's call — was
     // first-visit-only): rail buttons drop in, the screen dims with a
     // one-line hint, then the Kimono menu opens itself. Any tap
-    // fast-forwards.
-    const [firstVisit] = useState(true);
+    // fast-forwards. Skipped entirely under prefers-reduced-motion: an
+    // auto-advancing tour is a timing problem as much as an animation one.
+    const [runIntro] = useState(
+      () =>
+        typeof window === 'undefined' ||
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches !== true,
+    );
+    // The rail's attract pulse retires once the customer has touched
+    // anything — it has done its job by then (#11).
+    const [railPulse, setRailPulse] = useState(true);
     const [showIntro, setShowIntro] = useState(false);
     const introDoneRef = useRef(false);
     const dismissIntro = useCallback(() => {
@@ -178,6 +247,15 @@ export const GiV5Shell = memo(
     // (burger → bag → chat → AI). 0 = off, 1-4 = current corner.
     const [cornerStep, setCornerStep] = useState(0);
     const hintsCancelledRef = useRef(false);
+    const cornerTour = useMemo<CornerId[]>(() => {
+      const ids: CornerId[] = ['studio', 'bag'];
+      if (chatEnabled) ids.push('chat');
+      if (showAssistant) ids.push('ai');
+      return ids;
+    }, [chatEnabled, showAssistant]);
+    const cornerTourRef = useRef(cornerTour);
+    cornerTourRef.current = cornerTour;
+    const activeCorner = cornerStep > 0 ? (cornerTour[cornerStep - 1] ?? null) : null;
 
     // Rest at the slightly wider default framing on mount.
     useEffect(() => {
@@ -189,7 +267,7 @@ export const GiV5Shell = memo(
     // bottom-right. Skipped when embedded: the Shopify parent page already
     // loads Chatra, and two widgets would stack.
     useEffect(() => {
-      if (window.parent !== window) return;
+      if (!chatEnabled) return;
       const w = window as unknown as {
         ChatraID?: string;
         Chatra?: { (...args: unknown[]): void; q?: unknown[] };
@@ -269,44 +347,51 @@ export const GiV5Shell = memo(
     const railTapRef = useRef(handleRailTap);
     railTapRef.current = handleRailTap;
     useEffect(() => {
-      if (!firstVisit) return;
+      if (!runIntro) return;
+      const tourStart = 9100;
+      const tour = cornerTourRef.current;
       const timers = [
         setTimeout(() => {
           if (!introDoneRef.current) setShowIntro(true);
         }, 1100),
         setTimeout(() => {
-          if (!introDoneRef.current) {
-            dismissIntro();
-            railTapRef.current('jacket');
-          }
+          // Guarded by BOTH refs now: a tap anywhere sets introDoneRef, so
+          // this beat can no longer hijack a customer who is already busy.
+          if (introDoneRef.current || hintsCancelledRef.current) return;
+          dismissIntro();
+          railTapRef.current('jacket');
         }, 4600),
         setTimeout(() => {
           if (!hintsCancelledRef.current) setShowHints(true);
         }, 5400),
         setTimeout(() => setShowHints(false), 8700),
-        // Beat 5: close the menu, zoom back out, then tour the corners
-        // clockwise, ~2s each.
+        // Beat 5: close the menu, zoom back out, then tour whichever corners
+        // actually rendered, clockwise, ~2s each.
         setTimeout(() => {
           if (!hintsCancelledRef.current) {
             setActivePart(null);
             setCameraView(baseView);
             setCornerStep(1);
           }
-        }, 9100),
-        setTimeout(() => {
-          if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 2 : 0));
-        }, 11100),
-        setTimeout(() => {
-          if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 3 : 0));
-        }, 13100),
-        setTimeout(() => {
-          if (!hintsCancelledRef.current) setCornerStep((n) => (n ? 4 : 0));
-        }, 15100),
-        setTimeout(() => setCornerStep(0), 17100),
+        }, tourStart),
+        ...tour.slice(1).map((_, index) =>
+          setTimeout(
+            () => {
+              if (!hintsCancelledRef.current) {
+                setCornerStep((n) => (n ? index + 2 : 0));
+              }
+            },
+            tourStart + (index + 1) * CORNER_STEP_MS,
+          ),
+        ),
+        setTimeout(
+          () => setCornerStep(0),
+          tourStart + tour.length * CORNER_STEP_MS,
+        ),
       ];
       return () => timers.forEach(clearTimeout);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [firstVisit]);
+    }, [runIntro]);
 
     const handleMarkerSelect = useCallback(
       (marker: QuietMarker) => {
@@ -331,10 +416,16 @@ export const GiV5Shell = memo(
 
     const handlePointerDown = useCallback((event: ReactPointerEvent) => {
       downPosRef.current = { x: event.clientX, y: event.clientY };
-      // Any interaction clears (or pre-empts) the guided callouts.
+      // Any interaction ends the WHOLE intro, not just the callouts. This
+      // used to set only hintsCancelledRef, which left the 4600ms beat free
+      // to fire — tap the burger at 2s and the Kimono menu force-opened
+      // behind your drawer at 4.6s, dragging the camera with it (#1).
+      introDoneRef.current = true;
       hintsCancelledRef.current = true;
+      setShowIntro(false);
       setShowHints(false);
       setCornerStep(0);
+      setRailPulse(false);
     }, []);
 
     const handleRootClick = useCallback(
@@ -469,54 +560,34 @@ export const GiV5Shell = memo(
 
         {/* Beat-5 corner tour: one corner at a time, clockwise. The corner
             controls themselves (z-40 / Chatra's own stack) stay bright above
-            the dim. */}
-        {cornerStep > 0 ? (
-          <div className="dspln-v5-intro-overlay pointer-events-none absolute inset-0 z-[25] bg-black/40">
-            {cornerStep === 1 ? (
-              <div className="absolute inset-x-0 top-14 flex items-center justify-center gap-2">
-                <span className="dspln-v5-intro-arrow text-lg text-white">↖</span>
-                <span
-                  style={{ fontSize: '10px' }}
-                  className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+            the dim. Corners with nothing in them are never toured (#8). */}
+        {activeCorner ? (
+          (() => {
+            const { text, edge, arrow, arrowFirst } = CORNER_TOUR[activeCorner];
+            const label = (
+              <span
+                style={{ fontSize: '10px' }}
+                className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
+              >
+                {text}
+              </span>
+            );
+            const mark = (
+              <span className="dspln-v5-intro-arrow text-lg text-white">
+                {arrow}
+              </span>
+            );
+            return (
+              <div className="dspln-v5-intro-overlay pointer-events-none absolute inset-0 z-[25] bg-black/40">
+                <div
+                  className={`absolute inset-x-0 ${edge === 'top' ? 'top-14' : 'bottom-32'} flex items-center justify-center gap-2`}
                 >
-                  Your saved designs
-                </span>
+                  {arrowFirst ? mark : label}
+                  {arrowFirst ? label : mark}
+                </div>
               </div>
-            ) : null}
-            {cornerStep === 2 ? (
-              <div className="absolute inset-x-0 top-14 flex items-center justify-center gap-2">
-                <span
-                  style={{ fontSize: '10px' }}
-                  className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
-                >
-                  Review &amp; add to cart
-                </span>
-                <span className="dspln-v5-intro-arrow text-lg text-white">↗</span>
-              </div>
-            ) : null}
-            {cornerStep === 3 ? (
-              <div className="absolute inset-x-0 bottom-32 flex items-center justify-center gap-2">
-                <span
-                  style={{ fontSize: '10px' }}
-                  className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
-                >
-                  Questions? Chat with us
-                </span>
-                <span className="dspln-v5-intro-arrow text-lg text-white">↘</span>
-              </div>
-            ) : null}
-            {cornerStep === 4 ? (
-              <div className="absolute inset-x-0 bottom-32 flex items-center justify-center gap-2">
-                <span className="dspln-v5-intro-arrow text-lg text-white">↙</span>
-                <span
-                  style={{ fontSize: '10px' }}
-                  className="font-semibold tracking-[0.16em] whitespace-nowrap text-white uppercase"
-                >
-                  AI designs it for you
-                </span>
-              </div>
-            ) : null}
-          </div>
+            );
+          })()
         ) : null}
 
         {/* ⊕ rail — horizontal, bottom center */}
@@ -547,15 +618,15 @@ export const GiV5Shell = memo(
             return (
               <div
                 key={part}
-                className={`relative flex flex-col items-center gap-1 ${firstVisit ? 'dspln-v5-drop' : ''}`}
-                style={firstVisit ? { animationDelay: `${0.2 + index * 0.18}s` } : undefined}
+                className={`relative flex flex-col items-center gap-1 ${runIntro ? 'dspln-v5-drop' : ''}`}
+                style={runIntro ? { animationDelay: `${0.2 + index * 0.18}s` } : undefined}
               >
                 <button
                   type="button"
                   aria-label={
                     included
                       ? `Customize ${GI_PART_DISPLAY[part]}`
-                      : `Add ${GI_PART_DISPLAY[part]} for $${GI_PART_PRICES[part]}`
+                      : `Add ${GI_PART_DISPLAY[part]} for ${formatUsd(GI_PART_PRICES[part])}`
                   }
                   aria-pressed={isActive}
                   // Ghost ⊕ = removed part; tapping just opens its menu —
@@ -565,7 +636,7 @@ export const GiV5Shell = memo(
                     isActive
                       ? 'dspln-v5-plus is-active border-black bg-black text-white'
                       : included
-                        ? 'dspln-v5-plus border-black/30 bg-white/30 text-black/70 backdrop-blur-md hover:border-black hover:text-black'
+                        ? `${railPulse ? 'dspln-v5-plus ' : ''}border-black/30 bg-white/30 text-black/70 backdrop-blur-md hover:border-black hover:text-black`
                         : 'border-dashed border-black/25 bg-white/10 text-black/30 backdrop-blur-md hover:border-black/60 hover:text-black/70'
                   }`}
                 >
@@ -586,7 +657,7 @@ export const GiV5Shell = memo(
                 >
                   {included
                     ? GI_PART_DISPLAY[part]
-                    : `${GI_PART_DISPLAY[part]} · +$${GI_PART_PRICES[part]}`}
+                    : `${GI_PART_DISPLAY[part]} · +${formatUsd(GI_PART_PRICES[part], { compact: true })}`}
                 </span>
               </div>
             );
@@ -600,14 +671,14 @@ export const GiV5Shell = memo(
           <div className="absolute top-4 right-4 z-40 flex flex-col items-center gap-1">
             <button
               type="button"
-              aria-label={`Review order — $${total}`}
+              aria-label={`Review order — ${formatUsd(total)}`}
               onClick={() => setCartDrawerOpen(true)}
               className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/45 text-white shadow-[0_4px_16px_rgba(0,0,0,0.15)] transition hover:bg-black"
             >
               <ShoppingBag className="h-5 w-5" />
             </button>
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/45">
-              {isAddingToCart ? '…' : `$${total}`}
+              {isAddingToCart ? '…' : formatUsd(total, { compact: true })}
             </span>
           </div>
         ) : null}
