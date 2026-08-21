@@ -85,6 +85,14 @@ export const GiAnchorPanel = memo(
                 file,
               });
             }}
+            onApplyExisting={(item) => {
+              setKimonoLogo(anchor.slot, {
+                imageUrl: item.url,
+                imageWidth: item.imageWidth,
+                imageHeight: item.imageHeight,
+                filename: item.filename,
+              });
+            }}
             onRemove={() => removeKimonoLogo(anchor.slot)}
             onClose={onClose}
           />
@@ -104,6 +112,14 @@ export const GiAnchorPanel = memo(
                 imageHeight: dimensions.height,
                 filename: file.name,
                 file,
+              });
+            }}
+            onApplyExisting={(item) => {
+              setPantLogo(anchor.slot, {
+                imageUrl: item.url,
+                imageWidth: item.imageWidth,
+                imageHeight: item.imageHeight,
+                filename: item.filename,
               });
             }}
             onRemove={() => removePantLogo(anchor.slot)}

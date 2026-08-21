@@ -16,6 +16,8 @@ import {
   nameForHex,
 } from '../gi/gi-config';
 import { useGiState } from '../gi/gi-state';
+import { useSavedUploads } from '../gi/uploaded-logos-context';
+import type { UploadedLogoItem } from '../gi/use-uploaded-logos';
 import {
   BASE_SIZES,
   CUSTOM_MEASUREMENTS,
@@ -172,6 +174,7 @@ export const GiV2LogoPanel = memo(
     imageUrl,
     filename,
     onUpload,
+    onApplyExisting,
     onRemove,
     onClose,
   }: {
@@ -182,10 +185,17 @@ export const GiV2LogoPanel = memo(
       file: File,
       dimensions: { width: number; height: number },
     ) => void;
+    /** Apply a previously uploaded artwork (from the customer's library). */
+    onApplyExisting?: (item: UploadedLogoItem) => void;
     onRemove: () => void;
     onClose: () => void;
   }) => {
     const fileRef = useRef<HTMLInputElement>(null);
+    const savedUploads = useSavedUploads();
+    // Don't offer the artwork that's already ON this slot.
+    const reusableUploads = savedUploads.filter(
+      (item) => item.url !== imageUrl,
+    );
 
     const handleInputChange = useCallback(
       async (event: ChangeEvent<HTMLInputElement>) => {
@@ -240,6 +250,33 @@ export const GiV2LogoPanel = memo(
             </button>
           ) : null}
         </div>
+        {onApplyExisting && reusableUploads.length > 0 ? (
+          <div className="mt-2.5">
+            <p className="mb-1.5 text-[9px] font-semibold tracking-[0.12em] text-black/45 uppercase">
+              Your uploads
+            </p>
+            <div className="flex max-w-56 flex-wrap gap-1.5">
+              {reusableUploads.slice(0, 8).map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  title={`${item.filename} — tap to place here`}
+                  aria-label={`Place ${item.filename} here`}
+                  onClick={() => onApplyExisting(item)}
+                  className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-black/10 bg-white/80 p-1 transition hover:border-black hover:bg-white"
+                >
+                  <img
+                    src={item.url}
+                    alt=""
+                    className="max-h-full max-w-full object-contain"
+                    draggable={false}
+                    loading="lazy"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <input
           ref={fileRef}
           type="file"

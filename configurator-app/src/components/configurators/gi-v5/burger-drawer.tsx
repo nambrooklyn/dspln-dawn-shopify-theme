@@ -20,6 +20,8 @@ import {
   getGiCloudOwnerContext,
   saveGiCloudDesignRecord,
 } from '../gi/gi-cloud-designs';
+import { storefrontOrigin } from '../shared/storefront-links';
+import { lockerUrl } from '../shared/dspln-rail-links';
 
 /**
  * The burger drawer — the customer's PERSONAL hub (Nam's call: the burger is
@@ -27,16 +29,6 @@ import {
  * store). Phase 1: working links to the existing account pages, cloud
  * Save & Share, and start-over. Inline design/upload lists come later.
  */
-
-function shopOrigin() {
-  try {
-    const shop = new URLSearchParams(window.location.search).get('shop');
-    if (shop) return `https://${shop}`;
-  } catch {
-    // fall through
-  }
-  return 'https://dspln.com';
-}
 
 const rowClass =
   'pointer-events-auto flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-black transition hover:bg-black/5 active:bg-black/10';
@@ -75,7 +67,8 @@ export const GiV5BurgerDrawer = memo(
       [open],
     );
     const signedIn = Boolean(owner?.shopifyCustomerId);
-    const origin = useMemo(shopOrigin, []);
+    const origin = useMemo(storefrontOrigin, []);
+    const locker = useMemo(lockerUrl, []);
 
     const handleShare = useCallback(async () => {
       setShareState({ phase: 'saving' });
@@ -173,12 +166,12 @@ export const GiV5BurgerDrawer = memo(
             <LinkRow
               icon={<Layers className="h-4 w-4" />}
               label="My Designs"
-              href={`${origin}/pages/my-designs`}
+              href={`${locker}?page=designs`}
             />
             <LinkRow
               icon={<Images className="h-4 w-4" />}
               label="My Uploads"
-              href={`${origin}/pages/my-logos`}
+              href={`${locker}?page=uploads`}
             />
 
             {/* Save & share — the drawer's one action */}

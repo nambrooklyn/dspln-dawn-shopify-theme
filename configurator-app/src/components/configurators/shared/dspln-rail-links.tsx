@@ -3,6 +3,7 @@
  * Locker's rail, so a link added here shows up on every page that renders
  * the left rail. Defined once; imported everywhere.
  */
+import { storefrontOrigin } from './storefront-links';
 import { memo } from 'react';
 
 function LockerIcon() {
@@ -30,21 +31,9 @@ function LockerIcon() {
 /** The customer-facing Locker lives on the Shopify storefront. */
 export function lockerUrl(): string {
   if (typeof window === 'undefined') return '/pages/locker';
-  try {
-    const referrer = document.referrer ? new URL(document.referrer) : null;
-    if (referrer && referrer.origin !== window.location.origin) {
-      return new URL('/pages/locker', referrer.origin).toString();
-    }
-  } catch {
-    // Fall back to the store encoded in the configurator query.
-  }
-  const shop = new URLSearchParams(window.location.search).get('shop');
-  const isDevDeploy = window.location.hostname.startsWith('dev--');
-  return shop
-    ? `https://${shop.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}/pages/locker`
-    : isDevDeploy
-      ? 'https://dspln-dev-2.myshopify.com/pages/locker'
-    : 'https://dspln.com/pages/locker';
+  // storefrontOrigin already resolves referrer → shop param → dev-host
+  // fallback (dev deploys, localhost, LAN) → production.
+  return `${storefrontOrigin()}/pages/locker`;
 }
 
 /** Navigate the TOP window (break out of the storefront iframe) to the Locker. */
