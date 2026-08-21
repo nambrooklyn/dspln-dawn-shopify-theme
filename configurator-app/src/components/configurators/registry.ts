@@ -34,6 +34,9 @@ export const CONFIGURATOR_REGISTRY: Record<string, ComponentType> = {
   'gi-v4': GiV4Configurator,
   // v5: fixed ⊕ rail left of the model with leader lines per part.
   'gi-v5': GiV5Configurator,
+  // Same v5 shell, sibling gi products (config picked by slug).
+  'womens-gi-v5': GiV5Configurator,
+  'kids-gi-v5': GiV5Configurator,
   'mens-kimono': MensKimonoConfigurator,
   'mens-belt': MensBeltConfigurator,
   'mens-pant': MensPantConfigurator,
