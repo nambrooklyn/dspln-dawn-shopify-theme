@@ -150,7 +150,16 @@ function SectionFooterLink({ href, label }: { href: string; label: string }) {
 }
 
 export const GiV5BurgerDrawer = memo(
-  ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+  ({
+    open,
+    onClose,
+    onOpenStudio,
+  }: {
+    open: boolean;
+    onClose: () => void;
+    /** Open the bottom Studio Sheet on the given tab (closes this drawer). */
+    onOpenStudio: (tab: 'designs' | 'uploads') => void;
+  }) => {
     const [shareState, setShareState] = useState<
       | { phase: 'idle' }
       | { phase: 'saving' }
@@ -379,169 +388,47 @@ export const GiV5BurgerDrawer = memo(
           </p>
 
           <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
-            {/* My Designs — inline, tap to restore */}
-            <SectionHeader
-              icon={<Layers className="h-4 w-4" />}
-              label="My Designs"
-              count={designs.length}
-              open={designsOpen}
-              onToggle={() => setDesignsOpen((wasOpen) => !wasOpen)}
-            />
-            {designsOpen ? (
-              <>
-                {designsLoading && !designs.length ? (
-                  <SectionNote>Loading…</SectionNote>
-                ) : !designs.length ? (
-                  <SectionNote>
-                    Nothing saved yet — use Save &amp; Share below to keep this
-                    one.
-                  </SectionNote>
-                ) : (
-                  <div className="flex flex-col">
-                    {designs.map((design) => (
-                      <div
-                        key={design.id}
-                        className="flex items-center gap-2 rounded-xl px-3 py-1.5 transition hover:bg-black/5"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleLoadDesign(design)}
-                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                        >
-                          <span className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-black/10 bg-white">
-                            {design.thumbnailUrl ? (
-                              <img
-                                src={design.thumbnailUrl}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                            ) : null}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span
-                              style={{ fontSize: '11px' }}
-                              className="block truncate font-medium text-black"
-                            >
-                              {design.name}
-                            </span>
-                            <span
-                              style={{ fontSize: '9px' }}
-                              className="block text-black/40"
-                            >
-                              {formatSavedTime(design.updatedAt)}
-                            </span>
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={
-                            confirmDeleteId === design.id
-                              ? `Confirm delete ${design.name}`
-                              : `Delete ${design.name}`
-                          }
-                          onClick={() => void handleDeleteDesign(design.id)}
-                          onBlur={() => setConfirmDeleteId(null)}
-                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${
-                            confirmDeleteId === design.id
-                              ? 'bg-red-50 text-red-800'
-                              : 'text-black/30 hover:bg-black/5 hover:text-black'
-                          }`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {confirmDeleteId ? (
-                  <SectionNote>Tap the bin again to delete for good.</SectionNote>
-                ) : null}
-                <SectionFooterLink
-                  href={`${locker}?page=designs`}
-                  label="Open full page"
-                />
-              </>
-            ) : null}
-
-            {/* My Uploads — inline, tap an image then pick where it goes */}
-            <SectionHeader
-              icon={<Images className="h-4 w-4" />}
-              label="My Uploads"
-              count={uploads.length}
-              open={uploadsOpen}
-              onToggle={() => setUploadsOpen((wasOpen) => !wasOpen)}
-            />
-            {uploadsOpen ? (
-              <>
-                {!uploads.length ? (
-                  <SectionNote>
-                    No artwork yet — upload a logo from any placement square.
-                  </SectionNote>
-                ) : applyFor ? (
-                  <div className="px-3 pb-2">
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <span className="h-8 w-8 shrink-0 overflow-hidden rounded-md border border-black/10 bg-white p-0.5">
-                        <img
-                          src={applyFor.url}
-                          alt=""
-                          className="h-full w-full object-contain"
-                        />
-                      </span>
-                      <span
-                        style={{ fontSize: '10px' }}
-                        className="min-w-0 flex-1 truncate text-black/55"
-                      >
-                        Place on…
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="Cancel placement"
-                        onClick={() => setApplyFor(null)}
-                        className="flex h-6 w-6 items-center justify-center rounded-md text-black/40 transition hover:bg-black/5 hover:text-black"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1">
-                      {APPLY_TARGETS.map((target) => (
-                        <button
-                          key={target.value}
-                          type="button"
-                          onClick={() => handleApplyUpload(applyFor, target.value)}
-                          style={{ fontSize: '10px' }}
-                          className="rounded-md border border-black/10 bg-white/70 px-2 py-1.5 text-black transition hover:bg-black hover:text-white"
-                        >
-                          {target.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-1.5 px-3 pb-2">
-                    {uploads.map((item) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setApplyFor(item)}
-                        title={item.filename}
-                        aria-label={`Place ${item.filename}`}
-                        className="aspect-square overflow-hidden rounded-md border border-black/10 bg-white p-1 transition hover:border-black/40"
-                      >
-                        <img
-                          src={item.url}
-                          alt=""
-                          className="h-full w-full object-contain"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <SectionFooterLink
-                  href={`${locker}?page=uploads`}
-                  label="Open full page"
-                />
-              </>
-            ) : null}
+            {/* My Designs / My Uploads open the bottom Studio Sheet — a
+                gallery the gi stays visible above. The Locker remains the
+                full account dashboard. */}
+            <button
+              type="button"
+              onClick={() => onOpenStudio('designs')}
+              className={rowClass}
+              style={rowLabelStyle}
+            >
+              <span className="text-black/50">
+                <Layers className="h-4 w-4" />
+              </span>
+              <span className="font-medium">My Designs</span>
+              {designs.length ? (
+                <span
+                  style={{ fontSize: '9px' }}
+                  className="rounded-full bg-black/10 px-1.5 py-0.5 font-semibold text-black/55"
+                >
+                  {designs.length}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenStudio('uploads')}
+              className={rowClass}
+              style={rowLabelStyle}
+            >
+              <span className="text-black/50">
+                <Images className="h-4 w-4" />
+              </span>
+              <span className="font-medium">My Uploads</span>
+              {uploads.length ? (
+                <span
+                  style={{ fontSize: '9px' }}
+                  className="rounded-full bg-black/10 px-1.5 py-0.5 font-semibold text-black/55"
+                >
+                  {uploads.length}
+                </span>
+              ) : null}
+            </button>
 
             {/* Save & share — the drawer's one action */}
             <button
