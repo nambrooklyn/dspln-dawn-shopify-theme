@@ -800,7 +800,7 @@ export function DesignAssistant({
         : [
             {
               role: 'assistant',
-              text: `Tell me how you want your ${activeProductContext.name} to look. I can change its available colors${activeProductContext.supportsBeltText ? ', personalize the belt' : ''}${activeProductContext.artworkTargets.length ? ', create or clean up artwork, remove backgrounds, and place logos on the product' : ''}. Tell me what to change and I’ll apply it live in 3D.`,
+              text: `Tell me how you want your ${activeProductContext.name} to look. I can change colors${activeProductContext.supportsBeltText ? ', personalize the belt' : ''}${activeProductContext.artworkTargets.length ? ', create artwork, and place logos' : ''} live in 3D.`,
             },
           ],
     );
@@ -1483,7 +1483,7 @@ export function DesignAssistant({
           className={
             placement === 'desktop'
               ? `absolute top-3 left-3 z-[70] flex h-[min(28rem,calc(100%-1.5rem))] w-[min(17rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border bg-white shadow-2xl ${dragActive ? 'border-[#5c0000] ring-4 ring-[#5c0000]/20' : 'border-[#e3ded7]'}`
-              : 'fixed inset-x-0 bottom-0 z-[80] flex h-[min(52dvh,30rem)] w-full flex-col overflow-hidden rounded-t-3xl border border-[#e3ded7] bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl'
+              : 'fixed right-3 bottom-3 left-3 z-[80] flex h-[min(44dvh,26rem)] w-auto flex-col overflow-hidden rounded-3xl border border-[#e3ded7] bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl'
           }
         >
           {placement === 'desktop' && dragActive ? (
