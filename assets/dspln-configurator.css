@@ -75,6 +75,13 @@
     background: #fff;
   }
 
+  /* Chatra belongs to the Shopify parent page. Keep that single instance
+     above the fullscreen configurator instead of loading a duplicate inside
+     the embedded app. */
+  html.dspln-mobile-configurator-takeover #chatra {
+    z-index: 2147483646 !important;
+  }
+
   html.dspln-mobile-configurator-takeover .dspln-configurator-product,
   html.dspln-mobile-configurator-takeover .dspln-configurator-product__inner,
   html.dspln-mobile-configurator-takeover .dspln-configurator-product__frame-wrap,
