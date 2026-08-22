@@ -11,7 +11,9 @@
   "sections": {
     "main": {
       "type": "main-login",
-      "settings": {}
+      "settings": {
+        "enable_shop_login_button": false
+      }
     }
   },
   "order": [
