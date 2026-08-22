@@ -84,6 +84,61 @@
     if (mobileTakeover) {
       document.documentElement.classList.add('dspln-mobile-configurator-takeover');
       frame.closest('.shopify-section')?.classList.add('dspln-mobile-configurator-takeover-section');
+
+      // Chatra rewrites its mobile expanded position inline after opening.
+      // Re-assert a real bottom sheet in pixels after those mutations so the
+      // shortened window cannot jump back to the top of the viewport.
+      let chatraPositionFrame = 0;
+      const positionExpandedChatra = () => {
+        chatraPositionFrame = 0;
+        const chatra = document.getElementById('chatra');
+        if (!chatra?.classList.contains('chatra--expanded')) return;
+        const sheetHeight = Math.min(window.innerHeight * 0.52, 480);
+        const sheetTop = Math.max(window.innerHeight - sheetHeight, 0);
+        const desired = {
+          position: 'fixed',
+          top: `${sheetTop}px`,
+          right: '0px',
+          bottom: 'auto',
+          left: '0px',
+          width: '100%',
+          height: `${sheetHeight}px`,
+          transform: 'none',
+        };
+        Object.entries(desired).forEach(([property, value]) => {
+          if (
+            chatra.style.getPropertyValue(property) !== value ||
+            chatra.style.getPropertyPriority(property) !== 'important'
+          ) {
+            chatra.style.setProperty(property, value, 'important');
+          }
+        });
+        const chatraFrame = document.getElementById('chatra__iframe');
+        if (chatraFrame) {
+          ['width', 'height'].forEach((property) => {
+            if (
+              chatraFrame.style.getPropertyValue(property) !== '100%' ||
+              chatraFrame.style.getPropertyPriority(property) !== 'important'
+            ) {
+              chatraFrame.style.setProperty(property, '100%', 'important');
+            }
+          });
+        }
+      };
+      const scheduleChatraPosition = () => {
+        if (chatraPositionFrame) return;
+        chatraPositionFrame = window.requestAnimationFrame(positionExpandedChatra);
+      };
+      new MutationObserver(scheduleChatraPosition).observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['class', 'style'],
+      });
+      window.addEventListener('resize', scheduleChatraPosition);
+      window.visualViewport?.addEventListener('resize', scheduleChatraPosition);
+      scheduleChatraPosition();
+
       frameUrl.pathname = mobilePath;
       // Optional origin override: lets the mobile shell come from a pinned
       // deploy of the app, so testing it never requires rebuilding the
