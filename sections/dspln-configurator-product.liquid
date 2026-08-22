@@ -135,12 +135,23 @@
     };
     window.addEventListener('message', (event) => {
       const data = event.data;
+      if (data?.type === 'dspln:design-assistant:open-change') {
+        if (frame.contentWindow && event.source !== frame.contentWindow) return;
+        document.documentElement.classList.toggle(
+          'dspln-design-assistant-open',
+          data.open === true,
+        );
+        return;
+      }
       if (!data || data.type !== 'dspln:configurator:height') return;
       if (frame.contentWindow && event.source !== frame.contentWindow) return;
       const height = Number(data.height);
       if (!Number.isFinite(height) || height <= 0) return;
       reportedHeight = height;
       applyFrameHeight();
+    });
+    frame.addEventListener('load', () => {
+      document.documentElement.classList.remove('dspln-design-assistant-open');
     });
     if (typeof mobileQuery.addEventListener === 'function') {
       mobileQuery.addEventListener('change', applyFrameHeight);
