@@ -51,7 +51,7 @@
         class="dspln-configurator-product__frame"
         title="{{ product.title | escape }} configurator"
         id="dspln-configurator-frame"
-        src="{{ embed_src }}?shopifyTest=1&productId={{ product.id }}&productHandle={{ product.handle | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&customerId={{ customer.id | default: '' }}&customerEmail={{ customer.email | default: '' | url_encode }}&shopifyProductHandle={{ product.handle | url_encode }}&shopifyProductId={{ product.id }}&variantId={{ selected_variant.id }}&themeProductTemplate=dspln-configurator&productFamily={{ product_family | url_encode }}&customizationMode={{ customization_mode | url_encode }}&productGroup={{ product_group_label | url_encode }}{% if dspln_design_id != blank %}&design={{ dspln_design_id | url_encode }}{% endif %}"
+        src="{{ embed_src }}?shopifyTest=1&productId={{ product.id }}&productHandle={{ product.handle | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&storefrontOrigin={{ request.origin | url_encode }}&customerId={{ customer.id | default: '' }}&customerEmail={{ customer.email | default: '' | url_encode }}&shopifyProductHandle={{ product.handle | url_encode }}&shopifyProductId={{ product.id }}&variantId={{ selected_variant.id }}&themeProductTemplate=dspln-configurator&productFamily={{ product_family | url_encode }}&customizationMode={{ customization_mode | url_encode }}&productGroup={{ product_group_label | url_encode }}{% if dspln_design_id != blank %}&design={{ dspln_design_id | url_encode }}{% endif %}"
         loading="eager"
         allow="clipboard-write; fullscreen; web-share"
         data-dspln-configurator-frame
@@ -80,7 +80,10 @@
     // started in, so their in-progress design never resets mid-edit.
     const mobileQuery = window.matchMedia('(max-width: 749px)');
     const mobilePath = frame.dataset.mobileConfiguratorPath;
-    if (mobilePath && mobileQuery.matches) {
+    const mobileTakeover = Boolean(mobilePath && mobileQuery.matches);
+    if (mobileTakeover) {
+      document.documentElement.classList.add('dspln-mobile-configurator-takeover');
+      frame.closest('.shopify-section')?.classList.add('dspln-mobile-configurator-takeover-section');
       frameUrl.pathname = mobilePath;
       // Optional origin override: lets the mobile shell come from a pinned
       // deploy of the app, so testing it never requires rebuilding the
@@ -119,6 +122,7 @@
     const frameWrap = frame.closest('.dspln-configurator-product__frame-wrap');
     let reportedHeight = 0;
     const applyFrameHeight = () => {
+      if (mobileTakeover) return;
       if (mobileQuery.matches && reportedHeight > 0) {
         frame.style.height = Math.max(reportedHeight, 420) + 'px';
         frame.style.minHeight = '0';
