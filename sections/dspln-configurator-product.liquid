@@ -5,6 +5,7 @@
 {%- liquid
   assign platform_origin = section.settings.platform_origin | strip
   assign configurator_slug = section.settings.configurator_slug | strip
+  assign mobile_configurator_slug = section.settings.mobile_configurator_slug | strip
   assign product_family = section.settings.product_family | strip
   assign customization_mode = section.settings.customization_mode | strip
   assign product_group_label = section.settings.product_group_label | strip
@@ -53,6 +54,7 @@
         loading="eager"
         allow="clipboard-write; fullscreen; web-share"
         data-dspln-configurator-frame
+        {% if mobile_configurator_slug != blank %}data-mobile-configurator-path="/configurator/{{ mobile_configurator_slug }}"{% endif %}
       ></iframe>
     </div>
   </div>
@@ -68,6 +70,18 @@
     if (!frame) return;
 
     const frameUrl = new URL(frame.src);
+
+    // Mobile-only shell override (e.g. the gi's v5 shell): swap the
+    // configurator path in the same rewrite pass that already adjusts the
+    // params, so there is still only one src assignment. Decided once at
+    // load — a later resize or rotation keeps the shell the customer
+    // started in, so their in-progress design never resets mid-edit.
+    const mobileQuery = window.matchMedia('(max-width: 749px)');
+    const mobilePath = frame.dataset.mobileConfiguratorPath;
+    if (mobilePath && mobileQuery.matches) {
+      frameUrl.pathname = mobilePath;
+    }
+
     if (designId && !frameUrl.searchParams.has('design')) {
       frameUrl.searchParams.set('design', designId);
     }
@@ -86,7 +100,6 @@
     // The configurator reports its content height; on small screens size
     // the iframe to match so the section doesn't reserve empty space under
     // the mobile flow. Desktop keeps the CSS viewport-height layout.
-    const mobileQuery = window.matchMedia('(max-width: 749px)');
     const frameWrap = frame.closest('.dspln-configurator-product__frame-wrap');
     let reportedHeight = 0;
     const applyFrameHeight = () => {
@@ -174,6 +187,12 @@
       "id": "configurator_slug",
       "label": "Configurator slug",
       "default": "gi"
+    },
+    {
+      "type": "text",
+      "id": "mobile_configurator_slug",
+      "label": "Mobile configurator slug (optional)",
+      "info": "If set, screens 749px and narrower load this slug instead of the one above. Leave blank to use the same configurator everywhere."
     },
     {
       "type": "select",
