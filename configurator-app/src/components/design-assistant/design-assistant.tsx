@@ -598,6 +598,8 @@ interface DesignAssistantProps {
   /** Increment to open the chat from an external trigger (with
    * hideLauncher). 0/undefined = no-op. */
   openSignal?: number;
+  /** Notifies an embedded host when the assistant sheet opens or closes. */
+  onOpenChange?: (open: boolean) => void;
   productKey?: GiAssistantProductKey;
   useProductState?: () => unknown;
   productContext?: AssistantProductContext;
@@ -721,6 +723,7 @@ export function DesignAssistant({
   placement = 'mobile',
   hideLauncher = false,
   openSignal = 0,
+  onOpenChange,
   productKey = 'mens',
   useProductState,
   productContext,
@@ -768,6 +771,10 @@ export function DesignAssistant({
   const scrollRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [onOpenChange, open]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });

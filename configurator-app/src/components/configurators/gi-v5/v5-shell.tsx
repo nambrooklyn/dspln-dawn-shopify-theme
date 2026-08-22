@@ -243,6 +243,13 @@ export const GiV5Shell = memo(
     const [storefrontUrl] = useState(getStorefrontUrl);
     const closeLeaveDialog = useCallback(() => setLeaveDialogOpen(false), []);
     const leaveDialogRef = useDrawerDialog(leaveDialogOpen, closeLeaveDialog);
+    const handleAssistantOpenChange = useCallback((open: boolean) => {
+      if (typeof window === 'undefined' || window.parent === window) return;
+      window.parent.postMessage(
+        { type: 'dspln:design-assistant:open-change', open },
+        '*',
+      );
+    }, []);
     // Chatra only loads standalone (see the effect below) — when embedded,
     // the Shopify parent owns the widget and there is nothing in our
     // bottom-right corner to point at.
@@ -731,6 +738,7 @@ export const GiV5Shell = memo(
               placement="mobile"
               hideLauncher
               openSignal={assistantSignal}
+              onOpenChange={handleAssistantOpenChange}
             />
           </>
         ) : null}

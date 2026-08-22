@@ -89,6 +89,12 @@
     bottom: 24px !important;
   }
 
+  html.dspln-mobile-configurator-takeover.dspln-design-assistant-open #chatra {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
   html.dspln-mobile-configurator-takeover .dspln-configurator-product,
   html.dspln-mobile-configurator-takeover .dspln-configurator-product__inner,
   html.dspln-mobile-configurator-takeover .dspln-configurator-product__frame-wrap,
