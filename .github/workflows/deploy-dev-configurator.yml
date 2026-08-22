@@ -9,9 +9,18 @@ name: Rebuild dev configurator on Netlify
 # Setup (one time): in Netlify -> Project configuration -> Build & deploy ->
 # Build hooks, add a hook for the `dev` branch, then save its URL as the
 # repo secret NETLIFY_DEV_BUILD_HOOK.
+#
+# workflow_dispatch also takes a branch input: the hook's trigger_branch
+# override lets the same hook build any branch — used to build the pinned
+# live-v5 deploy without changing Netlify settings.
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch for Netlify to build (build-hook trigger_branch)
+        required: false
+        default: dev
   push:
     branches: [dev]
 
@@ -29,6 +38,7 @@ jobs:
             echo "Add it in repo Settings -> Secrets and variables -> Actions." >&2
             exit 0
           fi
-          echo "Triggering Netlify dev rebuild..."
-          curl -fsS -X POST -d '{}' "$HOOK"
+          BRANCH="${{ github.event.inputs.branch || 'dev' }}"
+          echo "Triggering Netlify rebuild of ${BRANCH}..."
+          curl -fsS -X POST -d '{}' "${HOOK}?trigger_branch=${BRANCH}"
           echo "Build hook triggered."
