@@ -57,6 +57,35 @@
 }
 
 @media screen and (max-width: 749px) {
+  html.dspln-mobile-configurator-takeover,
+  html.dspln-mobile-configurator-takeover body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  html.dspln-mobile-configurator-takeover .shopify-section.dspln-mobile-configurator-takeover-section {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    background: #fff;
+  }
+
+  html.dspln-mobile-configurator-takeover .dspln-configurator-product,
+  html.dspln-mobile-configurator-takeover .dspln-configurator-product__inner,
+  html.dspln-mobile-configurator-takeover .dspln-configurator-product__frame-wrap,
+  html.dspln-mobile-configurator-takeover .dspln-configurator-product__frame {
+    width: 100%;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    margin: 0;
+    border: 0;
+  }
+
   .dspln-configurator-product__inner {
     padding: 0;
   }
