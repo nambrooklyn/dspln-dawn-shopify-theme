@@ -176,7 +176,17 @@ export function TheLocker() {
     typeof window !== 'undefined' && window.location.hostname.startsWith('dev--')
       ? 'https://dspln-dev-2.myshopify.com/pages/locker'
       : 'https://dspln.com/pages/locker';
-  const [page, setPage] = useState<LockerPage>('designs');
+  const [page, setPage] = useState<LockerPage>(() => {
+    try {
+      const wanted = new URLSearchParams(window.location.search).get('page');
+      if (wanted === 'designs' || wanted === 'uploads' || wanted === 'fit' || wanted === 'orders') {
+        return wanted;
+      }
+    } catch {
+      // fall through
+    }
+    return 'designs';
+  });
   const [designs, setDesigns] = useState<LockerDesign[]>([]);
   const [uploads, setUploads] = useState<LockerUpload[]>([]);
   const [orders, setOrders] = useState<LockerOrder[]>([]);

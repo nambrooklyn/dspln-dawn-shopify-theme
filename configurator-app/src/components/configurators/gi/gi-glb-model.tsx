@@ -200,6 +200,18 @@ export const GiGlbModel = memo(() => {
     cloned.traverse((obj) => {
       const mesh = obj as Mesh;
       if (!mesh.isMesh) return;
+      // The womens/kids GLBs carry gray placeholder patches marking logo and
+      // belt-text print areas (named *_logo_target / *_text_target); their
+      // v1 configurators hide them, and this shared model must too when a
+      // v5 slug loads those GLBs. The mens model has no such meshes.
+      const lowerName = mesh.name.toLowerCase();
+      if (
+        lowerName.endsWith('_logo_target') ||
+        lowerName.endsWith('_text_target')
+      ) {
+        mesh.visible = false;
+        return;
+      }
       const part = partForVisibility(mesh.name);
       if (!part) return;
       mesh.visible = partVisibility[part] && scenePartVisibility[part];

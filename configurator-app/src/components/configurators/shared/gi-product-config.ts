@@ -235,7 +235,11 @@ export const GI_PRODUCT_CONFIGS = {
 } satisfies Record<GiProductKey, GiProductConfig>;
 
 export function giProductConfigForSlug(slug: string | null | undefined) {
-  const normalizedSlug = slug?.trim();
+  // The v5 minimal shells run the SAME product pipeline under a '-v5'
+  // suffixed slug ('womens-gi-v5' → womens, 'kids-gi-v5' → kids,
+  // 'gi-v5' → mens), added alongside the v1 slugs rather than replacing
+  // them.
+  const normalizedSlug = slug?.trim().replace(/-v[0-9]+$/, '');
   return (
     Object.values(GI_PRODUCT_CONFIGS).find(
       (config) => config.slug === normalizedSlug,

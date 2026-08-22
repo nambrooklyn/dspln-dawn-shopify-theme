@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls } from '@react-three/drei';
@@ -50,14 +51,18 @@ import { renderTextImage } from '../shared/text-image';
 import type { GiTextLayer } from './gi-state';
 
 const CAMERA_MIN_DISTANCE = 1.2;
-const DESKTOP_CAMERA_MAX_DISTANCE = 3.75;
-const MOBILE_CAMERA_MAX_DISTANCE = 3.35;
+// Ceilings must cover the farthest preset view ('front-far' rests at 3.75
+// desktop / 4.6 mobile) or OrbitControls snaps the camera back every frame.
+const DESKTOP_CAMERA_MAX_DISTANCE = 4.2;
+const MOBILE_CAMERA_MAX_DISTANCE = 4.9;
 const CAMERA_PAN_EVENT = 'dspln:configurator-camera:pan';
 const CAMERA_VERTICAL_PAN_STEP = 0.22;
 // The model spans roughly floor-to-head in this range. These wider limits
 // keep every part reachable even at the closest allowed zoom.
-const CAMERA_TARGET_MIN_Y = -0.1;
-const CAMERA_TARGET_MAX_Y = 2.75;
+// Two pan steps each way from the centered target (y=1.25, step 0.22) —
+// more travel than that just scrolls the gi out of frame.
+const CAMERA_TARGET_MIN_Y = 0.81;
+const CAMERA_TARGET_MAX_Y = 1.69;
 
 // Surface normal for each slot — derived from the slot's plane
 // rotation (Y axis only, for our four anchors). Used to push the
@@ -1033,13 +1038,17 @@ Scene.displayName = 'GiCanvasScene';
 
 interface GiCanvasProps {
   className?: string;
+  /** Optional R3F nodes rendered inside the Canvas after the scene —
+   *  used by the v2 minimal shell for its 3D-anchored hotspots. No-op
+   *  for the v1 configurator (never passed there). */
+  overlay?: ReactNode;
 }
 
 /**
  * The 3D scene the merchant interacts with. Sits where the Fabric.js
  * canvas sits in the 2D editor.
  */
-export const GiCanvas = memo(({ className }: GiCanvasProps) => {
+export const GiCanvas = memo(({ className, overlay }: GiCanvasProps) => {
   const { selectLayer, cameraView } = useGiState();
   const [useMobileCamera, setUseMobileCamera] = useState(false);
   const initialPosition = cameraViewToPosition(cameraView, useMobileCamera);
@@ -1101,6 +1110,7 @@ export const GiCanvas = memo(({ className }: GiCanvasProps) => {
         }}
       >
         <Scene useMobileCamera={useMobileCamera} />
+        {overlay}
       </Canvas>
       <ModelLoadingOverlay />
       <div

@@ -302,6 +302,7 @@ interface GiStateValue {
       kimono?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
       pant?: Partial<Record<PantLogoSlot, KimonoLogo>>;
     },
+    homeView?: CameraView,
   ) => void;
 }
 
@@ -703,7 +704,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
   ]);
 
   const hydrate = useCallback<GiStateValue['hydrate']>(
-    (state, logoImages) => {
+    (state, logoImages, homeView) => {
       setPartColors({ ...state.partColors });
       setPartVisibilityState({ ...state.partVisibility });
       setScenePartVisibilityState({ ...state.partVisibility });
@@ -742,7 +743,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setSelectedLayerId(null);
       // Always present a restored design from the front — resuming at
       // whatever focus view was active at save time is disorienting.
-      setCameraView('front');
+      setCameraView(homeView ?? 'front');
       const firstVisiblePart = GI_PARTS.find((part) => state.partVisibility[part]);
       setSelectedPart(firstVisiblePart ?? GI_PARTS[0]);
     },

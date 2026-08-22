@@ -357,6 +357,7 @@ export const BELT_EMBROIDERY_DEFAULT = {
 
 export type CameraView =
   | 'front'
+  | 'front-far'
   | 'back'
   | 'left'
   | 'right'
@@ -388,6 +389,9 @@ export type CameraView =
 // wearer-relative, positions are camera-relative.
 export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   front: [0, 1.25, 3.75],
+  // v5's resting view. Desktop 'front' framing already reads right; the
+  // mobile entry below is where the extra distance matters.
+  'front-far': [0, 1.25, 3.75],
   back: [0, 1.25, -3.75],
   left: [-3.75, 1.25, 0],
   right: [3.75, 1.25, 0],
@@ -416,6 +420,7 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   [number, number, number]
 > = {
   front: [0, 1.25, 3.35],
+  'front-far': [0, 1.25, 3.98],
   back: [0, 1.25, -3.35],
   left: [-3.35, 1.25, 0],
   right: [3.35, 1.25, 0],
@@ -447,6 +452,7 @@ export const CAMERA_TARGET: [number, number, number] = [0, 1.25, 0];
 
 export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   front: CAMERA_TARGET,
+  'front-far': CAMERA_TARGET,
   back: CAMERA_TARGET,
   left: CAMERA_TARGET,
   right: CAMERA_TARGET,

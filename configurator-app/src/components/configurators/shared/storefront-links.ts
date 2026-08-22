@@ -10,6 +10,19 @@
  */
 
 const PRODUCTION_STOREFRONT_ORIGIN = 'https://dspln.com';
+const DEV_STOREFRONT_ORIGIN = 'https://dspln-dev-2.myshopify.com';
+
+/** Netlify branch deploys (dev--*) and local dev/LAN hosts belong to the
+ * dev store — falling back to production from those would send the
+ * customer's locker/account/sizing links to the live site. */
+function isDevHost(hostname: string): boolean {
+  return (
+    hostname.startsWith('dev--') ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    /^192\.168\./.test(hostname)
+  );
+}
 
 export function storefrontOrigin(): string {
   if (typeof window === 'undefined') return PRODUCTION_STOREFRONT_ORIGIN;
@@ -38,6 +51,8 @@ export function storefrontOrigin(): string {
     const host = shop.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (host) return `https://${host}`;
   }
+
+  if (isDevHost(window.location.hostname)) return DEV_STOREFRONT_ORIGIN;
 
   return PRODUCTION_STOREFRONT_ORIGIN;
 }

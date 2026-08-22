@@ -294,6 +294,10 @@ interface GiStateValue {
       kimono?: Partial<Record<KimonoLogoSlot, KimonoLogo>>;
       pant?: Partial<Record<PantLogoSlot, KimonoLogo>>;
     },
+    /** Camera view to land on after restore (default 'front'). Shells with
+     * a wider resting view (v5's 'front-far') pass theirs so hydration
+     * doesn't stomp it. */
+    homeView?: CameraView,
   ) => void;
 }
 
@@ -655,7 +659,7 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
   ]);
 
   const hydrate = useCallback<GiStateValue['hydrate']>(
-    (state, logoImages) => {
+    (state, logoImages, homeView) => {
       setPartColors({ ...state.partColors });
       setPartVisibilityState({ ...state.partVisibility });
       setScenePartVisibilityState({ ...state.partVisibility });
@@ -689,10 +693,10 @@ export const GiStateProvider = memo(({ children }: { children: ReactNode }) => {
       setTextLayersState([...(state.textLayers ?? [])]);
       setLayers([]);
       setSelectedLayerId(null);
-      // Always present a restored design from the front — resuming at
+      // Always present a restored design from the home view — resuming at
       // whatever focus view was active at save time (a sleeve, the belt
       // end) is disorienting on page load.
-      setCameraView('front');
+      setCameraView(homeView ?? 'front');
       const firstVisiblePart = GI_PARTS.find((part) => state.partVisibility[part]);
       setSelectedPart(firstVisiblePart ?? GI_PARTS[0]);
     },
