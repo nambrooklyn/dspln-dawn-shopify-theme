@@ -82,6 +82,13 @@
     z-index: 2147483646 !important;
   }
 
+  html.dspln-mobile-configurator-takeover #chatra:not(.chatra--expanded) {
+    width: 48px !important;
+    height: 48px !important;
+    right: 16px !important;
+    bottom: 24px !important;
+  }
+
   html.dspln-mobile-configurator-takeover .dspln-configurator-product,
   html.dspln-mobile-configurator-takeover .dspln-configurator-product__inner,
   html.dspln-mobile-configurator-takeover .dspln-configurator-product__frame-wrap,
