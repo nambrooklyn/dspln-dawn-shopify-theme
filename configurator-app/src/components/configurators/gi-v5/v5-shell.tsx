@@ -33,6 +33,7 @@ import { GiV5ZoneColorMenu } from './zone-color-menu';
 import { GiV5CartDrawer } from './cart-drawer';
 import { GiV5BurgerDrawer } from './burger-drawer';
 import { GiV5StudioSheet, type StudioSheetTab } from './studio-sheet';
+import { useDrawerDialog } from './use-drawer-dialog';
 import {
   DesignAssistant,
   shouldShowDesignAssistant,
@@ -181,6 +182,24 @@ const CORNER_TOUR: Record<
 
 const CORNER_STEP_MS = 2000;
 
+function getStorefrontUrl() {
+  if (typeof window === 'undefined') return '/';
+  const params = new URLSearchParams(window.location.search);
+  const storefrontOrigin = params.get('storefrontOrigin');
+  if (storefrontOrigin) {
+    try {
+      const parsed = new URL(storefrontOrigin);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        return `${parsed.origin}/`;
+      }
+    } catch {
+      // Fall through to the permanent Shopify domain.
+    }
+  }
+  const shop = params.get('shop');
+  return shop ? `https://${shop}/` : '/';
+}
+
 function anchorToMarker(anchor: GiV2Anchor, filledIds: Set<string>): QuietMarker {
   const square = anchor.kind === 'kimono-logo' || anchor.kind === 'pant-logo';
   return {
@@ -212,11 +231,18 @@ export const GiV5Shell = memo(
     const [activePart, setActivePart] = useState<GiPart | null>(null);
     const [activeAnchor, setActiveAnchor] = useState<GiV2Anchor | null>(null);
     const [burgerOpen, setBurgerOpen] = useState(false);
+    const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
     const [studioTab, setStudioTab] = useState<StudioSheetTab | null>(null);
     const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
     const [showAssistant] = useState(shouldShowDesignAssistant);
     const [assistantSignal, setAssistantSignal] = useState(0);
     const [baseView] = useState<CameraView>('front-far');
+    const [isEmbedded] = useState(
+      () => typeof window !== 'undefined' && window.parent !== window,
+    );
+    const [storefrontUrl] = useState(getStorefrontUrl);
+    const closeLeaveDialog = useCallback(() => setLeaveDialogOpen(false), []);
+    const leaveDialogRef = useDrawerDialog(leaveDialogOpen, closeLeaveDialog);
     // Chatra only loads standalone (see the effect below) — when embedded,
     // the Shopify parent owns the widget and there is nothing in our
     // bottom-right corner to point at.
@@ -479,15 +505,20 @@ export const GiV5Shell = memo(
           draggable={false}
           className="pointer-events-none absolute top-5 left-1/2 z-0 w-[36%] max-w-[10.5rem] -translate-x-1/2 select-none"
         />
-        <a
-          aria-label="DSPLN home"
-          href={(() => {
-            const shop = new URLSearchParams(window.location.search).get('shop');
-            return shop ? `https://${shop}/` : '/';
-          })()}
-          target={window.parent === window ? undefined : '_top'}
-          className="absolute top-4 left-1/2 z-20 h-9 w-[36%] max-w-[10.5rem] -translate-x-1/2"
-        />
+        {isEmbedded ? (
+          <button
+            type="button"
+            aria-label="Leave configurator"
+            onClick={() => setLeaveDialogOpen(true)}
+            className="absolute top-4 left-1/2 z-20 h-9 w-[36%] max-w-[10.5rem] -translate-x-1/2"
+          />
+        ) : (
+          <a
+            aria-label="DSPLN home"
+            href={storefrontUrl}
+            className="absolute top-4 left-1/2 z-20 h-9 w-[36%] max-w-[10.5rem] -translate-x-1/2"
+          />
+        )}
 
         <GiCanvas
           className="gi-mobile-scroll-canvas relative z-10 h-full w-full touch-none"
@@ -713,6 +744,55 @@ export const GiV5Shell = memo(
           cartActionLabel={cartActionLabel}
           cartActionLoadingLabel={cartActionLoadingLabel}
         />
+
+        {leaveDialogOpen ? (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center px-5">
+            <button
+              type="button"
+              aria-label="Keep designing"
+              onClick={() => setLeaveDialogOpen(false)}
+              className="absolute inset-0 h-full w-full cursor-default bg-black/35"
+            />
+            <div
+              ref={leaveDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="dspln-v5-leave-title"
+              aria-describedby="dspln-v5-leave-description"
+              tabIndex={-1}
+              className="relative w-full max-w-sm rounded-3xl border border-white/50 bg-white/95 p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl outline-none"
+            >
+              <h2
+                id="dspln-v5-leave-title"
+                className="m-0 text-center text-lg font-bold text-black"
+              >
+                Leave configurator?
+              </h2>
+              <p
+                id="dspln-v5-leave-description"
+                className="mt-2 mb-5 text-center text-sm leading-5 text-black/60"
+              >
+                Any unsaved changes may be lost. Do you want to return to the DSPLN store?
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLeaveDialogOpen(false)}
+                  className="h-12 w-full rounded-full bg-black text-sm font-bold text-white transition hover:bg-black/80"
+                >
+                  Keep designing
+                </button>
+                <a
+                  href={storefrontUrl}
+                  target="_top"
+                  className="flex h-12 w-full items-center justify-center rounded-full border border-black/15 text-sm font-semibold text-black no-underline transition hover:bg-black/5"
+                >
+                  Leave configurator
+                </a>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Hamburger — the customer's PERSONAL drawer (designs, uploads,
             save & share, account). Site navigation lives on the wordmark. */}
