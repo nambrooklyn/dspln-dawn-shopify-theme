@@ -10,9 +10,9 @@ name: Rebuild dev configurator on Netlify
 # Build hooks, add a hook for the `dev` branch, then save its URL as the
 # repo secret NETLIFY_DEV_BUILD_HOOK.
 #
-# workflow_dispatch also takes a branch input: the hook's trigger_branch
-# override lets the same hook build any branch — used to build the pinned
-# live-v5 deploy without changing Netlify settings.
+# live-v5 (the pinned deploy the live store's mobile Gi page embeds) is
+# built through the same hook: the trigger_branch override points the
+# build at whichever branch was pushed. A dispatch can also name one.
 
 on:
   workflow_dispatch:
@@ -22,7 +22,7 @@ on:
         required: false
         default: dev
   push:
-    branches: [dev]
+    branches: [dev, live-v5]
 
 jobs:
   trigger-netlify:
@@ -38,7 +38,7 @@ jobs:
             echo "Add it in repo Settings -> Secrets and variables -> Actions." >&2
             exit 0
           fi
-          BRANCH="${{ github.event.inputs.branch || 'dev' }}"
+          BRANCH="${{ github.event.inputs.branch || github.ref_name }}"
           echo "Triggering Netlify rebuild of ${BRANCH}..."
           curl -fsS -X POST -d '{}' "${HOOK}?trigger_branch=${BRANCH}"
           echo "Build hook triggered."
