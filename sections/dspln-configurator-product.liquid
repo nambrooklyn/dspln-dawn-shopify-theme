@@ -6,6 +6,7 @@
   assign platform_origin = section.settings.platform_origin | strip
   assign configurator_slug = section.settings.configurator_slug | strip
   assign mobile_configurator_slug = section.settings.mobile_configurator_slug | strip
+  assign mobile_platform_origin = section.settings.mobile_platform_origin | strip
   assign product_family = section.settings.product_family | strip
   assign customization_mode = section.settings.customization_mode | strip
   assign product_group_label = section.settings.product_group_label | strip
@@ -55,6 +56,7 @@
         allow="clipboard-write; fullscreen; web-share"
         data-dspln-configurator-frame
         {% if mobile_configurator_slug != blank %}data-mobile-configurator-path="/configurator/{{ mobile_configurator_slug }}"{% endif %}
+        {% if mobile_platform_origin != blank %}data-mobile-configurator-origin="{{ mobile_platform_origin }}"{% endif %}
       ></iframe>
     </div>
   </div>
@@ -80,6 +82,20 @@
     const mobilePath = frame.dataset.mobileConfiguratorPath;
     if (mobilePath && mobileQuery.matches) {
       frameUrl.pathname = mobilePath;
+      // Optional origin override: lets the mobile shell come from a pinned
+      // deploy of the app, so testing it never requires rebuilding the
+      // production bundle the other configurators run on. The cart bridge
+      // must allowlist this origin (see dspln-configurator-cart-bridge.js).
+      const mobileOrigin = frame.dataset.mobileConfiguratorOrigin;
+      if (mobileOrigin) {
+        try {
+          const next = new URL(frameUrl.pathname + frameUrl.search, mobileOrigin);
+          frameUrl.protocol = next.protocol;
+          frameUrl.host = next.host;
+        } catch (error) {
+          // A malformed origin falls back to the default platform origin.
+        }
+      }
     }
 
     if (designId && !frameUrl.searchParams.has('design')) {
@@ -193,6 +209,12 @@
       "id": "mobile_configurator_slug",
       "label": "Mobile configurator slug (optional)",
       "info": "If set, screens 749px and narrower load this slug instead of the one above. Leave blank to use the same configurator everywhere."
+    },
+    {
+      "type": "text",
+      "id": "mobile_platform_origin",
+      "label": "Mobile platform origin (optional)",
+      "info": "If set alongside the mobile slug, the mobile configurator loads from this origin (no trailing slash) instead of the one above — e.g. a pinned test deploy. The cart bridge must allow the origin."
     },
     {
       "type": "select",
