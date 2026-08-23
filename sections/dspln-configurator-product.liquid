@@ -117,15 +117,16 @@
           });
           return;
         }
-        const sheetHeight = Math.min(window.innerHeight * 0.52, 480);
-        const sheetTop = Math.max(window.innerHeight - sheetHeight, 0);
+        const sheetHeight = Math.min(window.innerHeight * 0.44, 416);
+        const sheetInset = 12;
+        const sheetTop = Math.max(window.innerHeight - sheetHeight - sheetInset, 0);
         const desired = {
           position: 'fixed',
           top: `${sheetTop}px`,
-          right: '0px',
+          right: `${sheetInset}px`,
           bottom: 'auto',
-          left: '0px',
-          width: '100%',
+          left: `${sheetInset}px`,
+          width: `calc(100% - ${sheetInset * 2}px)`,
           height: `${sheetHeight}px`,
           transform: 'none',
         };
