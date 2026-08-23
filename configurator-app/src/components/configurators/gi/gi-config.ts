@@ -367,6 +367,7 @@ export type CameraView =
   | 'pants-close'
   | 'lapel-close'
   | 'chest-close'
+  | 'right-chest-close'
   | 'left-sleeve-close'
   | 'right-sleeve-close'
   | 'back-close'
@@ -401,6 +402,7 @@ export const CAMERA_POSITIONS: Record<CameraView, [number, number, number]> = {
   'pants-close': [-0.75, 1.01, 1.78],
   'lapel-close': [-0.92, 2.22, 1.74],
   'chest-close': [1.04, 1.99, 1.15],
+  'right-chest-close': [-1.04, 1.99, 1.15],
   'left-sleeve-close': [2.35, 2.01, 0.02],
   'right-sleeve-close': [-2.89, 2.2, 0.82],
   'back-close': [-0.07, 2.05, -1.92],
@@ -430,6 +432,7 @@ export const MOBILE_CAMERA_POSITIONS: Record<
   'pants-close': [-0.75, 1.01, 1.78],
   'lapel-close': [-0.92, 2.22, 1.74],
   'chest-close': [1.04, 1.99, 1.15],
+  'right-chest-close': [-1.04, 1.99, 1.15],
   'left-sleeve-close': [2.35, 2.01, 0.02],
   'right-sleeve-close': [-2.89, 2.2, 0.82],
   'back-close': [-0.07, 2.05, -1.92],
@@ -462,6 +465,7 @@ export const CAMERA_TARGETS: Record<CameraView, [number, number, number]> = {
   'pants-close': [0, 0.62, 0],
   'lapel-close': [0, 1.66, 0],
   'chest-close': [0.15, 1.58, 0],
+  'right-chest-close': [-0.15, 1.58, 0],
   'left-sleeve-close': [0.4, 1.45, 0],
   'right-sleeve-close': [-0.4, 1.45, 0],
   'back-close': [0, 1.5, 0],
@@ -497,7 +501,7 @@ export const KIMONO_SUBPART_CAMERA_VIEW: Record<KimonoSubPart, CameraView> = {
 
 export const KIMONO_LOGO_SLOT_CAMERA_VIEW: Record<KimonoLogoSlot, CameraView> = {
   'left-chest': 'chest-close',
-  'right-chest': 'chest-close',
+  'right-chest': 'right-chest-close',
   'left-sleeve': 'left-sleeve-close',
   'right-sleeve': 'right-sleeve-close',
   back: 'back-close',
