@@ -83,10 +83,14 @@
   }
 
   html.dspln-mobile-configurator-takeover #chatra:not(.chatra--expanded) {
+    position: fixed !important;
+    top: auto !important;
     width: 48px !important;
     height: 48px !important;
     right: 16px !important;
     bottom: 24px !important;
+    left: auto !important;
+    transform: none !important;
   }
 
   html.dspln-mobile-configurator-takeover #chatra.chatra--expanded {

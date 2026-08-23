@@ -92,7 +92,31 @@
       const positionExpandedChatra = () => {
         chatraPositionFrame = 0;
         const chatra = document.getElementById('chatra');
-        if (!chatra?.classList.contains('chatra--expanded')) return;
+        if (!chatra) return;
+        const managedProperties = [
+          'position',
+          'top',
+          'right',
+          'bottom',
+          'left',
+          'width',
+          'height',
+          'transform',
+        ];
+        const chatraFrame = document.getElementById('chatra__iframe');
+        if (!chatra.classList.contains('chatra--expanded')) {
+          managedProperties.forEach((property) => {
+            if (chatra.style.getPropertyPriority(property) === 'important') {
+              chatra.style.removeProperty(property);
+            }
+          });
+          ['width', 'height'].forEach((property) => {
+            if (chatraFrame?.style.getPropertyPriority(property) === 'important') {
+              chatraFrame.style.removeProperty(property);
+            }
+          });
+          return;
+        }
         const sheetHeight = Math.min(window.innerHeight * 0.52, 480);
         const sheetTop = Math.max(window.innerHeight - sheetHeight, 0);
         const desired = {
@@ -113,7 +137,6 @@
             chatra.style.setProperty(property, value, 'important');
           }
         });
-        const chatraFrame = document.getElementById('chatra__iframe');
         if (chatraFrame) {
           ['width', 'height'].forEach((property) => {
             if (
