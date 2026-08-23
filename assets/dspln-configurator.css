@@ -94,16 +94,16 @@
   }
 
   html.dspln-mobile-configurator-takeover #chatra.chatra--expanded {
-    top: calc(100dvh - min(52dvh, 30rem)) !important;
-    right: 0 !important;
+    top: calc(100dvh - min(44dvh, 26rem) - 12px) !important;
+    right: 12px !important;
     bottom: auto !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: min(52dvh, 30rem) !important;
+    left: 12px !important;
+    width: calc(100% - 24px) !important;
+    height: min(44dvh, 26rem) !important;
     transform: none !important;
     overflow: hidden !important;
-    border-radius: 24px 24px 0 0 !important;
-    box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.2) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22) !important;
   }
 
   html.dspln-mobile-configurator-takeover #chatra.chatra--expanded #chatra__iframe {
