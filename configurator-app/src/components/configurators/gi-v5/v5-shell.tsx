@@ -739,6 +739,7 @@ export const GiV5Shell = memo(
               hideLauncher
               openSignal={assistantSignal}
               onOpenChange={handleAssistantOpenChange}
+              voiceFirst
             />
           </>
         ) : null}
