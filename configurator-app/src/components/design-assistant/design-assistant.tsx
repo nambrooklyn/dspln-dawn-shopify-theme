@@ -1741,29 +1741,16 @@ export function DesignAssistant({
             {artworkError ? (
               <p className="mb-2 px-1 text-[10px] text-[#8b1e1e]">{artworkError}</p>
             ) : null}
-            <div className="flex items-center gap-2">
-              <input
-                ref={artworkInputRef}
-                type="file"
-                accept="image/png,image/jpeg"
-                onChange={attachArtwork}
-                className="hidden"
-              />
-              <button
-                type="button"
-                aria-label="Attach artwork"
-                disabled={busy || uploadingArtwork}
-                onClick={() => artworkInputRef.current?.click()}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e3ded7] text-[#5c0000] hover:bg-[#faf8f5] disabled:opacity-40"
-              >
-                {uploadingArtwork ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ImagePlus className="h-4 w-4" />
-                )}
-              </button>
-              {voiceFirst && !keyboardVisible ? (
-                <>
+            <input
+              ref={artworkInputRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={attachArtwork}
+              className="hidden"
+            />
+            {voiceFirst && !keyboardVisible ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={toggleVoiceInput}
@@ -1775,22 +1762,61 @@ export function DesignAssistant({
                   </button>
                   <div
                     aria-live="polite"
-                    className="flex h-10 min-w-0 flex-1 items-center rounded-full border border-[#e3ded7] bg-white px-3.5 text-[12px] text-[#1c1b1b]"
+                    className="flex h-10 min-w-0 flex-1 items-center rounded-full border border-[#e3ded7] bg-white py-1 pr-1 pl-3.5 text-[12px] text-[#1c1b1b]"
                   >
-                    <span className={`truncate ${input ? '' : 'text-[#8a8580]'}`}>
+                    <span className={`min-w-0 flex-1 truncate ${input ? '' : 'text-[#8a8580]'}`}>
                       {input || (listening ? 'Listening…' : 'Tap the microphone to describe your design')}
                     </span>
+                    <button
+                      type="submit"
+                      disabled={busy || uploadingArtwork || cleanupDirty || (!input.trim() && !attachedArtwork)}
+                      aria-label="Send"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
                   </div>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    aria-label="Attach artwork"
+                    disabled={busy || uploadingArtwork}
+                    onClick={() => artworkInputRef.current?.click()}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e3ded7] text-[#5c0000] hover:bg-[#faf8f5]"
+                  >
+                    {uploadingArtwork ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-4 w-4" />
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setKeyboardVisible(true)}
                     aria-label="Open keyboard input"
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e3ded7] text-[#5c0000] hover:bg-[#faf8f5]"
+                    className="inline-flex h-10 items-center gap-2 rounded-full border border-[#e3ded7] px-3 text-[10px] font-semibold text-[#5c0000] hover:bg-[#faf8f5]"
                   >
                     <Keyboard className="h-4 w-4" />
+                    Keyboard
                   </button>
-                </>
-              ) : (
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Attach artwork"
+                  disabled={busy || uploadingArtwork}
+                  onClick={() => artworkInputRef.current?.click()}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e3ded7] text-[#5c0000] hover:bg-[#faf8f5] disabled:opacity-40"
+                >
+                  {uploadingArtwork ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ImagePlus className="h-4 w-4" />
+                  )}
+                </button>
                 <input
                   ref={promptInputRef}
                   value={input}
@@ -1798,16 +1824,16 @@ export function DesignAssistant({
                   placeholder="Describe a design or attach artwork"
                   className="h-10 min-w-0 flex-1 rounded-full border border-[#e3ded7] bg-white px-3.5 text-[13px] outline-none focus:border-[#1c1b1b]"
                 />
-              )}
-              <button
-                type="submit"
-                disabled={busy || uploadingArtwork || cleanupDirty || (!input.trim() && !attachedArtwork)}
-                aria-label="Send"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
+                <button
+                  type="submit"
+                  disabled={busy || uploadingArtwork || cleanupDirty || (!input.trim() && !attachedArtwork)}
+                  aria-label="Send"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             {voiceFirst && voiceError ? (
               <p className="mt-2 px-1 text-[10px] text-[#8b1e1e]">{voiceError}</p>
             ) : null}
