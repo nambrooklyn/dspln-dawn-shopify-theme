@@ -539,6 +539,7 @@ export const GiV5Shell = memo(
         )}
 
         <GiCanvas
+          allowWheelZoom
           className="gi-mobile-scroll-canvas relative z-10 h-full w-full touch-none"
           overlay={
             <QuietHotspotsLayer
