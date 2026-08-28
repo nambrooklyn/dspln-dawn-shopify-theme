@@ -28,7 +28,7 @@ export const GI_PART_PRICES: Record<GiPart, number> = {
   jacket: 55,
   pants: 45,
   // Standalone belt product base price (matches the Shopify tda_price ladder).
-  belt: 28,
+  belt: 15,
 };
 
 export const GI_PART_DISPLAY: Record<GiPart, string> = {

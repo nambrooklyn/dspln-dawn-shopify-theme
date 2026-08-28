@@ -26,7 +26,9 @@ export const GI_DEFAULT_COLORS: Record<GiPart, string> = {
  */
 export const GI_PART_PRICES: Record<GiPart, number> = {
   jacket: 55,
-  pants: 48,
+  // Standalone pant base price — matches this product's Shopify
+  // tda_price ladder (see mens-kimono for why they must agree).
+  pants: 45,
   belt: 15,
 };
 
