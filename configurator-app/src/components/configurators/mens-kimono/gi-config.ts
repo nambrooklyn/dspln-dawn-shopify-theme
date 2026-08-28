@@ -25,7 +25,11 @@ export const GI_DEFAULT_COLORS: Record<GiPart, string> = {
  * "Add Pant (+$45)").
  */
 export const GI_PART_PRICES: Record<GiPart, number> = {
-  jacket: 88,
+  // Standalone kimono base price. Must equal the first rung of this
+  // product's Shopify tda_price ladder — the cart matches a design's total
+  // against those variants exactly, and an unmatched total falls back to
+  // the wrong variant.
+  jacket: 55,
   pants: 45,
   belt: 15,
 };

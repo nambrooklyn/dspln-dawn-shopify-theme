@@ -20,13 +20,13 @@ export const GI_DEFAULT_COLORS: Record<GiPart, string> = {
 };
 
 /**
- * Per-part prices shown in the right sidebar Price summary. Mirrors the
- * D2C reference labels ("Add Kimono (+$55)", "Add Belt (+$15)",
- * "Add Pant (+$45)").
+ * Per-part prices shown in the right sidebar Price summary. Kids parts are
+ * priced below the adult suit and match the standalone kids products, so a
+ * customer sees the same number whichever page they buy the piece from.
  */
 export const GI_PART_PRICES: Record<GiPart, number> = {
-  jacket: 55,
-  pants: 45,
+  jacket: 45,
+  pants: 35,
   belt: 15,
 };
 
