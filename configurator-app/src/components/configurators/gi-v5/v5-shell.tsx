@@ -135,6 +135,14 @@ const V5_EXTRA_STYLES = `
   right: 16px !important;
   bottom: 24px !important;
 }
+/* Standalone V5 has no Shopify parent to suppress Chatra. Yield the
+   launcher and expanded chat while the AI sheet owns this corner. */
+html.dspln-mens-v5-assistant-open #chatra {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 `;
 
 const TAP_SLOP_PX = 8;
@@ -244,12 +252,15 @@ export const GiV5Shell = memo(
     const closeLeaveDialog = useCallback(() => setLeaveDialogOpen(false), []);
     const leaveDialogRef = useDrawerDialog(leaveDialogOpen, closeLeaveDialog);
     const handleAssistantOpenChange = useCallback((open: boolean) => {
-      if (typeof window === 'undefined' || window.parent === window) return;
+      if (typeof window === 'undefined') return;
+      document.documentElement.classList.toggle('dspln-mens-v5-assistant-open', open);
+      if (window.parent === window) return;
       window.parent.postMessage(
         { type: 'dspln:design-assistant:open-change', open },
         '*',
       );
     }, []);
+    useEffect(() => () => handleAssistantOpenChange(false), [handleAssistantOpenChange]);
     // Chatra only loads standalone (see the effect below) — when embedded,
     // the Shopify parent owns the widget and there is nothing in our
     // bottom-right corner to point at.
@@ -528,6 +539,7 @@ export const GiV5Shell = memo(
         )}
 
         <GiCanvas
+          allowWheelZoom
           className="gi-mobile-scroll-canvas relative z-10 h-full w-full touch-none"
           overlay={
             <QuietHotspotsLayer
@@ -739,6 +751,7 @@ export const GiV5Shell = memo(
               hideLauncher
               openSignal={assistantSignal}
               onOpenChange={handleAssistantOpenChange}
+              voiceFirst
             />
           </>
         ) : null}

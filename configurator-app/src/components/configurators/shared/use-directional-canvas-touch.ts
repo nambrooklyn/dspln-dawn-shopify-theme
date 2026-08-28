@@ -25,7 +25,7 @@ const stopTouchEvent = (event: Event) => {
   }
 };
 
-export function useDirectionalCanvasTouch() {
+export function useDirectionalCanvasTouch({ allowWheelZoom = false } = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const startRef = useRef({ x: 0, y: 0 });
   const directionRef = useRef<Direction>(null);
@@ -48,6 +48,9 @@ export function useDirectionalCanvasTouch() {
     };
 
     const handleWheel = (event: WheelEvent) => {
+      // Fullscreen V5 owns the canvas gesture even in a narrow desktop
+      // window. Let OrbitControls receive the wheel; touch stays separate.
+      if (allowWheelZoom) return;
       if (!isMobile()) return;
       if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
       stopForPageScroll(event);
@@ -159,7 +162,7 @@ export function useDirectionalCanvasTouch() {
         capture: true,
       });
     };
-  }, []);
+  }, [allowWheelZoom]);
 
   const onPointerDown = useCallback((event: PointerEvent) => {
     if (event.pointerType !== 'touch') return;

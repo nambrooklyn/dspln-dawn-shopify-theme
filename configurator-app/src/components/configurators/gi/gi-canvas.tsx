@@ -1038,6 +1038,7 @@ Scene.displayName = 'GiCanvasScene';
 
 interface GiCanvasProps {
   className?: string;
+  allowWheelZoom?: boolean;
   /** Optional R3F nodes rendered inside the Canvas after the scene —
    *  used by the v2 minimal shell for its 3D-anchored hotspots. No-op
    *  for the v1 configurator (never passed there). */
@@ -1048,11 +1049,11 @@ interface GiCanvasProps {
  * The 3D scene the merchant interacts with. Sits where the Fabric.js
  * canvas sits in the 2D editor.
  */
-export const GiCanvas = memo(({ className, overlay }: GiCanvasProps) => {
+export const GiCanvas = memo(({ className, overlay, allowWheelZoom = false }: GiCanvasProps) => {
   const { selectLayer, cameraView } = useGiState();
   const [useMobileCamera, setUseMobileCamera] = useState(false);
   const initialPosition = cameraViewToPosition(cameraView, useMobileCamera);
-  const touchHandlers = useDirectionalCanvasTouch();
+  const touchHandlers = useDirectionalCanvasTouch({ allowWheelZoom });
   const moveCamera = useCallback((action: 'up' | 'down' | 'center') => {
     window.dispatchEvent(
       new CustomEvent(CAMERA_PAN_EVENT, { detail: { action } }),
