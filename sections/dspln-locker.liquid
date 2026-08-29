@@ -62,7 +62,42 @@
                 fulfillmentStatus: {{ order.fulfillment_status_label | json }},
                 totalAmount: {{ order.total_net_amount | money_without_currency | replace: ',', '' | json }},
                 totalCurrency: {{ cart.currency.iso_code | default: localization.country.currency.iso_code | json }},
-                statusPageUrl: {{ order.customer_url | json }}
+                statusPageUrl: {{ order.customer_url | json }},
+                cancelledAt: {{ order.cancelled_at | date: "%Y-%m-%dT%H:%M:%S%z" | json }},
+                cancelReason: {{ order.cancel_reason_label | json }},
+                items: [
+                  {%- for line_item in order.line_items -%}
+                    {
+                      title: {{ line_item.title | json }},
+                      quantity: {{ line_item.quantity | json }},
+                      totalAmount: {{ line_item.final_line_price | money_without_currency | replace: ',', '' | json }},
+                      imageUrl: {% if line_item.image %}{{ line_item.image | image_url: width: 240 | json }}{% else %}null{% endif %},
+                      properties: [
+                        {%- for property in line_item.properties -%}
+                          { name: {{ property.first | json }}, value: {{ property.last | json }} }{% unless forloop.last %},{% endunless %}
+                        {%- endfor -%}
+                      ]
+                    }{% unless forloop.last %},{% endunless %}
+                  {%- endfor -%}
+                ],
+                billingAddress: {% if order.billing_address %}{
+                  name: {{ order.billing_address.name | json }},
+                  address1: {{ order.billing_address.address1 | json }},
+                  address2: {{ order.billing_address.address2 | json }},
+                  city: {{ order.billing_address.city | json }},
+                  province: {{ order.billing_address.province | json }},
+                  zip: {{ order.billing_address.zip | json }},
+                  country: {{ order.billing_address.country | json }}
+                }{% else %}null{% endif %},
+                shippingAddress: {% if order.shipping_address %}{
+                  name: {{ order.shipping_address.name | json }},
+                  address1: {{ order.shipping_address.address1 | json }},
+                  address2: {{ order.shipping_address.address2 | json }},
+                  city: {{ order.shipping_address.city | json }},
+                  province: {{ order.shipping_address.province | json }},
+                  zip: {{ order.shipping_address.zip | json }},
+                  country: {{ order.shipping_address.country | json }}
+                }{% else %}null{% endif %}
               }{% unless forloop.last %},{% endunless %}
             {%- endfor -%}
           ]

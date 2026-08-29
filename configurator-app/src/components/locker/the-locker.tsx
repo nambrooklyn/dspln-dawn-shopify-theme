@@ -30,6 +30,27 @@ interface LockerOrder {
   totalAmount: string;
   totalCurrency: string;
   statusPageUrl: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  items?: Array<{
+    title: string;
+    quantity: number;
+    totalAmount: string;
+    imageUrl?: string;
+    properties?: Array<{ name: string; value: string }>;
+  }>;
+  billingAddress?: LockerAddress;
+  shippingAddress?: LockerAddress;
+}
+
+interface LockerAddress {
+  name?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  province?: string;
+  zip?: string;
+  country?: string;
 }
 
 interface LockerDesign {
@@ -126,6 +147,19 @@ function formatMoney(amount: string, currency: string): string {
   }).format(numeric);
 }
 
+function AddressBlock({ address }: { address?: LockerAddress }) {
+  if (!address) return <p className="text-sm text-[#777]">Not provided</p>;
+  return (
+    <address className="space-y-1 text-sm not-italic leading-relaxed text-[#444]">
+      {address.name ? <div>{address.name}</div> : null}
+      {address.address1 ? <div>{address.address1}</div> : null}
+      {address.address2 ? <div>{address.address2}</div> : null}
+      <div>{[address.city, address.province, address.zip].filter(Boolean).join(' ')}</div>
+      {address.country ? <div>{address.country}</div> : null}
+    </address>
+  );
+}
+
 async function fetchDesigns(customer: LockerCustomer): Promise<LockerDesign[]> {
   const url = new URL('/api/customer-designs', window.location.origin);
   url.searchParams.set('ownerKey', ownerKey(customer));
@@ -208,6 +242,7 @@ export function TheLocker() {
   const [orders, setOrders] = useState<LockerOrder[]>([]);
   const [fit, setFit] = useState<FitProfile>(emptyFit);
   const [selectedDesign, setSelectedDesign] = useState<LockerDesign | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<LockerOrder | null>(null);
   const [loading, setLoading] = useState(Boolean(customer));
   const [savingFit, setSavingFit] = useState(false);
   const [error, setError] = useState('');
@@ -720,7 +755,79 @@ export function TheLocker() {
 
           {!loading && page === 'orders' ? (
             <section>
-              {orders.length ? (
+              {selectedOrder ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrder(null)}
+                    className={`${label} mb-8 underline underline-offset-4`}
+                  >
+                    ← All orders
+                  </button>
+                  <div className="border-b border-[#1c1b1b] pb-6">
+                    <p className={label}>Order details</p>
+                    <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+                      <div>
+                        <h2 className="text-2xl uppercase tracking-[0.16em]">Order {selectedOrder.name}</h2>
+                        <p className="mt-2 text-sm text-[#666]">Placed {formatDate(selectedOrder.processedAt)}</p>
+                        {selectedOrder.cancelledAt ? (
+                          <p className="mt-2 text-sm text-[#8a1c1c]">
+                            Cancelled {formatDate(selectedOrder.cancelledAt)}
+                            {selectedOrder.cancelReason ? ` · ${selectedOrder.cancelReason}` : ''}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex gap-2">
+                        <StatusBadge value={selectedOrder.financialStatus} />
+                        <StatusBadge value={selectedOrder.fulfillmentStatus} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-10 py-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+                    <div>
+                      <h3 className={`${label} mb-4`}>Items</h3>
+                      {selectedOrder.items?.length ? (
+                        <div className="divide-y divide-[#ddd] border-y border-[#ddd]">
+                          {selectedOrder.items.map((item, index) => (
+                            <article key={`${item.title}-${index}`} className="grid grid-cols-[72px_minmax(0,1fr)_auto] gap-4 py-5">
+                              <div className="h-[72px] bg-[#f5f5f5]">
+                                {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-contain" /> : null}
+                              </div>
+                              <div>
+                                <h4 className="text-sm uppercase tracking-[0.08em]">{item.title}</h4>
+                                <p className="mt-1 text-xs text-[#777]">Quantity {item.quantity}</p>
+                                {item.properties?.filter((property) => property.name && property.value).map((property) => (
+                                  <p key={`${property.name}-${property.value}`} className="mt-1 text-xs text-[#777]">
+                                    {property.name}: {property.value}
+                                  </p>
+                                ))}
+                              </div>
+                              <div className="text-sm">{formatMoney(item.totalAmount, selectedOrder.totalCurrency)}</div>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="border-y border-[#ddd] py-6 text-sm text-[#666]">Item details are not available for this order.</p>
+                      )}
+                      <div className="mt-5 flex justify-end text-base">
+                        <span className="mr-10 uppercase tracking-[0.12em]">Total</span>
+                        <strong>{formatMoney(selectedOrder.totalAmount, selectedOrder.totalCurrency)}</strong>
+                      </div>
+                    </div>
+                    <aside className="space-y-8">
+                      <div>
+                        <h3 className={`${label} mb-3`}>Billing address</h3>
+                        <AddressBlock address={selectedOrder.billingAddress} />
+                      </div>
+                      <div>
+                        <h3 className={`${label} mb-3`}>Shipping address</h3>
+                        <AddressBlock address={selectedOrder.shippingAddress} />
+                      </div>
+                    </aside>
+                  </div>
+                </div>
+              ) : orders.length ? (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px] border-collapse text-left text-sm">
                     <thead>
@@ -736,9 +843,9 @@ export function TheLocker() {
                       {orders.map((order) => (
                         <tr key={order.id} className="border-b border-[#ddd]">
                           <td className="py-4 pr-4">
-                            <a href={order.statusPageUrl} target="_top" className="underline">
+                            <button type="button" onClick={() => setSelectedOrder(order)} className="underline">
                               {order.name}
-                            </a>
+                            </button>
                           </td>
                           <td className="py-4 pr-4">{formatDate(order.processedAt)}</td>
                           <td className="py-4 pr-4"><StatusBadge value={order.financialStatus} /></td>
