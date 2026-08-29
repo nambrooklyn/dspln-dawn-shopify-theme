@@ -10,6 +10,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
+import { uploadArtworkImage } from '../configurators/shared/preview-upload';
+
 type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders';
 
 interface LockerCustomer {
@@ -70,6 +73,31 @@ interface LockerUpload {
   updatedAt?: string;
   part?: string;
   slot?: string;
+  /**
+   * Artwork saved straight from the Studio arrives alongside logos pulled out
+   * of saved designs. The API merges both and hands back a dedupeKey so the
+   * same image used in both places lands here once.
+   */
+  source?: 'artwork' | 'design';
+  dedupeKey?: string;
+  artworkId?: string;
+  title?: string;
+  revisionType?: 'upload' | 'cleanup' | 'manual-edit' | 'ai-edit';
+}
+
+const REVISION_LABEL: Record<string, string> = {
+  upload: 'Uploaded artwork',
+  cleanup: 'Background removed',
+  'manual-edit': 'Edited in Studio',
+  'ai-edit': 'AI revision',
+};
+
+/** Sub-line under an Uploads card: where the image came from. */
+function uploadOrigin(upload: LockerUpload): string {
+  if (upload.source === 'artwork') {
+    return REVISION_LABEL[upload.revisionType ?? 'upload'] ?? 'Artwork Studio';
+  }
+  return upload.designName || 'Saved design';
 }
 
 interface FitProfile {
@@ -237,11 +265,54 @@ async function fetchUploads(customer: LockerCustomer): Promise<LockerUpload[]> {
   const uploads: LockerUpload[] = payload?.data?.logos ?? [];
   const seen = new Set<string>();
   return uploads.filter((upload) => {
-    const key = `${upload.url}|${upload.filename ?? ''}`;
+    // The API dedupes across Studio artwork and design logos and returns its
+    // key; fall back to url+filename for older responses.
+    const key = upload.dedupeKey || `${upload.url}|${upload.filename ?? ''}`;
     if (!upload.url || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+/**
+ * Studio save: the image bytes go through the existing upload function and
+ * only the hosted URL plus metadata is persisted, so artwork records stay
+ * small and the blob store keeps the pixels.
+ */
+async function saveArtworkRecord(
+  customer: LockerCustomer,
+  blob: Blob,
+  meta: { filename: string; width: number; height: number; aiEdited?: boolean },
+): Promise<{ id: string; url: string } | null> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Could not read the artwork.'));
+    reader.readAsDataURL(blob);
+  });
+
+  const hostedUrl = await uploadArtworkImage(dataUrl);
+  if (!hostedUrl) throw new Error('Artwork upload failed. Please try again.');
+
+  const response = await fetch('/api/customer-designs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      kind: 'artwork',
+      ownerKey: ownerKey(customer),
+      url: hostedUrl,
+      filename: meta.filename,
+      width: meta.width,
+      height: meta.height,
+      revisionType: meta.aiEdited ? 'ai-edit' : 'manual-edit',
+    }),
+  });
+
+  if (!response.ok) throw new Error('Could not save artwork to your Locker.');
+  const payload = await response.json();
+  const artwork = payload?.data?.artwork;
+  if (!artwork?.id || !artwork?.url) return null;
+  return { id: artwork.id, url: artwork.url };
 }
 
 async function fetchFit(customer: LockerCustomer): Promise<FitProfile> {
@@ -304,6 +375,17 @@ export function TheLocker() {
   const [loading, setLoading] = useState(Boolean(customer));
   const [savingFit, setSavingFit] = useState(false);
   const [error, setError] = useState('');
+
+  const saveStudioArtwork = useCallback(
+    async (
+      blob: Blob,
+      meta: { filename: string; width: number; height: number; aiEdited?: boolean },
+    ) => {
+      if (!customer) throw new Error('Sign in again to save artwork to your Locker.');
+      return saveArtworkRecord(customer, blob, meta);
+    },
+    [customer],
+  );
 
   const loadLocker = useCallback(async () => {
     if (!customer) return;
@@ -392,11 +474,13 @@ export function TheLocker() {
   // Sizing / Fit is still being designed — dev store only until approved
   // for live.
   const showFit = customer.shopDomain === 'dspln-dev-2.myshopify.com';
-  const nav: Array<{ id: LockerPage; text: string }> = [
-    { id: 'design-tool', text: 'Design Tool' },
+  // `short` is the phone label: five tabs do not fit at 375px, and the row is
+  // whitespace-nowrap so a long label spills rather than wrapping.
+  const nav: Array<{ id: LockerPage; text: string; short?: string }> = [
+    { id: 'design-tool', text: 'Design Tool', short: 'Studio' },
     { id: 'designs', text: 'Designs' },
     { id: 'uploads', text: 'Uploads' },
-    ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit' }] : []),
+    ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit', short: 'Fit' }] : []),
     { id: 'orders', text: 'Orders' },
   ];
 
@@ -502,7 +586,14 @@ export function TheLocker() {
                     : 'text-[#75756e] hover:text-[#1c1b1b]'
                 }`}
               >
-                {entry.text}
+                {entry.short ? (
+                  <>
+                    <span className="sm:hidden">{entry.short}</span>
+                    <span className="hidden sm:inline">{entry.text}</span>
+                  </>
+                ) : (
+                  entry.text
+                )}
               </button>
             ))}
           </nav>
@@ -511,7 +602,21 @@ export function TheLocker() {
 
           {!loading && page === 'design-tool' ? (
             <section>
-              <div className="max-w-3xl">
+              <ArtworkStudioPage
+                ownerKey={ownerKey(customer)}
+                onSave={saveStudioArtwork}
+                onSaved={() => {
+                  // The new artwork belongs in Uploads straight away.
+                  void fetchUploads(customer).then(setUploads).catch(() => undefined);
+                }}
+                uploadsHref="#"
+                onUseOnProduct={() => setPage('uploads')}
+              />
+
+              <h2 className="mt-14 text-lg uppercase tracking-[0.12em]">
+                Use artwork on a product
+              </h2>
+              <div className="mt-4 max-w-3xl">
                 <p className="text-sm leading-relaxed text-[#666]">
                   Start a new product in DSPLN’s 3D design tools. The built-in Design Assistant can
                   help choose colors, place uploaded artwork, create new artwork, and refine the
@@ -695,9 +800,11 @@ export function TheLocker() {
                           className="h-full w-full object-contain p-3"
                         />
                       </div>
-                      <h2 className="mt-4 truncate text-sm">{upload.filename || 'Uploaded artwork'}</h2>
+                      <h2 className="mt-4 truncate text-sm">
+                        {upload.title || upload.filename || 'Uploaded artwork'}
+                      </h2>
                       <p className="mt-1 text-xs text-[#777]">
-                        {upload.designName || 'Saved design'}
+                        {uploadOrigin(upload)}
                         {upload.slot ? ` · ${upload.slot.replaceAll('-', ' ')}` : ''}
                       </p>
                       <a

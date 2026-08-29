@@ -197,6 +197,8 @@ textarea {
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  /* "Log out" wrapped onto two lines in the 84px rail. */
+  white-space: nowrap;
 }
 
 .dspln-locker-tab {

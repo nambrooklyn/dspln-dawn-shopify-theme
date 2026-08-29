@@ -62,6 +62,61 @@ const designKey = ({ ownerKey, productHandle, id }) =>
 
 const lookupKey = (id) => `lookup/${id}.json`;
 
+// Standalone Artwork Studio saves live in the SAME store and under the same
+// ownership conventions as designs — they are just not attached to a garment.
+// Keeping them here means the Locker's Uploads listing can merge both sources
+// in one request instead of the frontend stitching two endpoints together.
+const artworkKey = ({ ownerKey, id }) =>
+  `artwork/${cleanPathPart(ownerKey)}/${id}.json`;
+
+const REVISION_TYPES = ['upload', 'cleanup', 'manual-edit', 'ai-edit'];
+
+const cleanText = (value, max = 200) => String(value ?? '').trim().slice(0, max);
+
+const cleanDimension = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 && number <= 20000
+    ? Math.round(number)
+    : null;
+};
+
+// Artwork bytes go through upload-artwork / Shopify — the record only ever
+// stores the hosted URL. Anything that is not one of those hosts (a data URL,
+// an attacker-supplied endpoint used later as an AI edit source) is rejected,
+// matching artwork-agent's isAllowedArtworkUrl.
+const isAllowedArtworkUrl = (rawUrl, event) => {
+  try {
+    const url = new URL(String(rawUrl));
+    if (url.protocol !== 'https:') return false;
+    const host = event.headers.host ?? event.headers.Host;
+    if (url.host === host && url.pathname === '/.netlify/functions/preview-image') {
+      return true;
+    }
+    return url.host === 'cdn.shopify.com';
+  } catch {
+    return false;
+  }
+};
+
+// Stable identity for an Uploads row so a standalone artwork record and a
+// design-embedded logo pointing at the SAME hosted image collapse into one
+// entry. preview-image URLs are identified by their blob key; Shopify CDN
+// URLs by their path (the query string carries only resize params).
+const uploadDedupeKey = (url) => {
+  try {
+    const parsed = new URL(String(url));
+    const blobKey = parsed.searchParams.get('key');
+    if (blobKey) return `blob:${blobKey}`;
+    if (parsed.host === 'cdn.shopify.com') return `shopify:${parsed.pathname}`;
+    const designId = parsed.searchParams.get('id');
+    const asset = parsed.searchParams.get('asset');
+    if (designId && asset) return `design:${designId}:${asset}`;
+    return `url:${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return `raw:${String(url)}`;
+  }
+};
+
 // Studio designs get a lightweight index entry so the portal's Studio tab can
 // page through ONLY studio designs. Filtering the main listing after
 // pagination hides studio saves behind pages of customer records.
@@ -370,10 +425,68 @@ function logoEntriesForRecord(event, record) {
   const linked = withLinks(event, record);
   return linked.artwork.map((art) => ({
     ...art,
+    source: 'design',
     designId: record.id,
     designName: record.name || 'Saved Gi Design',
+    createdAt: record.createdAt ?? null,
     updatedAt: record.updatedAt,
+    dedupeKey: uploadDedupeKey(art.url),
   }));
+}
+
+// A standalone artwork record rendered in the SAME shape the Uploads list
+// already consumes, so the frontend keeps one row type.
+function uploadEntryForArtwork(record) {
+  return {
+    source: 'artwork',
+    artworkId: record.id,
+    part: null,
+    slot: null,
+    filename: record.filename,
+    title: record.title,
+    url: record.url,
+    width: record.width ?? null,
+    height: record.height ?? null,
+    parentId: record.parentId ?? null,
+    revisionType: record.revisionType ?? null,
+    designId: null,
+    designName: null,
+    createdAt: record.createdAt ?? null,
+    updatedAt: record.updatedAt ?? null,
+    dedupeKey: uploadDedupeKey(record.url),
+  };
+}
+
+// Standalone artwork wins the merge (it carries the id, title and dimensions);
+// a design logo pointing at the same hosted image only contributes its garment
+// placement back onto that row.
+function mergeUploadEntries(entries) {
+  const merged = new Map();
+
+  entries.forEach((entry) => {
+    const existing = merged.get(entry.dedupeKey);
+    if (!existing) {
+      merged.set(entry.dedupeKey, entry);
+      return;
+    }
+    const primary = existing.source === 'artwork' ? existing : entry;
+    const secondary = existing.source === 'artwork' ? entry : existing;
+    merged.set(entry.dedupeKey, {
+      ...primary,
+      part: primary.part ?? secondary.part ?? null,
+      slot: primary.slot ?? secondary.slot ?? null,
+      designId: primary.designId ?? secondary.designId ?? null,
+      designName: primary.designName ?? secondary.designName ?? null,
+      updatedAt:
+        String(secondary.updatedAt || '') > String(primary.updatedAt || '')
+          ? secondary.updatedAt
+          : primary.updatedAt,
+    });
+  });
+
+  return [...merged.values()].sort((a, b) =>
+    String(b.updatedAt).localeCompare(String(a.updatedAt)),
+  );
 }
 
 async function listRecords(store, prefix) {
@@ -408,6 +521,15 @@ async function listLogoRecords(store, query) {
   }
 
   return [];
+}
+
+// Artwork ownership is proven by ownerKey ONLY — never by customerEmail, which
+// a caller can guess. An email-only Uploads query therefore returns just the
+// design-embedded logos it already returned before.
+async function listArtworkRecords(store, ownerKey) {
+  if (!ownerKey) return [];
+  const records = await listRecords(store, `artwork/${cleanPathPart(ownerKey)}/`);
+  return records.filter((record) => record?.kind === 'artwork');
 }
 
 function assetResponse(record, asset) {
@@ -687,6 +809,9 @@ export const handler = async (event) => {
     if (event.httpMethod === 'GET' && query.id) {
       const record = await getRecordById(store, query.id);
       if (!record) return jsonResponse(404, { error: 'Design not found' });
+      if (record.kind === 'artwork') {
+        return jsonResponse(200, { data: { artwork: record } });
+      }
       if (query.asset) return assetResponse(record, query.asset);
       if ((event.headers.accept || event.headers.Accept || '').includes('text/html')) {
         if (query.view === 'tech-pack') {
@@ -700,16 +825,35 @@ export const handler = async (event) => {
     }
 
     if (event.httpMethod === 'GET') {
-      if (query.logos === '1') {
-        const logoRecords = await listLogoRecords(store, query);
+      // Standalone artwork only (Artwork Studio listing).
+      if (query.artwork === '1') {
+        if (!query.ownerKey) return jsonResponse(400, { error: 'ownerKey is required' });
+        const artworkRecords = await listArtworkRecords(store, query.ownerKey);
         return jsonResponse(200, {
           data: {
-            logos: logoRecords
-              .filter(Boolean)
-              .flatMap((record) => logoEntriesForRecord(event, record))
-              .sort((a, b) =>
-                String(b.updatedAt).localeCompare(String(a.updatedAt)),
-              ),
+            artwork: artworkRecords.sort((a, b) =>
+              String(b.updatedAt).localeCompare(String(a.updatedAt)),
+            ),
+          },
+        });
+      }
+
+      // The Locker's Uploads page: design-embedded logos AND standalone
+      // artwork, merged on a stable per-image key so the same hosted PNG never
+      // shows up twice.
+      if (query.logos === '1') {
+        const [logoRecords, artworkRecords] = await Promise.all([
+          listLogoRecords(store, query),
+          listArtworkRecords(store, query.ownerKey),
+        ]);
+        return jsonResponse(200, {
+          data: {
+            logos: mergeUploadEntries([
+              ...artworkRecords.map((record) => uploadEntryForArtwork(record)),
+              ...logoRecords
+                .filter(Boolean)
+                .flatMap((record) => logoEntriesForRecord(event, record)),
+            ]),
           },
         });
       }
@@ -831,6 +975,42 @@ export const handler = async (event) => {
         return jsonResponse(400, { error: 'ownerKey is required' });
       }
 
+      // Artwork Studio save: hosted URL + metadata only, no image bytes.
+      if (payload.kind === 'artwork') {
+        if (!isAllowedArtworkUrl(payload.url, event)) {
+          return jsonResponse(400, { error: 'Invalid artwork url' });
+        }
+        if (payload.parentId && !/^art_[a-z0-9-]+$/i.test(String(payload.parentId))) {
+          return jsonResponse(400, { error: 'Invalid parentId' });
+        }
+
+        const savedAt = new Date().toISOString();
+        const artworkId = `art_${randomUUID()}`;
+        const filename = cleanText(payload.filename, 160) || 'artwork.png';
+        const artwork = {
+          kind: 'artwork',
+          id: artworkId,
+          ownerKey: payload.ownerKey,
+          url: String(payload.url),
+          filename,
+          title: cleanText(payload.title, 160) || filename,
+          width: cleanDimension(payload.width),
+          height: cleanDimension(payload.height),
+          parentId: payload.parentId ? String(payload.parentId) : null,
+          revisionType: REVISION_TYPES.includes(payload.revisionType)
+            ? payload.revisionType
+            : 'upload',
+          createdAt: savedAt,
+          updatedAt: savedAt,
+        };
+
+        const key = artworkKey(artwork);
+        await store.setJSON(key, artwork);
+        await store.setJSON(lookupKey(artworkId), { key });
+
+        return jsonResponse(200, { data: { artwork } });
+      }
+
       const now = new Date().toISOString();
       const id = payload.id || `gi_${randomUUID()}`;
       let record = {
@@ -867,6 +1047,11 @@ export const handler = async (event) => {
       if (!record) return jsonResponse(404, { error: 'Design not found' });
       if (query.ownerKey && query.ownerKey !== record.ownerKey) {
         return jsonResponse(403, { error: 'Design owner mismatch' });
+      }
+      // Artwork records are customer-owned: proof of ownership is required,
+      // not optional as it still is for the legacy design delete path.
+      if (record.kind === 'artwork' && query.ownerKey !== record.ownerKey) {
+        return jsonResponse(403, { error: 'Artwork owner mismatch' });
       }
       const lookup = await store.get(lookupKey(id), { type: 'json' });
       if (lookup?.key) await store.delete(lookup.key);
