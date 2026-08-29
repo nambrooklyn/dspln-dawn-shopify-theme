@@ -34,6 +34,7 @@ interface LockerOrder {
   cancelReason?: string;
   items?: Array<{
     title: string;
+    productTitle?: string;
     quantity: number;
     totalAmount: string;
     imageUrl?: string;
@@ -158,6 +159,63 @@ function AddressBlock({ address }: { address?: LockerAddress }) {
       {address.country ? <div>{address.country}</div> : null}
     </address>
   );
+}
+
+const ORDER_GROUPS = ['Kimono', 'Belt', 'Pant', 'Rashguard', 'Grappling Short'] as const;
+
+function cleanOrderTitle(item: NonNullable<LockerOrder['items']>[number]): string {
+  return (item.productTitle || item.title).replace(/\s+-\s+tda_price[_-]?\d*.*$/i, '').trim();
+}
+
+function customerProperties(item: NonNullable<LockerOrder['items']>[number]) {
+  return (item.properties ?? [])
+    .map((property) => ({
+      name: property.name.trim().replace(/^_+/, ''),
+      value: String(property.value ?? '').trim(),
+    }))
+    .filter(({ name, value }) => {
+      if (!name || !value) return false;
+      const key = name.toLowerCase();
+      return !(
+        key.includes('production') ||
+        key.includes('tech pack') ||
+        key.includes('preview_image') ||
+        key.includes('preview image') ||
+        key.includes('json') ||
+        key.includes('dspln_') ||
+        key.includes('configurator_id') ||
+        key.includes('mczr') ||
+        key === 'custom design saved' ||
+        key === '3d design'
+      );
+    });
+}
+
+function groupedOrderProperties(item: NonNullable<LockerOrder['items']>[number]) {
+  const properties = customerProperties(item);
+  return ORDER_GROUPS.map((group) => {
+    const prefix = `${group.toLowerCase()} `;
+    const rows = properties
+      .filter(({ name }) => {
+        const key = name.toLowerCase();
+        return key === group.toLowerCase() || key.startsWith(prefix);
+      })
+      .flatMap(({ name, value }) => {
+        const key = name.toLowerCase();
+        if (key === group.toLowerCase()) {
+          if (/^(yes|no|add\s)/i.test(value)) return [];
+          return value.split('|').map((segment, index) => {
+            const colon = segment.indexOf(':');
+            return colon > -1
+              ? { label: segment.slice(0, colon).trim(), value: segment.slice(colon + 1).trim() }
+              : { label: index === 0 ? 'Size' : 'Detail', value: segment.trim() };
+          });
+        }
+        return [{ label: name.slice(group.length).trim(), value }];
+      })
+      .filter((row) => row.value);
+    return { group, rows };
+  }).filter(({ rows }) => rows.length);
 }
 
 async function fetchDesigns(customer: LockerCustomer): Promise<LockerDesign[]> {
@@ -790,18 +848,28 @@ export function TheLocker() {
                       {selectedOrder.items?.length ? (
                         <div className="divide-y divide-[#ddd] border-y border-[#ddd]">
                           {selectedOrder.items.map((item, index) => (
-                            <article key={`${item.title}-${index}`} className="grid grid-cols-[72px_minmax(0,1fr)_auto] gap-4 py-5">
-                              <div className="h-[72px] bg-[#f5f5f5]">
+                            <article key={`${item.title}-${index}`} className="grid grid-cols-[96px_minmax(0,1fr)_auto] gap-5 py-7 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:gap-8">
+                              <div className="h-[150px] bg-[#f5f5f5] sm:h-[240px]">
                                 {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-contain" /> : null}
                               </div>
                               <div>
-                                <h4 className="text-sm uppercase tracking-[0.08em]">{item.title}</h4>
+                                <h4 className="text-sm uppercase tracking-[0.12em]">{cleanOrderTitle(item)}</h4>
                                 <p className="mt-1 text-xs text-[#777]">Quantity {item.quantity}</p>
-                                {item.properties?.filter((property) => property.name && property.value).map((property) => (
-                                  <p key={`${property.name}-${property.value}`} className="mt-1 text-xs text-[#777]">
-                                    {property.name}: {property.value}
-                                  </p>
-                                ))}
+                                <div className="mt-5 space-y-5">
+                                  {groupedOrderProperties(item).map(({ group, rows }) => (
+                                    <section key={group}>
+                                      <h5 className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em]">{group}</h5>
+                                      <dl className="space-y-1 text-[11px] uppercase leading-tight text-[#777]">
+                                        {rows.map((row, rowIndex) => (
+                                          <div key={`${row.label}-${rowIndex}`} className="grid grid-cols-[max-content_minmax(0,1fr)] gap-1">
+                                            <dt>{row.label}:</dt>
+                                            <dd className="text-[#333]">{row.value}</dd>
+                                          </div>
+                                        ))}
+                                      </dl>
+                                    </section>
+                                  ))}
+                                </div>
                               </div>
                               <div className="text-sm">{formatMoney(item.totalAmount, selectedOrder.totalCurrency)}</div>
                             </article>

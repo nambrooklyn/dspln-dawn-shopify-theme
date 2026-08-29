@@ -67,11 +67,14 @@
                 cancelReason: {{ order.cancel_reason_label | json }},
                 items: [
                   {%- for line_item in order.line_items -%}
+                    {%- capture dspln_order_preview -%}{%- render 'dspln-line-item-preview-url', item: line_item -%}{%- endcapture -%}
+                    {%- assign dspln_order_preview = dspln_order_preview | strip -%}
                     {
                       title: {{ line_item.title | json }},
+                      productTitle: {{ line_item.product.title | json }},
                       quantity: {{ line_item.quantity | json }},
                       totalAmount: {{ line_item.final_line_price | money_without_currency | replace: ',', '' | json }},
-                      imageUrl: {% if line_item.image %}{{ line_item.image | image_url: width: 240 | json }}{% else %}null{% endif %},
+                      imageUrl: {% if dspln_order_preview != blank %}{{ dspln_order_preview | json }}{% elsif line_item.image %}{{ line_item.image | image_url: width: 360 | json }}{% else %}null{% endif %},
                       properties: [
                         {%- for property in line_item.properties -%}
                           { name: {{ property.first | json }}, value: {{ property.last | json }} }{% unless forloop.last %},{% endunless %}
