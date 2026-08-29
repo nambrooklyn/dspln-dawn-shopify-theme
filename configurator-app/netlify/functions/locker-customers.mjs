@@ -17,13 +17,13 @@ const json = (body, status = 200) =>
 const clean = (value, max = 180) => String(value ?? '').trim().slice(0, max);
 const env = (name) => Netlify.env.get(name) ?? '';
 
-function adminKeyOk(request) {
+function adminKeyStatus(request) {
   const expected = env('DSPLN_ADMIN_API_KEY');
-  if (!expected) return false;
+  if (!expected) return 'missing';
   const given = request.headers.get('x-dspln-admin-key') ?? '';
   const a = Buffer.from(given);
   const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return a.length === b.length && timingSafeEqual(a, b) ? 'authorized' : 'denied';
 }
 
 const customerKey = (ownerKey) => `customers/${encodeURIComponent(ownerKey)}.json`;
@@ -165,7 +165,9 @@ export default async (request, context) => {
   }
 
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
-  if (!adminKeyOk(request)) return json({ error: 'Admin access is not configured or authorized' }, 403);
+  const adminStatus = adminKeyStatus(request);
+  if (adminStatus === 'missing') return json({ error: 'Admin access is not configured' }, 503);
+  if (adminStatus !== 'authorized') return json({ error: 'Admin access denied' }, 403);
 
   const ownerKey = new URL(request.url).searchParams.get('ownerKey');
   if (ownerKey) {
