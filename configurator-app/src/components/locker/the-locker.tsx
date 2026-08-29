@@ -546,7 +546,7 @@ export function TheLocker() {
           {!loading && page === 'designs' ? (
             <section>
               {selectedDesign ? (
-                <div>
+                <div className="-m-4 min-h-full bg-[#f4f4f2] p-4 sm:-m-8 sm:p-8">
                   <button
                     type="button"
                     onClick={() => setSelectedDesign(null)}
@@ -822,7 +822,7 @@ export function TheLocker() {
                   >
                     ← All orders
                   </button>
-                  <div className="border-b border-[#1c1b1b] pb-6">
+                  <div className="rounded-xl border border-[#e5e5e2] bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                     <p className={label}>Order details</p>
                     <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
                       <div>
@@ -842,13 +842,13 @@ export function TheLocker() {
                     </div>
                   </div>
 
-                  <div className="grid gap-10 py-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="grid gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_300px]">
                     <div>
-                      <h3 className={`${label} mb-4`}>Items</h3>
+                      <h3 className={`${label} mb-3 px-1`}>Items</h3>
                       {selectedOrder.items?.length ? (
-                        <div className="divide-y divide-[#ddd] border-y border-[#ddd]">
+                        <div className="space-y-4">
                           {selectedOrder.items.map((item, index) => (
-                            <article key={`${item.title}-${index}`} className="grid grid-cols-[96px_minmax(0,1fr)_auto] gap-5 py-7 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:gap-8">
+                            <article key={`${item.title}-${index}`} className="grid grid-cols-[96px_minmax(0,1fr)_auto] gap-5 rounded-xl border border-[#e5e5e2] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:gap-8 sm:p-7">
                               <div className="h-[150px] bg-white sm:h-[240px]">
                                 {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-contain" /> : null}
                               </div>
@@ -876,19 +876,19 @@ export function TheLocker() {
                           ))}
                         </div>
                       ) : (
-                        <p className="border-y border-[#ddd] py-6 text-sm text-[#666]">Item details are not available for this order.</p>
+                        <p className="rounded-xl border border-[#e5e5e2] bg-white p-6 text-sm text-[#666]">Item details are not available for this order.</p>
                       )}
-                      <div className="mt-5 flex justify-end text-base">
+                      <div className="mt-4 flex justify-end rounded-xl border border-[#e5e5e2] bg-white p-5 text-base shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                         <span className="mr-10 uppercase tracking-[0.12em]">Total</span>
                         <strong>{formatMoney(selectedOrder.totalAmount, selectedOrder.totalCurrency)}</strong>
                       </div>
                     </div>
-                    <aside className="space-y-8">
-                      <div>
+                    <aside className="space-y-4 lg:pt-7">
+                      <div className="rounded-xl border border-[#e5e5e2] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                         <h3 className={`${label} mb-3`}>Billing address</h3>
                         <AddressBlock address={selectedOrder.billingAddress} />
                       </div>
-                      <div>
+                      <div className="rounded-xl border border-[#e5e5e2] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                         <h3 className={`${label} mb-3`}>Shipping address</h3>
                         <AddressBlock address={selectedOrder.shippingAddress} />
                       </div>
