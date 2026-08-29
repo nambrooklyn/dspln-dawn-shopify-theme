@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-type LockerPage = 'designs' | 'uploads' | 'fit' | 'orders';
+type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders';
 
 interface LockerCustomer {
   customerId: string;
@@ -170,6 +170,22 @@ function StatusBadge({ value }: { value: string }) {
   );
 }
 
+async function indexLockerCustomer(customer: LockerCustomer, orders?: LockerOrder[]) {
+  await fetch('/api/locker-customers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ownerKey: ownerKey(customer),
+      shopDomain: customer.shopDomain,
+      customerId: customer.customerId,
+      email: customer.email,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      ...(orders ? { orders } : {}),
+    }),
+  }).catch(() => undefined);
+}
+
 export function TheLocker() {
   const customer = useMemo(queryCustomer, []);
   const storefrontLockerUrl =
@@ -179,7 +195,7 @@ export function TheLocker() {
   const [page, setPage] = useState<LockerPage>(() => {
     try {
       const wanted = new URLSearchParams(window.location.search).get('page');
-      if (wanted === 'designs' || wanted === 'uploads' || wanted === 'fit' || wanted === 'orders') {
+      if (wanted === 'design-tool' || wanted === 'designs' || wanted === 'uploads' || wanted === 'fit' || wanted === 'orders') {
         return wanted;
       }
     } catch {
@@ -217,6 +233,7 @@ export function TheLocker() {
 
   useEffect(() => {
     void loadLocker();
+    if (customer) void indexLockerCustomer(customer);
   }, [loadLocker]);
 
   useEffect(() => {
@@ -225,7 +242,9 @@ export function TheLocker() {
       const data = event.data;
       if (data?.type !== 'dspln:locker:context') return;
       if (String(data.customerId) !== customer.customerId) return;
-      setOrders(Array.isArray(data.orders) ? data.orders : []);
+      const storefrontOrders = Array.isArray(data.orders) ? data.orders : [];
+      setOrders(storefrontOrders);
+      void indexLockerCustomer(customer, storefrontOrders);
     };
     window.addEventListener('message', receiveStorefrontContext);
     window.parent?.postMessage({ type: 'dspln:locker:ready' }, customer?.storefrontOrigin ?? '*');
@@ -281,6 +300,7 @@ export function TheLocker() {
   // for live.
   const showFit = customer.shopDomain === 'dspln-dev-2.myshopify.com';
   const nav: Array<{ id: LockerPage; text: string }> = [
+    { id: 'design-tool', text: 'Design Tool' },
     { id: 'designs', text: 'Designs' },
     { id: 'uploads', text: 'Uploads' },
     ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit' }] : []),
@@ -395,6 +415,40 @@ export function TheLocker() {
           </nav>
 
           {loading ? <p className={`${label} py-12 text-center text-[#777]`}>Loading Locker…</p> : null}
+
+          {!loading && page === 'design-tool' ? (
+            <section>
+              <div className="max-w-3xl">
+                <p className="text-sm leading-relaxed text-[#666]">
+                  Start a new product in DSPLN’s 3D design tools. The built-in Design Assistant can
+                  help choose colors, place uploaded artwork, create new artwork, and refine the
+                  design while you work. Save the result and it will appear in your Locker.
+                </p>
+              </div>
+              <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {[
+                  ['Men’s Gi', 'customgi'],
+                  ['Women’s Gi', 'womens-custom-gi-suit'],
+                  ['Kids Gi', 'custom-kids-gi'],
+                ].map(([name, handle]) => (
+                  <article key={handle} className="border border-[#ddd] bg-[#f7f7f7] p-6">
+                    <p className={label}>3D Configurator</p>
+                    <h2 className="mt-3 text-lg uppercase tracking-[0.12em]">{name}</h2>
+                    <p className="mt-4 text-sm leading-relaxed text-[#666]">
+                      Customize every available part, upload logos, and ask the Design Assistant for help.
+                    </p>
+                    <a
+                      href={`${customer.storefrontOrigin}/products/${handle}?assistant=1`}
+                      target="_top"
+                      className={`mt-6 inline-flex bg-[#1c1b1b] px-6 py-4 text-white ${label}`}
+                    >
+                      Open Design Tool
+                    </a>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           {!loading && page === 'designs' ? (
             <section>
