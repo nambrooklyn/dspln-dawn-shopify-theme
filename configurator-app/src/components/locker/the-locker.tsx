@@ -849,7 +849,7 @@ export function TheLocker() {
                         <div className="divide-y divide-[#ddd] border-y border-[#ddd]">
                           {selectedOrder.items.map((item, index) => (
                             <article key={`${item.title}-${index}`} className="grid grid-cols-[96px_minmax(0,1fr)_auto] gap-5 py-7 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:gap-8">
-                              <div className="h-[150px] bg-[#f5f5f5] sm:h-[240px]">
+                              <div className="h-[150px] bg-white sm:h-[240px]">
                                 {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-contain" /> : null}
                               </div>
                               <div>
@@ -897,9 +897,10 @@ export function TheLocker() {
                 </div>
               ) : orders.length ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                  <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                     <thead>
                       <tr className={`border-b border-[#1c1b1b] ${label}`}>
+                        <th className="w-[104px] py-3 pr-4 font-normal">Product</th>
                         <th className="py-3 pr-4 font-normal">Order</th>
                         <th className="py-3 pr-4 font-normal">Date</th>
                         <th className="py-3 pr-4 font-normal">Payment</th>
@@ -910,6 +911,24 @@ export function TheLocker() {
                     <tbody>
                       {orders.map((order) => (
                         <tr key={order.id} className="border-b border-[#ddd]">
+                          <td className="py-4 pr-4">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrder(order)}
+                              aria-label={`Open order ${order.name}`}
+                              className="flex h-24 w-20 items-center justify-center bg-white"
+                            >
+                              {order.items?.[0]?.imageUrl ? (
+                                <img
+                                  src={order.items[0].imageUrl}
+                                  alt={`${cleanOrderTitle(order.items[0])} design`}
+                                  className="h-full w-full object-contain"
+                                />
+                              ) : (
+                                <span className="text-[9px] uppercase tracking-[0.12em] text-[#999]">No preview</span>
+                              )}
+                            </button>
+                          </td>
                           <td className="py-4 pr-4">
                             <button type="button" onClick={() => setSelectedOrder(order)} className="underline">
                               {order.name}
