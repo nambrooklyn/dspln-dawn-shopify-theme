@@ -18,6 +18,7 @@ const clean = (value, max = 180) => String(value ?? '').trim().slice(0, max);
 const env = (name) => Netlify.env.get(name) ?? '';
 
 function adminKeyStatus(request) {
+  // The DEV branch uses its own branch-deploy secret; never fall back open.
   const expected = env('DSPLN_ADMIN_API_KEY');
   if (!expected) return 'missing';
   const given = request.headers.get('x-dspln-admin-key') ?? '';
