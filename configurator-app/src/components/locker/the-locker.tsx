@@ -35,6 +35,19 @@ interface LockerOrder {
   statusPageUrl: string;
   cancelledAt?: string;
   cancelReason?: string;
+  /** Written by the factory portal; describes the pre-dispatch phase only. */
+  productionStage?: {
+    state?: 'being_made' | 'in_transit' | 'quality_check';
+    actionNeeded?: boolean;
+    actionMessage?: string | null;
+    updatedAt?: string;
+  } | null;
+  fulfillments?: Array<{
+    createdAt?: string;
+    trackingCompany?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+  }>;
   items?: Array<{
     title: string;
     productTitle?: string;
@@ -186,6 +199,133 @@ function AddressBlock({ address }: { address?: LockerAddress }) {
       <div>{[address.city, address.province, address.zip].filter(Boolean).join(' ')}</div>
       {address.country ? <div>{address.country}</div> : null}
     </address>
+  );
+}
+
+/**
+ * Four customer-facing stages. Nine was an ops checklist: photos are content,
+ * "review" is an action after delivery, and Brooklyn QC only means something
+ * internally — it rides inside In production, because from the customer's side
+ * the gi is not ready until we have checked it.
+ */
+const ORDER_STAGES = ['Ordered', 'In production', 'Shipped', 'Delivered'] as const;
+
+const PRODUCTION_SUBLINE: Record<string, string> = {
+  being_made: 'Being made',
+  in_transit: 'In transit to our Brooklyn studio',
+  quality_check: 'Final quality check',
+};
+
+/** Typical production time, shown while we have no promised date to quote. */
+const LEAD_TIME_NOTE = 'Typically ready in 3–4 weeks';
+
+interface OrderProgress {
+  index: number;
+  subLine?: string;
+  actionMessage?: string;
+  tracking?: { company?: string; number?: string; url?: string };
+  cancelled?: boolean;
+}
+
+/**
+ * Shopify owns dispatch onwards, so its fulfilment data always wins over the
+ * portal's production phase — a shipped order is shipped no matter what the
+ * last published production state said.
+ */
+function orderProgress(order: LockerOrder): OrderProgress {
+  const fulfillment = order.fulfillments?.find((entry) => entry.trackingNumber || entry.createdAt);
+  const tracking = fulfillment
+    ? {
+        company: fulfillment.trackingCompany,
+        number: fulfillment.trackingNumber,
+        url: fulfillment.trackingUrl,
+      }
+    : undefined;
+
+  if (order.cancelledAt) {
+    return { index: 0, cancelled: true, actionMessage: order.cancelReason || 'Order cancelled' };
+  }
+
+  const status = (order.fulfillmentStatus || '').toLowerCase();
+  if (status.includes('deliver')) return { index: 3, tracking };
+  if (fulfillment || status.includes('fulfil')) return { index: 2, tracking };
+
+  const production = order.productionStage;
+  return {
+    index: 1,
+    subLine: production?.state ? PRODUCTION_SUBLINE[production.state] : undefined,
+    actionMessage: production?.actionNeeded
+      ? production.actionMessage || 'We need something from you to continue.'
+      : undefined,
+  };
+}
+
+function OrderTimeline({ order }: { order: LockerOrder }) {
+  const progress = orderProgress(order);
+
+  return (
+    <div className="border border-[#ddd] p-5">
+      {progress.actionMessage ? (
+        <p className="mb-5 border border-[#842323] bg-[#fdf6f6] px-4 py-3 text-sm text-[#842323]">
+          <span className={`${label} mr-2`}>Action needed</span>
+          {progress.actionMessage}
+        </p>
+      ) : null}
+
+      <ol className="flex gap-1 sm:gap-2">
+        {ORDER_STAGES.map((stage, index) => {
+          const reached = !progress.cancelled && index <= progress.index;
+          const current = !progress.cancelled && index === progress.index;
+          return (
+            <li key={stage} className="min-w-0 flex-1">
+              <div
+                aria-hidden="true"
+                className={`h-[3px] rounded-full ${reached ? 'bg-[#1c1b1b]' : 'bg-[#e2e2df]'}`}
+              />
+              <p
+                className={`mt-3 text-[11px] leading-snug sm:text-xs ${
+                  reached ? 'text-[#1c1b1b]' : 'text-[#999]'
+                }`}
+              >
+                {stage}
+              </p>
+              {current && progress.subLine ? (
+                <p className="mt-1 text-[10px] leading-snug text-[#666] sm:text-[11px]">
+                  {progress.subLine}
+                </p>
+              ) : null}
+              {current && index === 1 && !progress.subLine ? (
+                <p className="mt-1 text-[10px] leading-snug text-[#666] sm:text-[11px]">
+                  {LEAD_TIME_NOTE}
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+
+      {progress.index === 1 && progress.subLine ? (
+        <p className="mt-4 text-xs text-[#777]">{LEAD_TIME_NOTE}</p>
+      ) : null}
+
+      {progress.tracking?.number ? (
+        <p className="mt-4 text-xs text-[#777]">
+          {progress.tracking.company ? `${progress.tracking.company} · ` : ''}
+          {progress.tracking.url ? (
+            <a
+              href={progress.tracking.url}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              {progress.tracking.number}
+            </a>
+          ) : (
+            progress.tracking.number
+          )}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -949,6 +1089,10 @@ export function TheLocker() {
                     </div>
                   </div>
 
+                  <div className="pt-5">
+                    <OrderTimeline order={selectedOrder} />
+                  </div>
+
                   <div className="grid gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_300px]">
                     <div>
                       <h3 className={`${label} mb-3 px-1`}>Items</h3>
@@ -1040,6 +1184,9 @@ export function TheLocker() {
                             <button type="button" onClick={() => setSelectedOrder(order)} className="underline">
                               {order.name}
                             </button>
+                            <span className="mt-1 block text-[11px] text-[#777]">
+                              {ORDER_STAGES[orderProgress(order).index]}
+                            </span>
                           </td>
                           <td className="py-4 pr-4">{formatDate(order.processedAt)}</td>
                           <td className="py-4 pr-4"><StatusBadge value={order.financialStatus} /></td>

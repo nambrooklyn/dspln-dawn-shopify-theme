@@ -62,6 +62,22 @@
                 statusPageUrl: {{ order.customer_url | json }},
                 cancelledAt: {{ order.cancelled_at | date: "%Y-%m-%dT%H:%M:%S%z" | json }},
                 cancelReason: {{ order.cancel_reason_label | json }},
+                {%- comment -%}
+                  Production phase, written by the factory portal. Shipped and
+                  delivered come from Shopify's own fulfilment data below, so
+                  this only ever describes what happens before dispatch.
+                {%- endcomment -%}
+                productionStage: {{ order.metafields.dspln.production_stage.value | json }},
+                fulfillments: [
+                  {%- for fulfillment in order.fulfillments -%}
+                    {
+                      createdAt: {{ fulfillment.created_at | date: "%Y-%m-%dT%H:%M:%S%z" | json }},
+                      trackingCompany: {{ fulfillment.tracking_company | json }},
+                      trackingNumber: {{ fulfillment.tracking_number | json }},
+                      trackingUrl: {{ fulfillment.tracking_url | json }}
+                    }{% unless forloop.last %},{% endunless %}
+                  {%- endfor -%}
+                ],
                 items: [
                   {%- for line_item in order.line_items -%}
                     {%- capture dspln_order_preview -%}{%- render 'dspln-line-item-preview-url', item: line_item -%}{%- endcapture -%}
