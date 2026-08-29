@@ -117,7 +117,10 @@
       <div class="dspln-locker-signin__mark">D</div>
       <h1>The Locker</h1>
       <p>Sign in to access your saved designs, uploaded artwork, sizing profile, and Shopify orders.</p>
-      <shopify-account menu="customer-account-main-menu">
+      <shopify-account
+        menu="customer-account-main-menu"
+        sign-in-url="/customer_authentication/login?return_to=%2Fpages%2Flocker"
+      >
         <div slot="signed-out-avatar" class="dspln-locker-signin__button">Sign in or create account</div>
       </shopify-account>
     </div>
