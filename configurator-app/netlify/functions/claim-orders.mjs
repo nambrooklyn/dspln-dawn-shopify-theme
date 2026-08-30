@@ -15,11 +15,16 @@ import {
 // walking orders re-unites the two. See design-ownership.mjs for the ownership
 // rule; the ONGOING half of this lives in shopify-order-webhook.mjs.
 //
-//   GET /.netlify/functions/claim-orders?dryRun=1   (report only, changes nothing)
-//   GET /.netlify/functions/claim-orders?dryRun=0   (claims)
+//   GET /.netlify/functions/claim-orders?dryRun=1   (walks Shopify; report only)
+//   GET /.netlify/functions/claim-orders?dryRun=0   (walks Shopify; claims)
+//   POST {"dryRun":true, "claims":[{"designId","customerId","order"?}]}
 //
-// Both require the `x-dspln-admin-key` header. Long histories page: pass the
-// returned `nextCursor` back as `cursor` until it comes back null.
+// The POST form takes the order→customer mapping as data instead of querying
+// Shopify — the mapping is assembled wherever Shopify access lives (or from
+// DSPLN's own archives), so this function needs no Shopify credentials at
+// all. Every request requires the `x-dspln-admin-key` header. Long GET
+// histories page: pass the returned `nextCursor` back as `cursor` until it
+// comes back null.
 
 const STORE_NAME = 'dspln-customer-designs';
 const ORDERS_PER_PAGE = 25;
@@ -93,12 +98,68 @@ async function fetchOrders({ token, shopDomain }, cursor) {
   return body.data.orders;
 }
 
+const MAX_POSTED_CLAIMS = 500;
+
+// The mapping arrives as data; the ownership rule still holds regardless of
+// what the caller sends — claimDesignForCustomer only ever moves guest:
+// records, so a bad mapping cannot re-key another account's design.
+async function handlePostedClaims(event, store) {
+  let payload;
+  try {
+    payload = JSON.parse(event.body || '{}');
+  } catch {
+    return json(400, { error: 'Invalid JSON body' });
+  }
+
+  const entries = Array.isArray(payload.claims) ? payload.claims : null;
+  if (!entries?.length) {
+    return json(400, { error: 'Body must be {"claims": [{"designId", "customerId"}, …]}' });
+  }
+  if (entries.length > MAX_POSTED_CLAIMS) {
+    return json(400, { error: `At most ${MAX_POSTED_CLAIMS} claims per request` });
+  }
+  const dryRun = payload.dryRun !== false;
+  const { shopDomain } = shopContext();
+
+  const tally = { claimed: 0, alreadyOwned: 0, ownedByAccount: 0, notFound: 0, failed: 0 };
+  const results = [];
+  for (const entry of entries) {
+    try {
+      const result = await claimDesignForCustomer(store, {
+        designId: entry?.designId,
+        shopDomain,
+        customerId: entry?.customerId,
+        dryRun,
+      });
+      if (result.status === 'claimed') tally.claimed += 1;
+      else if (result.status === 'already-owned') tally.alreadyOwned += 1;
+      else if (result.status === 'owned-by-account') tally.ownedByAccount += 1;
+      else tally.notFound += 1;
+      results.push({ order: entry?.order ?? null, ...result });
+    } catch (error) {
+      tally.failed += 1;
+      results.push({ order: entry?.order ?? null, designId: entry?.designId, status: 'failed' });
+      console.error('[claim-orders] posted claim failed', { designId: entry?.designId, error });
+    }
+  }
+
+  console.log('[claim-orders] posted', { dryRun, count: entries.length, ...tally });
+  return json(200, { ok: true, dryRun, shopDomain, tally, results });
+}
+
 export const handler = async (event) => {
-  if (event.httpMethod !== 'GET') return json(405, { error: 'Method not allowed' });
+  if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
+    return json(405, { error: 'Method not allowed' });
+  }
   if (!adminKeyOk(event)) {
     return json(401, {
       error: 'A valid x-dspln-admin-key is required. Set DSPLN_ADMIN_API_KEY to enable this endpoint.',
     });
+  }
+
+  if (event.httpMethod === 'POST') {
+    connectLambda(event);
+    return handlePostedClaims(event, getStore(STORE_NAME));
   }
 
   const shop = shopContext();
