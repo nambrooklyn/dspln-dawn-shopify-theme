@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
+import { GI_PRODUCT_CONFIGS } from '../configurators/shared/gi-product-config';
 import { uploadArtworkImage } from '../configurators/shared/preview-upload';
 
 type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders';
@@ -455,6 +456,65 @@ async function saveArtworkRecord(
   return { id: artwork.id, url: artwork.url };
 }
 
+/**
+ * Guest work is claimed by POSSESSION of the guest tokens sitting in this
+ * browser's localStorage — the configurators and the Locker are both the
+ * Netlify app, so they share an origin and therefore share localStorage.
+ * Possession is per-device on purpose: designs made on a phone stay on the
+ * phone's guest token until that browser signs in.
+ */
+const GUEST_TOKEN_KEYS = Object.values(GI_PRODUCT_CONFIGS).map(
+  (config) => config.guestTokenStorageKey,
+);
+
+function readGuestTokens(): Array<{ storageKey: string; token: string }> {
+  if (typeof window === 'undefined') return [];
+  return GUEST_TOKEN_KEYS.flatMap((storageKey) => {
+    try {
+      const token = window.localStorage.getItem(storageKey)?.trim();
+      return token ? [{ storageKey, token }] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+
+/**
+ * Moves any guest designs/artwork held in this browser into the signed-in
+ * Locker. Quiet and non-blocking: on failure the tokens stay in localStorage
+ * so the next visit retries. Returns how many records moved.
+ */
+async function claimGuestWork(customer: LockerCustomer): Promise<number> {
+  const held = readGuestTokens();
+  if (!held.length) return 0;
+
+  const response = await fetch('/api/customer-designs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'claim-guest',
+      ownerKey: ownerKey(customer),
+      guestTokens: held.map((entry) => entry.token),
+    }),
+  });
+  if (!response.ok) throw new Error('Could not claim guest designs.');
+
+  const payload = await response.json();
+  const claimed = payload?.data?.claimed ?? {};
+  // Anything left behind by a partial failure keeps its token so the next
+  // Locker visit picks it up.
+  if (!claimed.failed) {
+    held.forEach((entry) => {
+      try {
+        window.localStorage.removeItem(entry.storageKey);
+      } catch {
+        // A locked-down storage just means we retry next visit.
+      }
+    });
+  }
+  return Number(claimed.designs ?? 0) + Number(claimed.artwork ?? 0);
+}
+
 async function fetchFit(customer: LockerCustomer): Promise<FitProfile> {
   const url = new URL('/api/customer-fit', window.location.origin);
   url.searchParams.set('ownerKey', ownerKey(customer));
@@ -531,6 +591,14 @@ export function TheLocker() {
     if (!customer) return;
     setLoading(true);
     setError('');
+    // Claim first so the listings below already include the guest work. A
+    // claim failure must never break the Locker — log it and move on.
+    let claimedCount = 0;
+    try {
+      claimedCount = await claimGuestWork(customer);
+    } catch (cause) {
+      console.warn('[locker] guest claim failed', cause);
+    }
     const results = await Promise.allSettled([
       fetchDesigns(customer),
       fetchUploads(customer),
@@ -544,6 +612,13 @@ export function TheLocker() {
       setError(failure.reason instanceof Error ? failure.reason.message : 'Could not load the Locker.');
     }
     setLoading(false);
+    if (claimedCount > 0) {
+      toast.success(
+        claimedCount === 1
+          ? 'Added 1 design you made before signing in'
+          : `Added ${claimedCount} items you made before signing in`,
+      );
+    }
   }, [customer]);
 
   useEffect(() => {

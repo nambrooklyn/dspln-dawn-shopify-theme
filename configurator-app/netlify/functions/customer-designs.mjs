@@ -532,6 +532,97 @@ async function listArtworkRecords(store, ownerKey) {
   return records.filter((record) => record?.kind === 'artwork');
 }
 
+// Guest work is claimed by POSSESSION of the guest token — the caller proves
+// authorship by still holding the token the configurator minted in that
+// browser's localStorage. Email is NEVER used for matching: an email is not
+// proof of ownership. The only records a claim can touch are the ones under
+// `guest:{token}` for the tokens presented, and they can only ever move INTO
+// the ownerKey the caller supplied, so this never widens the (pre-existing)
+// unverified-ownerKey surface into reading another shopify: owner's records.
+const GUEST_TOKEN_PATTERN = /^[A-Za-z0-9_-]{8,120}$/;
+
+const cleanGuestTokens = (value) => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  value.forEach((raw) => {
+    const token = String(raw ?? '').trim();
+    if (token && GUEST_TOKEN_PATTERN.test(token)) seen.add(token);
+  });
+  return [...seen];
+};
+
+const shopifyCustomerIdFromOwnerKey = (ownerKey) => {
+  const parts = String(ownerKey).split(':');
+  return parts.length === 3 && parts[0] === 'shopify' ? parts[2] : null;
+};
+
+// Re-keys one record and repoints its lookup entry. The id never changes, so
+// share links and `lookup/{id}.json` stay valid. Writing the new blob before
+// deleting the old one means a mid-flight failure leaves the record readable
+// under the guest key (the next claim retries it) rather than losing it.
+async function moveClaimedRecord(store, oldKey, newKey, record) {
+  await store.setJSON(newKey, record);
+  await store.setJSON(lookupKey(record.id), { key: newKey });
+  if (record.configData?.studio === true) {
+    await store.setJSON(studioIndexKey(record.id), { key: newKey });
+  }
+  if (oldKey !== newKey) await store.delete(oldKey);
+}
+
+async function claimGuestRecords(store, ownerKey, tokens) {
+  const shopifyCustomerId = shopifyCustomerIdFromOwnerKey(ownerKey);
+  let designs = 0;
+  let artwork = 0;
+  let failed = 0;
+
+  for (const token of tokens) {
+    const guestKey = `guest:${token}`;
+    const prefixes = [
+      { prefix: `designs/${cleanPathPart(guestKey)}/`, kind: 'design' },
+      { prefix: `artwork/${cleanPathPart(guestKey)}/`, kind: 'artwork' },
+    ];
+
+    for (const { prefix, kind } of prefixes) {
+      let cursor;
+      do {
+        const page = await store.list({ prefix, cursor });
+        for (const blob of page.blobs) {
+          try {
+            const record = await store.get(blob.key, { type: 'json' });
+            // An empty or already-claimed token lists nothing — a no-op, not
+            // an error. A record whose ownerKey no longer matches the guest
+            // key it sits under is left alone.
+            if (!record?.id || record.ownerKey !== guestKey) continue;
+            const claimed = {
+              ...record,
+              ownerKey,
+              shopifyCustomerId: shopifyCustomerId ?? record.shopifyCustomerId ?? null,
+              guestToken: null,
+              updatedAt: record.updatedAt ?? new Date().toISOString(),
+            };
+            const newKey =
+              kind === 'artwork'
+                ? artworkKey(claimed)
+                : designKey(claimed);
+            await moveClaimedRecord(store, blob.key, newKey, claimed);
+            if (kind === 'artwork') artwork += 1;
+            else designs += 1;
+          } catch (error) {
+            failed += 1;
+            console.error('[customer-designs] claim failed', {
+              key: blob.key,
+              error,
+            });
+          }
+        }
+        cursor = page.cursor;
+      } while (cursor);
+    }
+  }
+
+  return { designs, artwork, failed, tokens: tokens.length };
+}
+
 function assetResponse(record, asset) {
   const [part, slot] = String(asset || '').split(':');
   const image = record.configData?.images?.[part]?.[slot];
@@ -973,6 +1064,20 @@ export const handler = async (event) => {
       const payload = safeParse(event.body);
       if (!payload.ownerKey) {
         return jsonResponse(400, { error: 'ownerKey is required' });
+      }
+
+      // Claim guest work: move everything stored under `guest:{token}` into
+      // this ownerKey. Only a signed-in (shopify:) owner can be the target —
+      // claiming into another guest key would just shuffle anonymous records.
+      if (payload.action === 'claim-guest') {
+        if (!shopifyCustomerIdFromOwnerKey(payload.ownerKey)) {
+          return jsonResponse(400, { error: 'A signed-in ownerKey is required' });
+        }
+        const tokens = cleanGuestTokens(payload.guestTokens);
+        const claimed = tokens.length
+          ? await claimGuestRecords(store, payload.ownerKey, tokens)
+          : { designs: 0, artwork: 0, failed: 0, tokens: 0 };
+        return jsonResponse(200, { data: { claimed } });
       }
 
       // Artwork Studio save: hosted URL + metadata only, no image bytes.
