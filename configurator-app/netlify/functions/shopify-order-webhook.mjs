@@ -2,16 +2,30 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import { connectLambda, getStore } from '@netlify/blobs';
 
+import {
+  designIdsFromOrder,
+  designKey,
+  isGuestOwnerKey,
+  lookupKey,
+  moveRecord,
+  ownerKeyForCustomer,
+} from '../lib/design-ownership.mjs';
+
 // Stamps the real Shopify order number onto the saved design records once an
 // order is placed, so the on-demand tech pack (generated later from the admin
 // order page) can show the order number in its header and filename.
+//
+// It also CLAIMS the design for the ordering customer. Most people design and
+// check out without signing in, which files their work under a guest browser
+// token that no account can ever reach. The order names both the design and
+// the customer, so this is the moment the two can be joined — see
+// ../lib/design-ownership.mjs. claim-orders.mjs does the same for past orders.
 //
 // The design id travels on each configured line item as the `_dspln_design_id`
 // property (see shopify-cart-simulator.buildShopifyTestCartLine). This webhook
 // matches those ids back to their blob records and writes order.name onto them.
 
 const STORE_NAME = 'dspln-customer-designs';
-const DESIGN_ID_PROPERTY = '_dspln_design_id';
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -51,45 +65,18 @@ function isVerified(event, rawBody) {
   }
 }
 
-function designIdsFromOrder(order) {
-  const ids = new Set();
-  for (const item of order.line_items ?? []) {
-    for (const prop of item.properties ?? []) {
-      const name = prop?.name;
-      const value = prop?.value != null ? String(prop.value) : '';
-      if (!value) continue;
-
-      // Direct id property (only present if not stripped as a hidden prop).
-      if (name === DESIGN_ID_PROPERTY || name === '_configurator_id') {
-        ids.add(value);
-        continue;
-      }
-
-      // Robust path: the visible "Tech Pack" / "3D Design" properties carry
-      // the design id in their URL (…/tech-pack/gi?id=<id> or ?design=<id>).
-      // Hidden `_`-prefixed props are stripped before /cart/add, so these
-      // visible URLs are the reliable source of the design id on the order.
-      const match = value.match(/[?&](?:id|design)=([^&\s#]+)/);
-      if (match) {
-        try {
-          ids.add(decodeURIComponent(match[1]));
-        } catch {
-          ids.add(match[1]);
-        }
-      }
-    }
-  }
-  return [...ids];
-}
-
-async function stampOrderOntoDesigns(order) {
+async function applyOrderToDesigns(order, shopDomain) {
   const store = getStore(STORE_NAME);
   const ids = designIdsFromOrder(order);
+  // The webhook body carries the customer inline, so claiming needs no
+  // follow-up Shopify query (and none of the protected-customer-data access
+  // that reading `customer` through the API would require).
+  const customerId = order.customer?.id ?? null;
   const results = [];
 
   for (const id of ids) {
     try {
-      const lookup = await store.get(`lookup/${id}.json`, { type: 'json' });
+      const lookup = await store.get(lookupKey(id), { type: 'json' });
       if (!lookup?.key) {
         results.push({ id, updated: false, reason: 'no lookup' });
         continue;
@@ -99,12 +86,29 @@ async function stampOrderOntoDesigns(order) {
         results.push({ id, updated: false, reason: 'no record' });
         continue;
       }
-      record.orderName = order.name ?? null;
-      record.orderNumber = order.order_number ?? null;
-      record.shopifyOrderId = order.id ?? null;
-      record.updatedAt = new Date().toISOString();
-      await store.setJSON(lookup.key, record);
-      results.push({ id, updated: true, orderName: order.name });
+
+      const next = {
+        ...record,
+        orderName: order.name ?? null,
+        orderNumber: order.order_number ?? null,
+        shopifyOrderId: order.id ?? null,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Only a guest record is ever moved. A design already owned by an
+      // account stays put, so one order can never drag another customer's
+      // design into the buyer's Locker.
+      let claimed = null;
+      if (customerId && shopDomain && isGuestOwnerKey(next.ownerKey)) {
+        claimed = { from: next.ownerKey, to: ownerKeyForCustomer(shopDomain, customerId) };
+        next.ownerKey = claimed.to;
+        next.shopifyCustomerId = String(customerId);
+        next.guestToken = null;
+      }
+
+      const targetKey = claimed ? designKey(next) : lookup.key;
+      await moveRecord(store, lookup.key, targetKey, next);
+      results.push({ id, updated: true, orderName: order.name, claimed });
     } catch (error) {
       console.error('[order-webhook] failed to stamp design', id, error);
       results.push({ id, updated: false, reason: 'error' });
@@ -190,8 +194,13 @@ export const handler = async (event) => {
     return json(400, { error: 'Invalid JSON body' });
   }
 
+  const shopDomain =
+    event.headers['x-shopify-shop-domain'] ??
+    event.headers['X-Shopify-Shop-Domain'] ??
+    shopContext().shopDomain;
+
   try {
-    const results = await stampOrderOntoDesigns(order);
+    const results = await applyOrderToDesigns(order, shopDomain);
     console.log('[order-webhook] stamped', order.name, results);
     // Always 200 so Shopify does not retry on partial no-ops.
     return json(200, { ok: true, order: order.name ?? null, results });
