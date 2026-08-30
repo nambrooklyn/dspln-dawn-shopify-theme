@@ -1027,6 +1027,31 @@ export const handler = async (event) => {
         });
       }
 
+      // DSPLN-side identity: which Shopify customer does this email belong
+      // to, according to DSPLN's OWN records? Orders stamp the email onto
+      // claimed designs, so after a purchase the answer lives here — the
+      // admin no longer needs Shopify's customers API to find someone's
+      // Locker. Admin-gated: email->identity mapping is not public data.
+      if (query.resolveCustomer === '1') {
+        if (!adminKeyOk(event)) return jsonResponse(403, { error: 'Admin key required' });
+        const email = String(query.customerEmail || '').trim().toLowerCase();
+        if (!email) return jsonResponse(400, { error: 'customerEmail is required' });
+        const records = (await listRecords(store, 'designs/')).filter(
+          (record) =>
+            String(record?.customerEmail || '').trim().toLowerCase() === email &&
+            record?.shopifyCustomerId,
+        );
+        records.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+        const match = records[0] ?? null;
+        return jsonResponse(200, {
+          data: {
+            customerId: match?.shopifyCustomerId ?? null,
+            ownerKey: match?.ownerKey ?? null,
+            designCount: records.length,
+          },
+        });
+      }
+
       if (query.all === '1') {
         if (!adminKeyOk(event)) return jsonResponse(403, { error: 'Admin key required' });
         const designs = await listRecords(store, 'designs/');

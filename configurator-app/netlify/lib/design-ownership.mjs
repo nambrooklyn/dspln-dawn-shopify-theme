@@ -97,7 +97,7 @@ export async function moveRecord(store, oldKey, newKey, record) {
  *
  * Returns a status rather than throwing, so a backfill can report per design.
  */
-export async function claimDesignForCustomer(store, { designId, shopDomain, customerId, dryRun = false }) {
+export async function claimDesignForCustomer(store, { designId, shopDomain, customerId, customerEmail = null, dryRun = false }) {
   if (!designId || !shopDomain || !customerId) {
     return { designId, status: 'skipped', reason: 'missing id, shop or customer' };
   }
@@ -120,6 +120,9 @@ export async function claimDesignForCustomer(store, { designId, shopDomain, cust
     ...record,
     ownerKey,
     shopifyCustomerId: String(customerId),
+    // The email makes the record resolvable by DSPLN's own admin without
+    // asking Shopify who the customer is. Never overwrite one already there.
+    customerEmail: record.customerEmail || customerEmail || null,
     guestToken: null,
     updatedAt: record.updatedAt ?? new Date().toISOString(),
   };

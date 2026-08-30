@@ -103,6 +103,10 @@ async function applyOrderToDesigns(order, shopDomain) {
         claimed = { from: next.ownerKey, to: ownerKeyForCustomer(shopDomain, customerId) };
         next.ownerKey = claimed.to;
         next.shopifyCustomerId = String(customerId);
+        // The order's email makes the record resolvable by DSPLN's own admin
+        // (customer-designs resolveCustomer=1) without any Shopify lookup.
+        next.customerEmail =
+          next.customerEmail || order.email || order.customer?.email || null;
         next.guestToken = null;
       }
 
