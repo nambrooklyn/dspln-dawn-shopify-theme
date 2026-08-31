@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, House, Receipt, Scissors, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
@@ -232,6 +233,8 @@ const PRODUCTION_SUBLINE: Record<string, string> = {
 /** Typical production time, shown while we have no promised date to quote. */
 const LEAD_TIME_NOTE = 'Typically ready in 7 days';
 
+const STAGE_ICONS = [Receipt, Scissors, Truck, House] as const;
+
 interface OrderProgress {
   index: number;
   subLine?: string;
@@ -324,6 +327,7 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
           const reached = !progress.cancelled && index <= progress.index;
           const current = !progress.cancelled && index === progress.index;
           const detail = stageDetail(index);
+          const StageIcon = STAGE_ICONS[index] ?? Receipt;
           return (
             <li key={stage} className="relative min-w-0 flex-1 sm:pr-4">
               <div
@@ -332,17 +336,27 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
               />
               <span
                 aria-hidden="true"
-                className={`absolute left-0 top-[-5px] block h-3 w-3 rounded-full border-2 ${
+                className={`absolute left-0 top-[-9px] flex h-5 w-5 items-center justify-center rounded-full border-2 ${
                   current
                     ? 'border-[#1c1b1b] bg-white ring-4 ring-[#1c1b1b1a]'
                     : reached
-                      ? 'border-[#1c1b1b] bg-[#1c1b1b]'
+                      ? 'border-[#1c1b1b] bg-[#1c1b1b] text-white'
                       : 'border-[#d5d5d0] bg-white'
                 }`}
-              />
-              <p className={`mt-4 text-xs font-medium ${reached ? 'text-[#1c1b1b]' : 'text-[#999]'}`}>
-                {stage}
-              </p>
+              >
+                {reached && !current ? <Check size={11} strokeWidth={3} /> : null}
+              </span>
+              <div className="mt-5 flex items-center gap-2">
+                <StageIcon
+                  size={16}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className={reached ? 'text-[#1c1b1b]' : 'text-[#c4c4bf]'}
+                />
+                <p className={`text-xs font-medium ${reached ? 'text-[#1c1b1b]' : 'text-[#999]'}`}>
+                  {stage}
+                </p>
+              </div>
               {detail.when ? (
                 <p className="mt-1 text-[11px] tabular-nums text-[#888]">{detail.when}</p>
               ) : null}
