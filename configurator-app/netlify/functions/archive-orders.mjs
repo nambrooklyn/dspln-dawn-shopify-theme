@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { connectLambda, getStore } from '@netlify/blobs';
 
 import { archiveOrder } from '../lib/order-archive.mjs';
+import { appendEvent, stageEventsForOrder } from '../lib/order-events.mjs';
 
 // Reconciliation backstop for the order mirror.
 //
@@ -82,6 +83,13 @@ export const handler = async (event) => {
         continue;
       }
       const result = await archiveOrder(store, order, shopDomain);
+      // Stage events carry deterministic ids, so sweeping an already-archived
+      // order rebuilds its thread rather than duplicating it.
+      if (result.archived) {
+        for (const ev of stageEventsForOrder(order, result.ownerKey)) {
+          await appendEvent(store, ev);
+        }
+      }
       tally[result.archived ? 'archived' : 'skipped'] += 1;
       results.push({ order: order?.name ?? null, ...result });
     } catch (error) {

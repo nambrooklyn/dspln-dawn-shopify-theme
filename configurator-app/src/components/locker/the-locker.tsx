@@ -288,7 +288,15 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
   // evidence. Shopify owns Ordered / Shipped / Delivered; the PO owns the
   // middle one, so the source is worth naming.
   const stageDetail = (index: number) => {
-    if (index === 0) return { when: formatDate(order.processedAt), sub: order.financialStatus || '', owner: 'Shopify' };
+    if (index === 0) {
+      const paid = /paid/i.test(order.financialStatus || '') && !/unpaid|pending/i.test(order.financialStatus || '');
+      const refunded = /refund/i.test(order.financialStatus || '');
+      return {
+        when: formatDate(order.processedAt),
+        sub: refunded ? 'Refunded' : paid ? 'Payment received' : 'Awaiting payment',
+        owner: 'Shopify',
+      };
+    }
     if (index === 1) {
       return {
         when: progress.index === 1 ? '' : '',
