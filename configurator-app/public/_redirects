@@ -4,4 +4,5 @@
 /  https://dspln.com  302!
 /api/customer-designs /.netlify/functions/customer-designs 200
 /api/design-assistant /.netlify/functions/design-assistant 200
+/api/order-thread /.netlify/functions/order-thread 200
 /* /index.html 200

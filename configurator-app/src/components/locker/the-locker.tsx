@@ -61,6 +61,18 @@ interface LockerOrder {
   shippingAddress?: LockerAddress;
 }
 
+interface OrderEvent {
+  id: string;
+  orderId: string;
+  type: 'stage' | 'email' | 'production' | 'chat' | 'note' | 'order-edit' | 'file';
+  visibility: 'customer' | 'internal';
+  actor?: { kind?: string; name?: string | null };
+  title: string;
+  body?: string | null;
+  payload?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 interface LockerAddress {
   name?: string;
   address1?: string;
@@ -269,6 +281,30 @@ function orderProgress(order: LockerOrder): OrderProgress {
 
 function OrderTimeline({ order }: { order: LockerOrder }) {
   const progress = orderProgress(order);
+  const tracking = progress.tracking;
+
+  // A waypoint rail rather than a segmented bar: each stage carries a date, a
+  // sub-state and WHO said so, which turns "In production" from a claim into
+  // evidence. Shopify owns Ordered / Shipped / Delivered; the PO owns the
+  // middle one, so the source is worth naming.
+  const stageDetail = (index: number) => {
+    if (index === 0) return { when: formatDate(order.processedAt), sub: order.financialStatus || '', owner: 'Shopify' };
+    if (index === 1) {
+      return {
+        when: progress.index === 1 ? '' : '',
+        sub: progress.index >= 1 ? (progress.subLine ?? LEAD_TIME_NOTE) : LEAD_TIME_NOTE,
+        owner: 'DSPLN',
+      };
+    }
+    if (index === 2) {
+      return {
+        when: tracking ? '' : '',
+        sub: tracking ? `${tracking.company ?? ''} ${tracking.number ?? ''}`.trim() : 'Tracking appears here',
+        owner: 'Shopify',
+      };
+    }
+    return { when: '', sub: progress.index === 3 ? 'Delivered' : 'Estimated after dispatch', owner: 'Shopify' };
+  };
 
   return (
     <div className="border border-[#ddd] p-5">
@@ -279,40 +315,52 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
         </p>
       ) : null}
 
-      <ol className="flex gap-1 sm:gap-2">
+      <ol className="flex flex-col gap-5 sm:flex-row sm:gap-0">
         {ORDER_STAGES.map((stage, index) => {
           const reached = !progress.cancelled && index <= progress.index;
           const current = !progress.cancelled && index === progress.index;
+          const detail = stageDetail(index);
           return (
-            <li key={stage} className="min-w-0 flex-1">
+            <li key={stage} className="relative min-w-0 flex-1 sm:pr-4">
               <div
                 aria-hidden="true"
-                className={`h-[3px] rounded-full ${reached ? 'bg-[#1c1b1b]' : 'bg-[#e2e2df]'}`}
+                className={`h-[2px] w-full ${reached ? 'bg-[#1c1b1b]' : 'bg-[#e2e2df]'}`}
               />
-              <p
-                className={`mt-3 text-[11px] leading-snug sm:text-xs ${
-                  reached ? 'text-[#1c1b1b]' : 'text-[#999]'
+              <span
+                aria-hidden="true"
+                className={`absolute left-0 top-[-5px] block h-3 w-3 rounded-full border-2 ${
+                  current
+                    ? 'border-[#1c1b1b] bg-white ring-4 ring-[#1c1b1b1a]'
+                    : reached
+                      ? 'border-[#1c1b1b] bg-[#1c1b1b]'
+                      : 'border-[#d5d5d0] bg-white'
                 }`}
-              >
+              />
+              <p className={`mt-4 text-xs font-medium ${reached ? 'text-[#1c1b1b]' : 'text-[#999]'}`}>
                 {stage}
               </p>
-              {current && progress.subLine ? (
-                <p className="mt-1 text-[10px] leading-snug text-[#666] sm:text-[11px]">
-                  {progress.subLine}
-                </p>
+              {detail.when ? (
+                <p className="mt-1 text-[11px] tabular-nums text-[#888]">{detail.when}</p>
               ) : null}
-              {current && index === 1 && !progress.subLine ? (
-                <p className="mt-1 text-[10px] leading-snug text-[#666] sm:text-[11px]">
-                  {LEAD_TIME_NOTE}
-                </p>
+              {detail.sub ? (
+                <p className="mt-1 pr-2 text-[11px] leading-snug text-[#666]">{detail.sub}</p>
               ) : null}
+              <span
+                className={`mt-2 inline-block px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] ${
+                  detail.owner === 'DSPLN'
+                    ? 'bg-[#f3f0e9] text-[#6b5f3f]'
+                    : 'bg-[#f4f4f2] text-[#999]'
+                }`}
+              >
+                {detail.owner}
+              </span>
             </li>
           );
         })}
       </ol>
 
-      {progress.index === 1 && progress.subLine ? (
-        <p className="mt-4 text-xs text-[#777]">{LEAD_TIME_NOTE}</p>
+      {progress.cancelled ? (
+        <p className="mt-4 text-xs text-[#842323]">{progress.actionMessage}</p>
       ) : null}
 
       {progress.tracking?.number ? (
@@ -430,6 +478,141 @@ function mergeOrders(primary: LockerOrder[], secondary: LockerOrder[]): LockerOr
     );
   });
   return [...byId.values()].sort((a, b) => String(b.processedAt).localeCompare(String(a.processedAt)));
+}
+
+async function fetchOrderThread(customer: LockerCustomer, orderId: string): Promise<OrderEvent[]> {
+  const url = new URL('/api/order-thread', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  url.searchParams.set('orderId', orderId);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Could not load this order\u2019s activity.');
+  const payload = await response.json();
+  return payload?.data?.events ?? [];
+}
+
+async function postOrderMessage(customer: LockerCustomer, orderId: string, body: string) {
+  const response = await fetch(new URL('/api/order-thread', window.location.origin), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ownerKey: ownerKey(customer), orderId, type: 'chat', body,
+      actorName: [customer.firstName, customer.lastName].filter(Boolean).join(' ') || null,
+    }),
+  });
+  if (!response.ok) throw new Error('Message could not be sent.');
+  const payload = await response.json();
+  return payload?.data?.event as OrderEvent;
+}
+
+function eventTone(type: OrderEvent['type']) {
+  if (type === 'stage') return { dot: 'bg-[#1c1b1b]', tag: 'Stage' };
+  if (type === 'email') return { dot: 'bg-[#c9c7c1]', tag: 'Email' };
+  if (type === 'chat') return { dot: 'bg-[#842323]', tag: 'Message' };
+  if (type === 'production') return { dot: 'bg-[#c9c7c1]', tag: 'Production' };
+  if (type === 'order-edit') return { dot: 'bg-[#c9c7c1]', tag: 'Update' };
+  if (type === 'file') return { dot: 'bg-[#c9c7c1]', tag: 'File' };
+  return { dot: 'bg-[#c9c7c1]', tag: 'Note' };
+}
+
+/** Every stage change, email and message on one order, oldest first. */
+function OrderActivity({ customer, order }: { customer: LockerCustomer; order: LockerOrder }) {
+  const [events, setEvents] = useState<OrderEvent[]>([]);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    setLoaded(false);
+    fetchOrderThread(customer, String(order.id))
+      .then((list) => { if (live) { setEvents(list); setLoaded(true); } })
+      .catch(() => { if (live) setLoaded(true); });
+    return () => { live = false; };
+  }, [customer, order.id]);
+
+  const send = async () => {
+    const body = draft.trim();
+    if (!body || sending) return;
+    setSending(true);
+    try {
+      const created = await postOrderMessage(customer, String(order.id), body);
+      setEvents((current) => [...current, created]);
+      setDraft('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Message could not be sent.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <section className="border border-[#ddd] p-5">
+      <h3 className={`${label} text-[#666]`}>Activity</h3>
+
+      {loaded && !events.length ? (
+        <p className="mt-4 text-sm text-[#777]">
+          Nothing yet. Updates about this order will appear here.
+        </p>
+      ) : null}
+
+      <ol className="mt-4 flex flex-col">
+        {events.map((event) => {
+          const tone = eventTone(event.type);
+          const mine = event.actor?.kind === 'customer';
+          return (
+            <li key={event.id} className="grid grid-cols-[74px_18px_1fr] items-start">
+              <span className="py-3 pr-2 text-right text-[11px] leading-snug tabular-nums text-[#999]">
+                {formatDate(event.createdAt)}
+              </span>
+              <span className="relative flex justify-center pt-3">
+                <span aria-hidden="true" className="absolute bottom-0 top-0 w-px bg-[#e6e4df]" />
+                <span className={`relative mt-[5px] h-2 w-2 rounded-full ring-4 ring-white ${tone.dot}`} />
+              </span>
+              <div className="py-3 pl-1">
+                <p className="text-sm leading-relaxed">
+                  <span className={`${label} mr-2 text-[#999]`}>{tone.tag}</span>
+                  {event.title}
+                </p>
+                {event.body ? (
+                  <div
+                    className={`mt-2 max-w-[52ch] border px-3 py-2 text-sm ${
+                      mine ? 'border-[#e6e4df] bg-[#faf9f7]' : 'border-transparent bg-[#f3efe9]'
+                    }`}
+                  >
+                    <span className={`${label} mb-1 block text-[#999]`}>
+                      {event.actor?.name || (mine ? 'You' : 'DSPLN')}
+                    </span>
+                    {event.body}
+                  </div>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="mt-5 border border-[#ddd]">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={3}
+          placeholder="Ask us about this order\u2026"
+          className="w-full resize-none px-4 py-3 text-sm outline-none"
+        />
+        <div className="flex items-center justify-between border-t border-[#eee] px-4 py-2">
+          <span className="text-xs text-[#999]">We reply here and by email.</span>
+          <button
+            type="button"
+            onClick={send}
+            disabled={sending || !draft.trim()}
+            className={`${label} bg-[#1c1b1b] px-5 py-2 text-white disabled:opacity-40`}
+          >
+            {sending ? 'Sending' : 'Send'}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 async function fetchUploads(customer: LockerCustomer): Promise<LockerUpload[]> {
@@ -1221,6 +1404,10 @@ export function TheLocker() {
 
                   <div className="pt-5">
                     <OrderTimeline order={selectedOrder} />
+                  </div>
+
+                  <div className="pt-5">
+                    <OrderActivity customer={customer} order={selectedOrder} />
                   </div>
 
                   <div className="grid gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_300px]">
