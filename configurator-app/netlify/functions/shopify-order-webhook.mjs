@@ -2,16 +2,32 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import { connectLambda, getStore } from '@netlify/blobs';
 
+import {
+  designIdsFromOrder,
+  designKey,
+  isGuestOwnerKey,
+  lookupKey,
+  moveRecord,
+  ownerKeyForCustomer,
+  writeEmailIndex,
+} from '../lib/design-ownership.mjs';
+import { archiveOrder } from '../lib/order-archive.mjs';
+
 // Stamps the real Shopify order number onto the saved design records once an
 // order is placed, so the on-demand tech pack (generated later from the admin
 // order page) can show the order number in its header and filename.
+//
+// It also CLAIMS the design for the ordering customer. Most people design and
+// check out without signing in, which files their work under a guest browser
+// token that no account can ever reach. The order names both the design and
+// the customer, so this is the moment the two can be joined — see
+// ../lib/design-ownership.mjs. claim-orders.mjs does the same for past orders.
 //
 // The design id travels on each configured line item as the `_dspln_design_id`
 // property (see shopify-cart-simulator.buildShopifyTestCartLine). This webhook
 // matches those ids back to their blob records and writes order.name onto them.
 
 const STORE_NAME = 'dspln-customer-designs';
-const DESIGN_ID_PROPERTY = '_dspln_design_id';
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -51,45 +67,18 @@ function isVerified(event, rawBody) {
   }
 }
 
-function designIdsFromOrder(order) {
-  const ids = new Set();
-  for (const item of order.line_items ?? []) {
-    for (const prop of item.properties ?? []) {
-      const name = prop?.name;
-      const value = prop?.value != null ? String(prop.value) : '';
-      if (!value) continue;
-
-      // Direct id property (only present if not stripped as a hidden prop).
-      if (name === DESIGN_ID_PROPERTY || name === '_configurator_id') {
-        ids.add(value);
-        continue;
-      }
-
-      // Robust path: the visible "Tech Pack" / "3D Design" properties carry
-      // the design id in their URL (…/tech-pack/gi?id=<id> or ?design=<id>).
-      // Hidden `_`-prefixed props are stripped before /cart/add, so these
-      // visible URLs are the reliable source of the design id on the order.
-      const match = value.match(/[?&](?:id|design)=([^&\s#]+)/);
-      if (match) {
-        try {
-          ids.add(decodeURIComponent(match[1]));
-        } catch {
-          ids.add(match[1]);
-        }
-      }
-    }
-  }
-  return [...ids];
-}
-
-async function stampOrderOntoDesigns(order) {
+async function applyOrderToDesigns(order, shopDomain) {
   const store = getStore(STORE_NAME);
   const ids = designIdsFromOrder(order);
+  // The webhook body carries the customer inline, so claiming needs no
+  // follow-up Shopify query (and none of the protected-customer-data access
+  // that reading `customer` through the API would require).
+  const customerId = order.customer?.id ?? null;
   const results = [];
 
   for (const id of ids) {
     try {
-      const lookup = await store.get(`lookup/${id}.json`, { type: 'json' });
+      const lookup = await store.get(lookupKey(id), { type: 'json' });
       if (!lookup?.key) {
         results.push({ id, updated: false, reason: 'no lookup' });
         continue;
@@ -99,12 +88,39 @@ async function stampOrderOntoDesigns(order) {
         results.push({ id, updated: false, reason: 'no record' });
         continue;
       }
-      record.orderName = order.name ?? null;
-      record.orderNumber = order.order_number ?? null;
-      record.shopifyOrderId = order.id ?? null;
-      record.updatedAt = new Date().toISOString();
-      await store.setJSON(lookup.key, record);
-      results.push({ id, updated: true, orderName: order.name });
+
+      const next = {
+        ...record,
+        orderName: order.name ?? null,
+        orderNumber: order.order_number ?? null,
+        shopifyOrderId: order.id ?? null,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Only a guest record is ever moved. A design already owned by an
+      // account stays put, so one order can never drag another customer's
+      // design into the buyer's Locker.
+      let claimed = null;
+      if (customerId && shopDomain && isGuestOwnerKey(next.ownerKey)) {
+        claimed = { from: next.ownerKey, to: ownerKeyForCustomer(shopDomain, customerId) };
+        next.ownerKey = claimed.to;
+        next.shopifyCustomerId = String(customerId);
+        // The order's email makes the record resolvable by DSPLN's own admin
+        // (customer-designs resolveCustomer=1) without any Shopify lookup.
+        next.customerEmail =
+          next.customerEmail || order.email || order.customer?.email || null;
+        next.guestToken = null;
+      }
+
+      const targetKey = claimed ? designKey(next) : lookup.key;
+      await moveRecord(store, lookup.key, targetKey, next);
+      if (claimed) {
+        await writeEmailIndex(store, next.customerEmail, {
+          customerId: next.shopifyCustomerId,
+          ownerKey: next.ownerKey,
+        });
+      }
+      results.push({ id, updated: true, orderName: order.name, claimed });
     } catch (error) {
       console.error('[order-webhook] failed to stamp design', id, error);
       results.push({ id, updated: false, reason: 'error' });
@@ -114,8 +130,20 @@ async function stampOrderOntoDesigns(order) {
   return results;
 }
 
-// One-time helper: GET ?register=1 registers this endpoint as an ORDERS_CREATE
-// webhook using the Shopify Admin token already configured for this shop.
+// Every topic below delivers a COMPLETE order payload, so one mapping serves
+// them all and each delivery simply overwrites the archived order. Refunds and
+// fulfillment changes also fire orders/updated, which is why REFUNDS_CREATE and
+// FULFILLMENTS_* (whose payloads are a different shape) are not needed here.
+const ORDER_TOPICS = [
+  'ORDERS_CREATE',
+  'ORDERS_UPDATED',
+  'ORDERS_CANCELLED',
+  'ORDERS_FULFILLED',
+  'ORDERS_PAID',
+];
+
+// One-time helper: GET ?register=1 registers this endpoint for every order
+// topic using the Shopify Admin token configured for this shop.
 async function registerWebhook(event) {
   const { token, shopDomain } = shopContext();
   if (!token || !shopDomain) {
@@ -124,39 +152,37 @@ async function registerWebhook(event) {
   const host = event.headers.host ?? event.headers.Host;
   const callbackUrl = `https://${host}/.netlify/functions/shopify-order-webhook`;
 
-  const response = await fetch(
-    `https://${shopDomain}/admin/api/2025-04/graphql.json`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': token,
-      },
-      body: JSON.stringify({
-        query: `mutation Create($topic: WebhookSubscriptionTopic!, $sub: WebhookSubscriptionInput!) {
-          webhookSubscriptionCreate(topic: $topic, webhookSubscription: $sub) {
-            webhookSubscription { id }
-            userErrors { field message }
-          }
-        }`,
-        variables: {
-          topic: 'ORDERS_CREATE',
-          sub: { callbackUrl, format: 'JSON' },
+  const results = [];
+  for (const topic of ORDER_TOPICS) {
+    const response = await fetch(
+      `https://${shopDomain}/admin/api/2025-04/graphql.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': token,
         },
-      }),
-    },
-  );
-
-  const body = await response.json();
-  const result = body?.data?.webhookSubscriptionCreate;
-  if (result?.userErrors?.length) {
-    return json(400, { registered: false, callbackUrl, errors: result.userErrors });
+        body: JSON.stringify({
+          query: `mutation Create($topic: WebhookSubscriptionTopic!, $sub: WebhookSubscriptionInput!) {
+            webhookSubscriptionCreate(topic: $topic, webhookSubscription: $sub) {
+              webhookSubscription { id }
+              userErrors { field message }
+            }
+          }`,
+          variables: { topic, sub: { callbackUrl, format: 'JSON' } },
+        }),
+      },
+    );
+    const body = await response.json();
+    const result = body?.data?.webhookSubscriptionCreate;
+    results.push({
+      topic,
+      id: result?.webhookSubscription?.id ?? null,
+      // "already exists" is a success for a re-run, not a failure.
+      errors: result?.userErrors ?? [],
+    });
   }
-  return json(200, {
-    registered: true,
-    callbackUrl,
-    id: result?.webhookSubscription?.id ?? null,
-  });
+  return json(200, { callbackUrl, results });
 }
 
 export const handler = async (event) => {
@@ -190,11 +216,30 @@ export const handler = async (event) => {
     return json(400, { error: 'Invalid JSON body' });
   }
 
+  const shopDomain =
+    event.headers['x-shopify-shop-domain'] ??
+    event.headers['X-Shopify-Shop-Domain'] ??
+    shopContext().shopDomain;
+
+  const topic = (
+    event.headers['x-shopify-topic'] ?? event.headers['X-Shopify-Topic'] ?? 'orders/create'
+  ).toLowerCase();
+
   try {
-    const results = await stampOrderOntoDesigns(order);
-    console.log('[order-webhook] stamped', order.name, results);
+    // Claiming is idempotent, but it only has work to do the first time an
+    // order is seen; archiving runs on EVERY delivery so status, refunds and
+    // tracking stay current instead of frozen at checkout.
+    const results = await applyOrderToDesigns(order, shopDomain);
+    // DSPLN keeps its own copy of the order, so the Locker can show it
+    // without asking Shopify or waiting for the storefront to post context.
+    const archived = await archiveOrder(getStore(STORE_NAME), order, shopDomain)
+      .catch((error) => {
+        console.error('[order-webhook] archive failed', error);
+        return { archived: false, reason: 'error' };
+      });
+    console.log('[order-webhook]', topic, order.name, results, archived);
     // Always 200 so Shopify does not retry on partial no-ops.
-    return json(200, { ok: true, order: order.name ?? null, results });
+    return json(200, { ok: true, topic, order: order.name ?? null, results, archived });
   } catch (error) {
     console.error('[order-webhook] processing failed', error);
     return json(200, { ok: false });

@@ -10,7 +10,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-type LockerPage = 'designs' | 'uploads' | 'fit' | 'orders';
+import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
+import { GI_PRODUCT_CONFIGS } from '../configurators/shared/gi-product-config';
+import { uploadArtworkImage } from '../configurators/shared/preview-upload';
+
+type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders';
 
 interface LockerCustomer {
   customerId: string;
@@ -30,6 +34,41 @@ interface LockerOrder {
   totalAmount: string;
   totalCurrency: string;
   statusPageUrl: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  /** Written by the factory portal; describes the pre-dispatch phase only. */
+  productionStage?: {
+    state?: 'being_made' | 'in_transit' | 'quality_check';
+    actionNeeded?: boolean;
+    actionMessage?: string | null;
+    updatedAt?: string;
+  } | null;
+  fulfillments?: Array<{
+    createdAt?: string;
+    trackingCompany?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+  }>;
+  items?: Array<{
+    title: string;
+    productTitle?: string;
+    quantity: number;
+    totalAmount: string;
+    imageUrl?: string;
+    properties?: Array<{ name: string; value: string }>;
+  }>;
+  billingAddress?: LockerAddress;
+  shippingAddress?: LockerAddress;
+}
+
+interface LockerAddress {
+  name?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  province?: string;
+  zip?: string;
+  country?: string;
 }
 
 interface LockerDesign {
@@ -48,6 +87,31 @@ interface LockerUpload {
   updatedAt?: string;
   part?: string;
   slot?: string;
+  /**
+   * Artwork saved straight from the Studio arrives alongside logos pulled out
+   * of saved designs. The API merges both and hands back a dedupeKey so the
+   * same image used in both places lands here once.
+   */
+  source?: 'artwork' | 'design';
+  dedupeKey?: string;
+  artworkId?: string;
+  title?: string;
+  revisionType?: 'upload' | 'cleanup' | 'manual-edit' | 'ai-edit';
+}
+
+const REVISION_LABEL: Record<string, string> = {
+  upload: 'Uploaded artwork',
+  cleanup: 'Background removed',
+  'manual-edit': 'Edited in Studio',
+  'ai-edit': 'AI revision',
+};
+
+/** Sub-line under an Uploads card: where the image came from. */
+function uploadOrigin(upload: LockerUpload): string {
+  if (upload.source === 'artwork') {
+    return REVISION_LABEL[upload.revisionType ?? 'upload'] ?? 'Artwork Studio';
+  }
+  return upload.designName || 'Saved design';
 }
 
 interface FitProfile {
@@ -126,6 +190,209 @@ function formatMoney(amount: string, currency: string): string {
   }).format(numeric);
 }
 
+function AddressBlock({ address }: { address?: LockerAddress }) {
+  if (!address) return <p className="text-sm text-[#777]">Not provided</p>;
+  return (
+    <address className="space-y-1 text-sm not-italic leading-relaxed text-[#444]">
+      {address.name ? <div>{address.name}</div> : null}
+      {address.address1 ? <div>{address.address1}</div> : null}
+      {address.address2 ? <div>{address.address2}</div> : null}
+      <div>{[address.city, address.province, address.zip].filter(Boolean).join(' ')}</div>
+      {address.country ? <div>{address.country}</div> : null}
+    </address>
+  );
+}
+
+/**
+ * Four customer-facing stages. Nine was an ops checklist: photos are content,
+ * "review" is an action after delivery, and Brooklyn QC only means something
+ * internally — it rides inside In production, because from the customer's side
+ * the gi is not ready until we have checked it.
+ */
+const ORDER_STAGES = ['Ordered', 'In production', 'Shipped', 'Delivered'] as const;
+
+const PRODUCTION_SUBLINE: Record<string, string> = {
+  being_made: 'Being made',
+  in_transit: 'In transit to our Brooklyn studio',
+  quality_check: 'Final quality check',
+};
+
+/** Typical production time, shown while we have no promised date to quote. */
+const LEAD_TIME_NOTE = 'Typically ready in 3–4 weeks';
+
+interface OrderProgress {
+  index: number;
+  subLine?: string;
+  actionMessage?: string;
+  tracking?: { company?: string; number?: string; url?: string };
+  cancelled?: boolean;
+}
+
+/**
+ * Shopify owns dispatch onwards, so its fulfilment data always wins over the
+ * portal's production phase — a shipped order is shipped no matter what the
+ * last published production state said.
+ */
+function orderProgress(order: LockerOrder): OrderProgress {
+  const fulfillment = order.fulfillments?.find((entry) => entry.trackingNumber || entry.createdAt);
+  const tracking = fulfillment
+    ? {
+        company: fulfillment.trackingCompany,
+        number: fulfillment.trackingNumber,
+        url: fulfillment.trackingUrl,
+      }
+    : undefined;
+
+  if (order.cancelledAt) {
+    return { index: 0, cancelled: true, actionMessage: order.cancelReason || 'Order cancelled' };
+  }
+
+  // Word-boundary matches only: "unfulfilled" CONTAINS "fulfil", so a plain
+  // substring test marked every waiting order as shipped.
+  const status = (order.fulfillmentStatus || '').toLowerCase();
+  if (/\bdeliver/.test(status)) return { index: 3, tracking };
+  if (fulfillment || /\bfulfilled\b/.test(status) || /\bpartial/.test(status) || /\bshipped\b/.test(status)) {
+    return { index: 2, tracking };
+  }
+
+  // The PO decides how far an order has travelled: until the portal writes a
+  // production stage, the truthful stage is Ordered — not In production.
+  const production = order.productionStage;
+  const actionMessage = production?.actionNeeded
+    ? production.actionMessage || 'We need something from you to continue.'
+    : undefined;
+  if (production?.state) {
+    return { index: 1, subLine: PRODUCTION_SUBLINE[production.state], actionMessage };
+  }
+  return { index: 0, actionMessage };
+}
+
+function OrderTimeline({ order }: { order: LockerOrder }) {
+  const progress = orderProgress(order);
+
+  return (
+    <div className="border border-[#ddd] p-5">
+      {progress.actionMessage ? (
+        <p className="mb-5 border border-[#842323] bg-[#fdf6f6] px-4 py-3 text-sm text-[#842323]">
+          <span className={`${label} mr-2`}>Action needed</span>
+          {progress.actionMessage}
+        </p>
+      ) : null}
+
+      <ol className="flex gap-1 sm:gap-2">
+        {ORDER_STAGES.map((stage, index) => {
+          const reached = !progress.cancelled && index <= progress.index;
+          const current = !progress.cancelled && index === progress.index;
+          return (
+            <li key={stage} className="min-w-0 flex-1">
+              <div
+                aria-hidden="true"
+                className={`h-[3px] rounded-full ${reached ? 'bg-[#1c1b1b]' : 'bg-[#e2e2df]'}`}
+              />
+              <p
+                className={`mt-3 text-[11px] leading-snug sm:text-xs ${
+                  reached ? 'text-[#1c1b1b]' : 'text-[#999]'
+                }`}
+              >
+                {stage}
+              </p>
+              {current && progress.subLine ? (
+                <p className="mt-1 text-[10px] leading-snug text-[#666] sm:text-[11px]">
+                  {progress.subLine}
+                </p>
+              ) : null}
+              {current && index === 1 && !progress.subLine ? (
+                <p className="mt-1 text-[10px] leading-snug text-[#666] sm:text-[11px]">
+                  {LEAD_TIME_NOTE}
+                </p>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+
+      {progress.index === 1 && progress.subLine ? (
+        <p className="mt-4 text-xs text-[#777]">{LEAD_TIME_NOTE}</p>
+      ) : null}
+
+      {progress.tracking?.number ? (
+        <p className="mt-4 text-xs text-[#777]">
+          {progress.tracking.company ? `${progress.tracking.company} · ` : ''}
+          {progress.tracking.url ? (
+            <a
+              href={progress.tracking.url}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              {progress.tracking.number}
+            </a>
+          ) : (
+            progress.tracking.number
+          )}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const ORDER_GROUPS = ['Kimono', 'Belt', 'Pant', 'Rashguard', 'Grappling Short'] as const;
+
+function cleanOrderTitle(item: NonNullable<LockerOrder['items']>[number]): string {
+  return (item.productTitle || item.title).replace(/\s+-\s+tda_price[_-]?\d*.*$/i, '').trim();
+}
+
+function customerProperties(item: NonNullable<LockerOrder['items']>[number]) {
+  return (item.properties ?? [])
+    .map((property) => ({
+      name: property.name.trim().replace(/^_+/, ''),
+      value: String(property.value ?? '').trim(),
+    }))
+    .filter(({ name, value }) => {
+      if (!name || !value) return false;
+      const key = name.toLowerCase();
+      return !(
+        key.includes('production') ||
+        key.includes('tech pack') ||
+        key.includes('preview_image') ||
+        key.includes('preview image') ||
+        key.includes('json') ||
+        key.includes('dspln_') ||
+        key.includes('configurator_id') ||
+        key.includes('mczr') ||
+        key === 'custom design saved' ||
+        key === '3d design'
+      );
+    });
+}
+
+function groupedOrderProperties(item: NonNullable<LockerOrder['items']>[number]) {
+  const properties = customerProperties(item);
+  return ORDER_GROUPS.map((group) => {
+    const prefix = `${group.toLowerCase()} `;
+    const rows = properties
+      .filter(({ name }) => {
+        const key = name.toLowerCase();
+        return key === group.toLowerCase() || key.startsWith(prefix);
+      })
+      .flatMap(({ name, value }) => {
+        const key = name.toLowerCase();
+        if (key === group.toLowerCase()) {
+          if (/^(yes|no|add\s)/i.test(value)) return [];
+          return value.split('|').map((segment, index) => {
+            const colon = segment.indexOf(':');
+            return colon > -1
+              ? { label: segment.slice(0, colon).trim(), value: segment.slice(colon + 1).trim() }
+              : { label: index === 0 ? 'Size' : 'Detail', value: segment.trim() };
+          });
+        }
+        return [{ label: name.slice(group.length).trim(), value }];
+      })
+      .filter((row) => row.value);
+    return { group, rows };
+  }).filter(({ rows }) => rows.length);
+}
+
 async function fetchDesigns(customer: LockerCustomer): Promise<LockerDesign[]> {
   const url = new URL('/api/customer-designs', window.location.origin);
   url.searchParams.set('ownerKey', ownerKey(customer));
@@ -133,6 +400,36 @@ async function fetchDesigns(customer: LockerCustomer): Promise<LockerDesign[]> {
   if (!response.ok) throw new Error('Could not load saved designs.');
   const payload = await response.json();
   return payload?.data?.designs ?? [];
+}
+
+// DSPLN's own order archive, written by the order webhook at checkout. The
+// storefront/portal can still post richer or older context; see the merge in
+// receiveStorefrontContext — archived rows win on ties, context fills gaps.
+async function fetchArchivedOrders(customer: LockerCustomer): Promise<LockerOrder[]> {
+  const url = new URL('/api/customer-designs', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  url.searchParams.set('orders', '1');
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Could not load orders.');
+  const payload = await response.json();
+  return payload?.data?.orders ?? [];
+}
+
+function mergeOrders(primary: LockerOrder[], secondary: LockerOrder[]): LockerOrder[] {
+  const byId = new Map<string, LockerOrder>();
+  // secondary first so primary overwrites on the same order id
+  secondary.forEach((order) => byId.set(String(order.id), order));
+  primary.forEach((order) => {
+    const existing = byId.get(String(order.id));
+    // Never let a thin row replace one that has line items.
+    byId.set(
+      String(order.id),
+      existing && (existing.items?.length ?? 0) > 0 && (order.items?.length ?? 0) === 0
+        ? { ...order, items: existing.items, billingAddress: order.billingAddress ?? existing.billingAddress, shippingAddress: order.shippingAddress ?? existing.shippingAddress }
+        : order,
+    );
+  });
+  return [...byId.values()].sort((a, b) => String(b.processedAt).localeCompare(String(a.processedAt)));
 }
 
 async function fetchUploads(customer: LockerCustomer): Promise<LockerUpload[]> {
@@ -145,11 +442,113 @@ async function fetchUploads(customer: LockerCustomer): Promise<LockerUpload[]> {
   const uploads: LockerUpload[] = payload?.data?.logos ?? [];
   const seen = new Set<string>();
   return uploads.filter((upload) => {
-    const key = `${upload.url}|${upload.filename ?? ''}`;
+    // The API dedupes across Studio artwork and design logos and returns its
+    // key; fall back to url+filename for older responses.
+    const key = upload.dedupeKey || `${upload.url}|${upload.filename ?? ''}`;
     if (!upload.url || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+/**
+ * Studio save: the image bytes go through the existing upload function and
+ * only the hosted URL plus metadata is persisted, so artwork records stay
+ * small and the blob store keeps the pixels.
+ */
+async function saveArtworkRecord(
+  customer: LockerCustomer,
+  blob: Blob,
+  meta: { filename: string; width: number; height: number; aiEdited?: boolean },
+): Promise<{ id: string; url: string } | null> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Could not read the artwork.'));
+    reader.readAsDataURL(blob);
+  });
+
+  const hostedUrl = await uploadArtworkImage(dataUrl);
+  if (!hostedUrl) throw new Error('Artwork upload failed. Please try again.');
+
+  const response = await fetch('/api/customer-designs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      kind: 'artwork',
+      ownerKey: ownerKey(customer),
+      url: hostedUrl,
+      filename: meta.filename,
+      width: meta.width,
+      height: meta.height,
+      revisionType: meta.aiEdited ? 'ai-edit' : 'manual-edit',
+    }),
+  });
+
+  if (!response.ok) throw new Error('Could not save artwork to your Locker.');
+  const payload = await response.json();
+  const artwork = payload?.data?.artwork;
+  if (!artwork?.id || !artwork?.url) return null;
+  return { id: artwork.id, url: artwork.url };
+}
+
+/**
+ * Guest work is claimed by POSSESSION of the guest tokens sitting in this
+ * browser's localStorage — the configurators and the Locker are both the
+ * Netlify app, so they share an origin and therefore share localStorage.
+ * Possession is per-device on purpose: designs made on a phone stay on the
+ * phone's guest token until that browser signs in.
+ */
+const GUEST_TOKEN_KEYS = Object.values(GI_PRODUCT_CONFIGS).map(
+  (config) => config.guestTokenStorageKey,
+);
+
+function readGuestTokens(): Array<{ storageKey: string; token: string }> {
+  if (typeof window === 'undefined') return [];
+  return GUEST_TOKEN_KEYS.flatMap((storageKey) => {
+    try {
+      const token = window.localStorage.getItem(storageKey)?.trim();
+      return token ? [{ storageKey, token }] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+
+/**
+ * Moves any guest designs/artwork held in this browser into the signed-in
+ * Locker. Quiet and non-blocking: on failure the tokens stay in localStorage
+ * so the next visit retries. Returns how many records moved.
+ */
+async function claimGuestWork(customer: LockerCustomer): Promise<number> {
+  const held = readGuestTokens();
+  if (!held.length) return 0;
+
+  const response = await fetch('/api/customer-designs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'claim-guest',
+      ownerKey: ownerKey(customer),
+      guestTokens: held.map((entry) => entry.token),
+    }),
+  });
+  if (!response.ok) throw new Error('Could not claim guest designs.');
+
+  const payload = await response.json();
+  const claimed = payload?.data?.claimed ?? {};
+  // Anything left behind by a partial failure keeps its token so the next
+  // Locker visit picks it up.
+  if (!claimed.failed) {
+    held.forEach((entry) => {
+      try {
+        window.localStorage.removeItem(entry.storageKey);
+      } catch {
+        // A locked-down storage just means we retry next visit.
+      }
+    });
+  }
+  return Number(claimed.designs ?? 0) + Number(claimed.artwork ?? 0);
 }
 
 async function fetchFit(customer: LockerCustomer): Promise<FitProfile> {
@@ -170,6 +569,22 @@ function StatusBadge({ value }: { value: string }) {
   );
 }
 
+async function indexLockerCustomer(customer: LockerCustomer, orders?: LockerOrder[]) {
+  await fetch('/api/locker-customers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ownerKey: ownerKey(customer),
+      shopDomain: customer.shopDomain,
+      customerId: customer.customerId,
+      email: customer.email,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      ...(orders ? { orders } : {}),
+    }),
+  }).catch(() => undefined);
+}
+
 export function TheLocker() {
   const customer = useMemo(queryCustomer, []);
   const storefrontLockerUrl =
@@ -179,7 +594,7 @@ export function TheLocker() {
   const [page, setPage] = useState<LockerPage>(() => {
     try {
       const wanted = new URLSearchParams(window.location.search).get('page');
-      if (wanted === 'designs' || wanted === 'uploads' || wanted === 'fit' || wanted === 'orders') {
+      if (wanted === 'design-tool' || wanted === 'designs' || wanted === 'uploads' || wanted === 'fit' || wanted === 'orders') {
         return wanted;
       }
     } catch {
@@ -192,31 +607,71 @@ export function TheLocker() {
   const [orders, setOrders] = useState<LockerOrder[]>([]);
   const [fit, setFit] = useState<FitProfile>(emptyFit);
   const [selectedDesign, setSelectedDesign] = useState<LockerDesign | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<LockerOrder | null>(null);
   const [loading, setLoading] = useState(Boolean(customer));
   const [savingFit, setSavingFit] = useState(false);
   const [error, setError] = useState('');
+
+  const saveStudioArtwork = useCallback(
+    async (
+      blob: Blob,
+      meta: { filename: string; width: number; height: number; aiEdited?: boolean },
+    ) => {
+      if (!customer) throw new Error('Sign in again to save artwork to your Locker.');
+      return saveArtworkRecord(customer, blob, meta);
+    },
+    [customer],
+  );
 
   const loadLocker = useCallback(async () => {
     if (!customer) return;
     setLoading(true);
     setError('');
+    // Claim first so the listings below already include the guest work. A
+    // claim failure must never break the Locker — log it and move on.
+    let claimedCount = 0;
+    try {
+      claimedCount = await claimGuestWork(customer);
+    } catch (cause) {
+      console.warn('[locker] guest claim failed', cause);
+    }
     const results = await Promise.allSettled([
       fetchDesigns(customer),
       fetchUploads(customer),
       fetchFit(customer),
+      fetchArchivedOrders(customer),
     ]);
     if (results[0].status === 'fulfilled') setDesigns(results[0].value);
     if (results[1].status === 'fulfilled') setUploads(results[1].value);
     if (results[2].status === 'fulfilled') setFit(results[2].value);
+    if (results[3].status === 'fulfilled' && results[3].value.length) {
+      const archived = results[3].value;
+      setOrders((current) => mergeOrders(archived, current));
+    }
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') {
       setError(failure.reason instanceof Error ? failure.reason.message : 'Could not load the Locker.');
     }
     setLoading(false);
+    if (claimedCount > 0) {
+      toast.success(
+        claimedCount === 1
+          ? 'Added 1 design you made before signing in'
+          : `Added ${claimedCount} items you made before signing in`,
+      );
+    }
   }, [customer]);
+
+  // A hidden tab must also be an unreachable page: ?page=design-tool would
+  // otherwise open the un-shipped Studio on the live store.
+  useEffect(() => {
+    const devStore = customer?.shopDomain === 'dspln-dev-2.myshopify.com';
+    if (!devStore && (page === 'design-tool' || page === 'fit')) setPage('designs');
+  }, [page, customer]);
 
   useEffect(() => {
     void loadLocker();
+    if (customer) void indexLockerCustomer(customer);
   }, [loadLocker]);
 
   useEffect(() => {
@@ -225,7 +680,12 @@ export function TheLocker() {
       const data = event.data;
       if (data?.type !== 'dspln:locker:context') return;
       if (String(data.customerId) !== customer.customerId) return;
-      setOrders(Array.isArray(data.orders) ? data.orders : []);
+      const storefrontOrders = Array.isArray(data.orders) ? data.orders : [];
+      // DSPLN's archived rows carry items and addresses for newer orders; the
+      // posted context covers history from before archiving. Merge, don't
+      // replace — whichever row has the real contents wins.
+      setOrders((current) => mergeOrders(current, storefrontOrders));
+      void indexLockerCustomer(customer, storefrontOrders);
     };
     window.addEventListener('message', receiveStorefrontContext);
     window.parent?.postMessage({ type: 'dspln:locker:ready' }, customer?.storefrontOrigin ?? '*');
@@ -277,13 +737,20 @@ export function TheLocker() {
     `${customer.firstName.slice(0, 1)}${customer.lastName.slice(0, 1)}`.toUpperCase() || 'D';
   const displayName =
     [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email;
-  // Sizing / Fit is still being designed — dev store only until approved
-  // for live.
-  const showFit = customer.shopDomain === 'dspln-dev-2.myshopify.com';
-  const nav: Array<{ id: LockerPage; text: string }> = [
+  // Sizing / Fit and the Artwork Studio are still being designed — dev store
+  // only until approved for live. Gating here rather than holding the whole
+  // branch back means the tested work (order mirror, timeline, uploads) can
+  // ship without carrying the untested UI with it.
+  const DEV_STORE = 'dspln-dev-2.myshopify.com';
+  const showFit = customer.shopDomain === DEV_STORE;
+  const showStudio = customer.shopDomain === DEV_STORE;
+  // `short` is the phone label: five tabs do not fit at 375px, and the row is
+  // whitespace-nowrap so a long label spills rather than wrapping.
+  const nav: Array<{ id: LockerPage; text: string; short?: string }> = [
+    ...(showStudio ? [{ id: 'design-tool' as const, text: 'Design Tool', short: 'Studio' }] : []),
     { id: 'designs', text: 'Designs' },
     { id: 'uploads', text: 'Uploads' },
-    ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit' }] : []),
+    ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit', short: 'Fit' }] : []),
     { id: 'orders', text: 'Orders' },
   ];
 
@@ -389,17 +856,72 @@ export function TheLocker() {
                     : 'text-[#75756e] hover:text-[#1c1b1b]'
                 }`}
               >
-                {entry.text}
+                {entry.short ? (
+                  <>
+                    <span className="sm:hidden">{entry.short}</span>
+                    <span className="hidden sm:inline">{entry.text}</span>
+                  </>
+                ) : (
+                  entry.text
+                )}
               </button>
             ))}
           </nav>
 
           {loading ? <p className={`${label} py-12 text-center text-[#777]`}>Loading Locker…</p> : null}
 
+          {!loading && page === 'design-tool' ? (
+            <section>
+              <ArtworkStudioPage
+                ownerKey={ownerKey(customer)}
+                onSave={saveStudioArtwork}
+                onSaved={() => {
+                  // The new artwork belongs in Uploads straight away.
+                  void fetchUploads(customer).then(setUploads).catch(() => undefined);
+                }}
+                uploadsHref="#"
+                onUseOnProduct={() => setPage('uploads')}
+              />
+
+              <h2 className="mt-14 text-lg uppercase tracking-[0.12em]">
+                Use artwork on a product
+              </h2>
+              <div className="mt-4 max-w-3xl">
+                <p className="text-sm leading-relaxed text-[#666]">
+                  Start a new product in DSPLN’s 3D design tools. The built-in Design Assistant can
+                  help choose colors, place uploaded artwork, create new artwork, and refine the
+                  design while you work. Save the result and it will appear in your Locker.
+                </p>
+              </div>
+              <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {[
+                  ['Men’s Gi', 'customgi'],
+                  ['Women’s Gi', 'womens-custom-gi-suit'],
+                  ['Kids Gi', 'custom-kids-gi'],
+                ].map(([name, handle]) => (
+                  <article key={handle} className="border border-[#ddd] bg-[#f7f7f7] p-6">
+                    <p className={label}>3D Configurator</p>
+                    <h2 className="mt-3 text-lg uppercase tracking-[0.12em]">{name}</h2>
+                    <p className="mt-4 text-sm leading-relaxed text-[#666]">
+                      Customize every available part, upload logos, and ask the Design Assistant for help.
+                    </p>
+                    <a
+                      href={`${customer.storefrontOrigin}/products/${handle}?assistant=1`}
+                      target="_top"
+                      className={`mt-6 inline-flex bg-[#1c1b1b] px-6 py-4 text-white ${label}`}
+                    >
+                      Open Design Tool
+                    </a>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           {!loading && page === 'designs' ? (
             <section>
               {selectedDesign ? (
-                <div>
+                <div className="-m-4 min-h-full bg-[#f4f4f2] p-4 sm:-m-8 sm:p-8">
                   <button
                     type="button"
                     onClick={() => setSelectedDesign(null)}
@@ -548,9 +1070,11 @@ export function TheLocker() {
                           className="h-full w-full object-contain p-3"
                         />
                       </div>
-                      <h2 className="mt-4 truncate text-sm">{upload.filename || 'Uploaded artwork'}</h2>
+                      <h2 className="mt-4 truncate text-sm">
+                        {upload.title || upload.filename || 'Uploaded artwork'}
+                      </h2>
                       <p className="mt-1 text-xs text-[#777]">
-                        {upload.designName || 'Saved design'}
+                        {uploadOrigin(upload)}
                         {upload.slot ? ` · ${upload.slot.replaceAll('-', ' ')}` : ''}
                       </p>
                       <a
@@ -666,11 +1190,98 @@ export function TheLocker() {
 
           {!loading && page === 'orders' ? (
             <section>
-              {orders.length ? (
+              {selectedOrder ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrder(null)}
+                    className={`${label} mb-8 underline underline-offset-4`}
+                  >
+                    ← All orders
+                  </button>
+                  <div className="rounded-xl border border-[#e5e5e2] bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                    <p className={label}>Order details</p>
+                    <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+                      <div>
+                        <h2 className="text-2xl uppercase tracking-[0.16em]">Order {selectedOrder.name}</h2>
+                        <p className="mt-2 text-sm text-[#666]">Placed {formatDate(selectedOrder.processedAt)}</p>
+                        {selectedOrder.cancelledAt ? (
+                          <p className="mt-2 text-sm text-[#8a1c1c]">
+                            Cancelled {formatDate(selectedOrder.cancelledAt)}
+                            {selectedOrder.cancelReason ? ` · ${selectedOrder.cancelReason}` : ''}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex gap-2">
+                        <StatusBadge value={selectedOrder.financialStatus} />
+                        <StatusBadge value={selectedOrder.fulfillmentStatus} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-5">
+                    <OrderTimeline order={selectedOrder} />
+                  </div>
+
+                  <div className="grid gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+                    <div>
+                      <h3 className={`${label} mb-3 px-1`}>Items</h3>
+                      {selectedOrder.items?.length ? (
+                        <div className="space-y-4">
+                          {selectedOrder.items.map((item, index) => (
+                            <article key={`${item.title}-${index}`} className="grid grid-cols-[96px_minmax(0,1fr)_auto] gap-5 rounded-xl border border-[#e5e5e2] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:gap-8 sm:p-7">
+                              <div className="h-[150px] bg-white sm:h-[240px]">
+                                {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-contain" /> : null}
+                              </div>
+                              <div>
+                                <h4 className="text-sm uppercase tracking-[0.12em]">{cleanOrderTitle(item)}</h4>
+                                <p className="mt-1 text-xs text-[#777]">Quantity {item.quantity}</p>
+                                <div className="mt-5 space-y-5">
+                                  {groupedOrderProperties(item).map(({ group, rows }) => (
+                                    <section key={group}>
+                                      <h5 className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em]">{group}</h5>
+                                      <dl className="space-y-1 text-[11px] uppercase leading-tight text-[#777]">
+                                        {rows.map((row, rowIndex) => (
+                                          <div key={`${row.label}-${rowIndex}`} className="grid grid-cols-[max-content_minmax(0,1fr)] gap-1">
+                                            <dt>{row.label}:</dt>
+                                            <dd className="text-[#333]">{row.value}</dd>
+                                          </div>
+                                        ))}
+                                      </dl>
+                                    </section>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="text-sm">{formatMoney(item.totalAmount, selectedOrder.totalCurrency)}</div>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="rounded-xl border border-[#e5e5e2] bg-white p-6 text-sm text-[#666]">Item details are not available for this order.</p>
+                      )}
+                      <div className="mt-4 flex justify-end rounded-xl border border-[#e5e5e2] bg-white p-5 text-base shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                        <span className="mr-10 uppercase tracking-[0.12em]">Total</span>
+                        <strong>{formatMoney(selectedOrder.totalAmount, selectedOrder.totalCurrency)}</strong>
+                      </div>
+                    </div>
+                    <aside className="space-y-4 lg:pt-7">
+                      <div className="rounded-xl border border-[#e5e5e2] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                        <h3 className={`${label} mb-3`}>Billing address</h3>
+                        <AddressBlock address={selectedOrder.billingAddress} />
+                      </div>
+                      <div className="rounded-xl border border-[#e5e5e2] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                        <h3 className={`${label} mb-3`}>Shipping address</h3>
+                        <AddressBlock address={selectedOrder.shippingAddress} />
+                      </div>
+                    </aside>
+                  </div>
+                </div>
+              ) : orders.length ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                  <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                     <thead>
                       <tr className={`border-b border-[#1c1b1b] ${label}`}>
+                        <th className="w-[104px] py-3 pr-4 font-normal">Product</th>
                         <th className="py-3 pr-4 font-normal">Order</th>
                         <th className="py-3 pr-4 font-normal">Date</th>
                         <th className="py-3 pr-4 font-normal">Payment</th>
@@ -682,9 +1293,30 @@ export function TheLocker() {
                       {orders.map((order) => (
                         <tr key={order.id} className="border-b border-[#ddd]">
                           <td className="py-4 pr-4">
-                            <a href={order.statusPageUrl} target="_top" className="underline">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrder(order)}
+                              aria-label={`Open order ${order.name}`}
+                              className="flex h-24 w-20 items-center justify-center bg-white"
+                            >
+                              {order.items?.[0]?.imageUrl ? (
+                                <img
+                                  src={order.items[0].imageUrl}
+                                  alt={`${cleanOrderTitle(order.items[0])} design`}
+                                  className="h-full w-full object-contain"
+                                />
+                              ) : (
+                                <span className="text-[9px] uppercase tracking-[0.12em] text-[#999]">No preview</span>
+                              )}
+                            </button>
+                          </td>
+                          <td className="py-4 pr-4">
+                            <button type="button" onClick={() => setSelectedOrder(order)} className="underline">
                               {order.name}
-                            </a>
+                            </button>
+                            <span className="mt-1 block text-[11px] text-[#777]">
+                              {ORDER_STAGES[orderProgress(order).index]}
+                            </span>
                           </td>
                           <td className="py-4 pr-4">{formatDate(order.processedAt)}</td>
                           <td className="py-4 pr-4"><StatusBadge value={order.financialStatus} /></td>
