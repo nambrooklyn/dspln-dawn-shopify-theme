@@ -5,4 +5,5 @@
 /api/customer-designs /.netlify/functions/customer-designs 200
 /api/design-assistant /.netlify/functions/design-assistant 200
 /api/order-thread /.netlify/functions/order-thread 200
+/api/auth/* /.netlify/functions/auth 200
 /* /index.html 200
