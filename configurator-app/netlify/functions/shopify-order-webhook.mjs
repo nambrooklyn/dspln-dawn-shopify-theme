@@ -12,6 +12,7 @@ import {
   writeEmailIndex,
 } from '../lib/design-ownership.mjs';
 import { archiveOrder } from '../lib/order-archive.mjs';
+import { appendEvent, stageEventsForOrder } from '../lib/order-events.mjs';
 
 // Stamps the real Shopify order number onto the saved design records once an
 // order is placed, so the on-demand tech pack (generated later from the admin
@@ -232,11 +233,24 @@ export const handler = async (event) => {
     const results = await applyOrderToDesigns(order, shopDomain);
     // DSPLN keeps its own copy of the order, so the Locker can show it
     // without asking Shopify or waiting for the storefront to post context.
-    const archived = await archiveOrder(getStore(STORE_NAME), order, shopDomain)
+    const store = getStore(STORE_NAME);
+    const archived = await archiveOrder(store, order, shopDomain)
       .catch((error) => {
         console.error('[order-webhook] archive failed', error);
         return { archived: false, reason: 'error' };
       });
+
+    // The order's thread. Stage events carry deterministic ids, so a
+    // redelivered webhook overwrites its own entry rather than duplicating it.
+    if (archived?.ownerKey) {
+      try {
+        for (const event of stageEventsForOrder(order, archived.ownerKey)) {
+          await appendEvent(store, event);
+        }
+      } catch (error) {
+        console.error('[order-webhook] events failed', error);
+      }
+    }
     console.log('[order-webhook]', topic, order.name, results, archived);
     // Always 200 so Shopify does not retry on partial no-ops.
     return json(200, { ok: true, topic, order: order.name ?? null, results, archived });
