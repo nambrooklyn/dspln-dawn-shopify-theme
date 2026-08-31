@@ -247,18 +247,24 @@ function orderProgress(order: LockerOrder): OrderProgress {
     return { index: 0, cancelled: true, actionMessage: order.cancelReason || 'Order cancelled' };
   }
 
+  // Word-boundary matches only: "unfulfilled" CONTAINS "fulfil", so a plain
+  // substring test marked every waiting order as shipped.
   const status = (order.fulfillmentStatus || '').toLowerCase();
-  if (status.includes('deliver')) return { index: 3, tracking };
-  if (fulfillment || status.includes('fulfil')) return { index: 2, tracking };
+  if (/\bdeliver/.test(status)) return { index: 3, tracking };
+  if (fulfillment || /\bfulfilled\b/.test(status) || /\bpartial/.test(status) || /\bshipped\b/.test(status)) {
+    return { index: 2, tracking };
+  }
 
+  // The PO decides how far an order has travelled: until the portal writes a
+  // production stage, the truthful stage is Ordered — not In production.
   const production = order.productionStage;
-  return {
-    index: 1,
-    subLine: production?.state ? PRODUCTION_SUBLINE[production.state] : undefined,
-    actionMessage: production?.actionNeeded
-      ? production.actionMessage || 'We need something from you to continue.'
-      : undefined,
-  };
+  const actionMessage = production?.actionNeeded
+    ? production.actionMessage || 'We need something from you to continue.'
+    : undefined;
+  if (production?.state) {
+    return { index: 1, subLine: PRODUCTION_SUBLINE[production.state], actionMessage };
+  }
+  return { index: 0, actionMessage };
 }
 
 function OrderTimeline({ order }: { order: LockerOrder }) {
