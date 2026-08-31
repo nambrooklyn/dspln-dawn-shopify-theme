@@ -662,6 +662,13 @@ export function TheLocker() {
     }
   }, [customer]);
 
+  // A hidden tab must also be an unreachable page: ?page=design-tool would
+  // otherwise open the un-shipped Studio on the live store.
+  useEffect(() => {
+    const devStore = customer?.shopDomain === 'dspln-dev-2.myshopify.com';
+    if (!devStore && (page === 'design-tool' || page === 'fit')) setPage('designs');
+  }, [page, customer]);
+
   useEffect(() => {
     void loadLocker();
     if (customer) void indexLockerCustomer(customer);
@@ -730,13 +737,17 @@ export function TheLocker() {
     `${customer.firstName.slice(0, 1)}${customer.lastName.slice(0, 1)}`.toUpperCase() || 'D';
   const displayName =
     [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email;
-  // Sizing / Fit is still being designed — dev store only until approved
-  // for live.
-  const showFit = customer.shopDomain === 'dspln-dev-2.myshopify.com';
+  // Sizing / Fit and the Artwork Studio are still being designed — dev store
+  // only until approved for live. Gating here rather than holding the whole
+  // branch back means the tested work (order mirror, timeline, uploads) can
+  // ship without carrying the untested UI with it.
+  const DEV_STORE = 'dspln-dev-2.myshopify.com';
+  const showFit = customer.shopDomain === DEV_STORE;
+  const showStudio = customer.shopDomain === DEV_STORE;
   // `short` is the phone label: five tabs do not fit at 375px, and the row is
   // whitespace-nowrap so a long label spills rather than wrapping.
   const nav: Array<{ id: LockerPage; text: string; short?: string }> = [
-    { id: 'design-tool', text: 'Design Tool', short: 'Studio' },
+    ...(showStudio ? [{ id: 'design-tool' as const, text: 'Design Tool', short: 'Studio' }] : []),
     { id: 'designs', text: 'Designs' },
     { id: 'uploads', text: 'Uploads' },
     ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit', short: 'Fit' }] : []),
