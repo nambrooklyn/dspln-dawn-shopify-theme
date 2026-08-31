@@ -414,6 +414,31 @@ function withLinks(event, record) {
     });
   });
 
+  // Rashguard-family saves keep layer images as an ARRAY (see
+  // offloadDraftImages in rashguard-cloud-designs.ts): hosted URL in dataUrl,
+  // or a shrunk inline fallback served via ?asset=layer:<id>. Without this
+  // branch a rashguard's logos never reach the Uploads tab.
+  if (Array.isArray(images)) {
+    const layerTargets = new Map(
+      (record.configData?.spec?.artworkLayers ?? [])
+        .filter((layer) => layer?.id)
+        .map((layer) => [layer.id, layer.target ?? null]),
+    );
+    images.forEach((image) => {
+      if (!image?.dataUrl) return;
+      const hosted = String(image.dataUrl);
+      const url = hosted.startsWith('http')
+        ? hosted
+        : absoluteApiUrl(event, { id: record.id, asset: `layer:${image.id}` });
+      artwork.push({
+        part: 'layer',
+        slot: layerTargets.get(image.id) ?? null,
+        filename: image.filename,
+        url,
+      });
+    });
+  }
+
   return {
     ...record,
     designUrl,
@@ -627,7 +652,10 @@ async function claimGuestRecords(store, ownerKey, tokens) {
 
 function assetResponse(record, asset) {
   const [part, slot] = String(asset || '').split(':');
-  const image = record.configData?.images?.[part]?.[slot];
+  const image =
+    part === 'layer' && Array.isArray(record.configData?.images)
+      ? record.configData.images.find((entry) => entry?.id === slot)
+      : record.configData?.images?.[part]?.[slot];
   const match =
     typeof image?.dataUrl === 'string'
       ? image.dataUrl.match(/^data:([^;]+);base64,(.+)$/)
