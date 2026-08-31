@@ -365,7 +365,66 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
         </p>
       ) : null}
 
-      <ol className="mt-8 flex flex-col gap-7 sm:flex-row sm:gap-0">
+      {/* Phones get a vertical rail on the RIGHT with the icon and label to its
+          left — a horizontal rail squeezed to 375px puts four labels in a row
+          too narrow to read. */}
+      <ol className="mt-7 sm:hidden">
+        {ORDER_STAGES.map((stage, index) => {
+          const reached = !progress.cancelled && index <= progress.index;
+          const current = !progress.cancelled && index === progress.index;
+          const detail = stageDetail(index);
+          const StageIcon = STAGE_ICONS[index] ?? Receipt;
+          const isLast = index === ORDER_STAGES.length - 1;
+          return (
+            <li
+              key={stage}
+              className={`relative grid grid-cols-[38px_minmax(0,1fr)_24px] items-start gap-3 ${isLast ? '' : 'pb-7'}`}
+            >
+              <StageIcon
+                size={32}
+                strokeWidth={1.25}
+                aria-hidden="true"
+                className={`mt-0.5 shrink-0 ${reached ? 'text-[#5c0000]' : 'text-[#c9c7c1]'}`}
+              />
+              <div className="min-w-0">
+                <p className={`text-sm font-semibold uppercase tracking-[0.06em] ${reached ? 'text-[#1c1b1b]' : 'text-[#a5a09a]'}`}>
+                  {stage}
+                </p>
+                {detail.when ? (
+                  <p className="mt-1 text-[11px] tabular-nums text-[#8a8580]">{detail.when}</p>
+                ) : null}
+                {detail.sub ? (
+                  <p className="mt-0.5 text-[11px] leading-snug text-[#8a8580]">{detail.sub}</p>
+                ) : null}
+              </div>
+              <div className="relative flex h-full justify-center">
+                {!isLast ? (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute left-1/2 top-[21px] bottom-[-8px] w-[3px] -translate-x-1/2 rounded-full ${
+                      index < progress.index && !progress.cancelled ? 'bg-[#5c0000]' : 'bg-[#e6e4df]'
+                    }`}
+                  />
+                ) : null}
+                <span
+                  aria-hidden="true"
+                  className={`relative z-10 mt-0.5 flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-full ${
+                    current
+                      ? 'bg-[#5c0000] text-white ring-4 ring-[#5c0000]/15'
+                      : reached
+                        ? 'bg-[#5c0000] text-white'
+                        : 'bg-white ring-[3px] ring-[#e6e4df]'
+                  }`}
+                >
+                  {reached ? <Check size={12} strokeWidth={3.5} /> : null}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      <ol className="mt-8 hidden sm:flex sm:flex-row sm:gap-0">
         {ORDER_STAGES.map((stage, index) => {
           const reached = !progress.cancelled && index <= progress.index;
           const current = !progress.cancelled && index === progress.index;
