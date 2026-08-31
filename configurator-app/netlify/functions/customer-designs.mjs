@@ -3,6 +3,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { connectLambda, getStore } from '@netlify/blobs';
 
 import { emailIndexKey, writeEmailIndex } from '../lib/design-ownership.mjs';
+import { orderArchiveKey } from '../lib/order-archive.mjs';
 
 const STORE_NAME = 'dspln-customer-designs';
 
@@ -1101,6 +1102,16 @@ export const handler = async (event) => {
             designCount: records.length,
           },
         });
+      }
+
+      // DSPLN's own order archive, written by the webhook at checkout. Same
+      // per-owner trust model as the design listings.
+      if (query.orders === '1') {
+        if (!query.ownerKey) return jsonResponse(400, { error: 'ownerKey is required' });
+        const prefix = orderArchiveKey(query.ownerKey, '').replace(/\.json$/, '');
+        const orders = await listRecords(store, prefix);
+        orders.sort((a, b) => String(b.processedAt).localeCompare(String(a.processedAt)));
+        return jsonResponse(200, { data: { orders } });
       }
 
       if (query.all === '1') {

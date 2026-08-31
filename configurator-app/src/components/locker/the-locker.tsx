@@ -402,6 +402,36 @@ async function fetchDesigns(customer: LockerCustomer): Promise<LockerDesign[]> {
   return payload?.data?.designs ?? [];
 }
 
+// DSPLN's own order archive, written by the order webhook at checkout. The
+// storefront/portal can still post richer or older context; see the merge in
+// receiveStorefrontContext — archived rows win on ties, context fills gaps.
+async function fetchArchivedOrders(customer: LockerCustomer): Promise<LockerOrder[]> {
+  const url = new URL('/api/customer-designs', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  url.searchParams.set('orders', '1');
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Could not load orders.');
+  const payload = await response.json();
+  return payload?.data?.orders ?? [];
+}
+
+function mergeOrders(primary: LockerOrder[], secondary: LockerOrder[]): LockerOrder[] {
+  const byId = new Map<string, LockerOrder>();
+  // secondary first so primary overwrites on the same order id
+  secondary.forEach((order) => byId.set(String(order.id), order));
+  primary.forEach((order) => {
+    const existing = byId.get(String(order.id));
+    // Never let a thin row replace one that has line items.
+    byId.set(
+      String(order.id),
+      existing && (existing.items?.length ?? 0) > 0 && (order.items?.length ?? 0) === 0
+        ? { ...order, items: existing.items, billingAddress: order.billingAddress ?? existing.billingAddress, shippingAddress: order.shippingAddress ?? existing.shippingAddress }
+        : order,
+    );
+  });
+  return [...byId.values()].sort((a, b) => String(b.processedAt).localeCompare(String(a.processedAt)));
+}
+
 async function fetchUploads(customer: LockerCustomer): Promise<LockerUpload[]> {
   const url = new URL('/api/customer-designs', window.location.origin);
   url.searchParams.set('ownerKey', ownerKey(customer));
@@ -609,10 +639,15 @@ export function TheLocker() {
       fetchDesigns(customer),
       fetchUploads(customer),
       fetchFit(customer),
+      fetchArchivedOrders(customer),
     ]);
     if (results[0].status === 'fulfilled') setDesigns(results[0].value);
     if (results[1].status === 'fulfilled') setUploads(results[1].value);
     if (results[2].status === 'fulfilled') setFit(results[2].value);
+    if (results[3].status === 'fulfilled' && results[3].value.length) {
+      const archived = results[3].value;
+      setOrders((current) => mergeOrders(archived, current));
+    }
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') {
       setError(failure.reason instanceof Error ? failure.reason.message : 'Could not load the Locker.');
@@ -639,7 +674,10 @@ export function TheLocker() {
       if (data?.type !== 'dspln:locker:context') return;
       if (String(data.customerId) !== customer.customerId) return;
       const storefrontOrders = Array.isArray(data.orders) ? data.orders : [];
-      setOrders(storefrontOrders);
+      // DSPLN's archived rows carry items and addresses for newer orders; the
+      // posted context covers history from before archiving. Merge, don't
+      // replace — whichever row has the real contents wins.
+      setOrders((current) => mergeOrders(current, storefrontOrders));
       void indexLockerCustomer(customer, storefrontOrders);
     };
     window.addEventListener('message', receiveStorefrontContext);

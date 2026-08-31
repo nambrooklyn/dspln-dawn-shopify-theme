@@ -11,6 +11,7 @@ import {
   ownerKeyForCustomer,
   writeEmailIndex,
 } from '../lib/design-ownership.mjs';
+import { archiveOrder } from '../lib/order-archive.mjs';
 
 // Stamps the real Shopify order number onto the saved design records once an
 // order is placed, so the on-demand tech pack (generated later from the admin
@@ -129,8 +130,20 @@ async function applyOrderToDesigns(order, shopDomain) {
   return results;
 }
 
-// One-time helper: GET ?register=1 registers this endpoint as an ORDERS_CREATE
-// webhook using the Shopify Admin token already configured for this shop.
+// Every topic below delivers a COMPLETE order payload, so one mapping serves
+// them all and each delivery simply overwrites the archived order. Refunds and
+// fulfillment changes also fire orders/updated, which is why REFUNDS_CREATE and
+// FULFILLMENTS_* (whose payloads are a different shape) are not needed here.
+const ORDER_TOPICS = [
+  'ORDERS_CREATE',
+  'ORDERS_UPDATED',
+  'ORDERS_CANCELLED',
+  'ORDERS_FULFILLED',
+  'ORDERS_PAID',
+];
+
+// One-time helper: GET ?register=1 registers this endpoint for every order
+// topic using the Shopify Admin token configured for this shop.
 async function registerWebhook(event) {
   const { token, shopDomain } = shopContext();
   if (!token || !shopDomain) {
@@ -139,39 +152,37 @@ async function registerWebhook(event) {
   const host = event.headers.host ?? event.headers.Host;
   const callbackUrl = `https://${host}/.netlify/functions/shopify-order-webhook`;
 
-  const response = await fetch(
-    `https://${shopDomain}/admin/api/2025-04/graphql.json`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': token,
-      },
-      body: JSON.stringify({
-        query: `mutation Create($topic: WebhookSubscriptionTopic!, $sub: WebhookSubscriptionInput!) {
-          webhookSubscriptionCreate(topic: $topic, webhookSubscription: $sub) {
-            webhookSubscription { id }
-            userErrors { field message }
-          }
-        }`,
-        variables: {
-          topic: 'ORDERS_CREATE',
-          sub: { callbackUrl, format: 'JSON' },
+  const results = [];
+  for (const topic of ORDER_TOPICS) {
+    const response = await fetch(
+      `https://${shopDomain}/admin/api/2025-04/graphql.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': token,
         },
-      }),
-    },
-  );
-
-  const body = await response.json();
-  const result = body?.data?.webhookSubscriptionCreate;
-  if (result?.userErrors?.length) {
-    return json(400, { registered: false, callbackUrl, errors: result.userErrors });
+        body: JSON.stringify({
+          query: `mutation Create($topic: WebhookSubscriptionTopic!, $sub: WebhookSubscriptionInput!) {
+            webhookSubscriptionCreate(topic: $topic, webhookSubscription: $sub) {
+              webhookSubscription { id }
+              userErrors { field message }
+            }
+          }`,
+          variables: { topic, sub: { callbackUrl, format: 'JSON' } },
+        }),
+      },
+    );
+    const body = await response.json();
+    const result = body?.data?.webhookSubscriptionCreate;
+    results.push({
+      topic,
+      id: result?.webhookSubscription?.id ?? null,
+      // "already exists" is a success for a re-run, not a failure.
+      errors: result?.userErrors ?? [],
+    });
   }
-  return json(200, {
-    registered: true,
-    callbackUrl,
-    id: result?.webhookSubscription?.id ?? null,
-  });
+  return json(200, { callbackUrl, results });
 }
 
 export const handler = async (event) => {
@@ -210,11 +221,25 @@ export const handler = async (event) => {
     event.headers['X-Shopify-Shop-Domain'] ??
     shopContext().shopDomain;
 
+  const topic = (
+    event.headers['x-shopify-topic'] ?? event.headers['X-Shopify-Topic'] ?? 'orders/create'
+  ).toLowerCase();
+
   try {
+    // Claiming is idempotent, but it only has work to do the first time an
+    // order is seen; archiving runs on EVERY delivery so status, refunds and
+    // tracking stay current instead of frozen at checkout.
     const results = await applyOrderToDesigns(order, shopDomain);
-    console.log('[order-webhook] stamped', order.name, results);
+    // DSPLN keeps its own copy of the order, so the Locker can show it
+    // without asking Shopify or waiting for the storefront to post context.
+    const archived = await archiveOrder(getStore(STORE_NAME), order, shopDomain)
+      .catch((error) => {
+        console.error('[order-webhook] archive failed', error);
+        return { archived: false, reason: 'error' };
+      });
+    console.log('[order-webhook]', topic, order.name, results, archived);
     // Always 200 so Shopify does not retry on partial no-ops.
-    return json(200, { ok: true, order: order.name ?? null, results });
+    return json(200, { ok: true, topic, order: order.name ?? null, results, archived });
   } catch (error) {
     console.error('[order-webhook] processing failed', error);
     return json(200, { ok: false });
