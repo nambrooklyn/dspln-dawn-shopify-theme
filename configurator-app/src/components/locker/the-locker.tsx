@@ -313,10 +313,6 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
           <h2 className="text-xl uppercase tracking-[0.14em] sm:text-2xl">
             Order <span className="text-[#5c0000]">{order.name}</span>
           </h2>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <StatusBadge value={order.financialStatus} />
-            <StatusBadge value={order.fulfillmentStatus} />
-          </div>
           {order.cancelledAt ? (
             <p className="mt-2 text-sm text-[#8a1c1c]">
               Cancelled {formatDate(order.cancelledAt)}
