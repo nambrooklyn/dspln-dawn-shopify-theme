@@ -235,6 +235,22 @@ const LEAD_TIME_NOTE = 'Typically ready in 7 days';
 
 const STAGE_ICONS = [Receipt, Scissors, Truck, House] as const;
 
+// Expected arrival = production + transit. Tune these two numbers and every
+// order's estimate moves with them.
+const PRODUCTION_DAYS = 7;
+const TRANSIT_DAYS = 5;
+
+function expectedArrival(order: LockerOrder): { label: string; value: string } | null {
+  const shippedAt = order.fulfillments?.find((f) => f.createdAt)?.createdAt;
+  const base = shippedAt ?? order.processedAt;
+  if (!base) return null;
+  const from = new Date(base);
+  if (Number.isNaN(from.getTime())) return null;
+  // Once it is with the carrier, only transit remains.
+  from.setDate(from.getDate() + (shippedAt ? TRANSIT_DAYS : PRODUCTION_DAYS + TRANSIT_DAYS));
+  return { label: 'Expected arrival', value: formatDate(from.toISOString()) };
+}
+
 const ORDER_GROUPS = ['Kimono', 'Belt', 'Pant', 'Rashguard', 'Grappling Short'] as const;
 
 interface OrderProgress {
@@ -322,9 +338,17 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
         </div>
 
         <div className="text-left text-sm leading-relaxed sm:text-right">
-          <p className="text-[#666]">
-            Placed <span className="font-medium text-[#1c1b1b]">{formatDate(order.processedAt)}</span>
-          </p>
+          {(() => {
+            if (progress.index === 3) {
+              return <p className="text-[#666]">Delivered</p>;
+            }
+            const eta = expectedArrival(order);
+            return eta ? (
+              <p className="text-[#666]">
+                {eta.label} <span className="font-medium text-[#1c1b1b]">{eta.value}</span>
+              </p>
+            ) : null;
+          })()}
           {tracking?.number ? (
             <p className="mt-1 break-all text-[#666]">
               {tracking.company ?? 'Tracking'}{' '}
