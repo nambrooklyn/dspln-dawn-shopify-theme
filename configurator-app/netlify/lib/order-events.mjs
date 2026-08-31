@@ -28,6 +28,33 @@ export const EVENT_TYPES = [
 
 export const VISIBILITY = ['customer', 'internal'];
 
+/** Attachment bytes live beside the thread, keyed by owner + order + id. */
+export const attachmentKey = (ownerKey, orderId, attachmentId) =>
+  `order-attachments/${cleanPathPart(ownerKey)}/${cleanPathPart(orderId)}/${cleanPathPart(attachmentId)}`;
+
+// Only formats a browser will render inline, and only what a phone photo or a
+// screenshot actually produces. No SVG: it can carry script.
+export const ALLOWED_ATTACHMENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+/** Decodes a data URL into bytes, refusing anything outside the rules above. */
+export function decodeAttachment(dataUrl) {
+  const match = typeof dataUrl === 'string'
+    ? dataUrl.match(/^data:([a-z0-9/+.-]+);base64,([A-Za-z0-9+/=\s]+)$/i)
+    : null;
+  if (!match) return { error: 'Attachment must be a base64 image data URL' };
+  const contentType = match[1].toLowerCase();
+  if (!ALLOWED_ATTACHMENT_TYPES.includes(contentType)) {
+    return { error: `Unsupported image type: ${contentType}` };
+  }
+  const bytes = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
+  if (!bytes.length) return { error: 'Attachment is empty' };
+  if (bytes.length > MAX_ATTACHMENT_BYTES) {
+    return { error: `Image is too large (max ${Math.floor(MAX_ATTACHMENT_BYTES / 1024 / 1024)}MB)` };
+  }
+  return { contentType, bytes };
+}
+
 export const orderEventsPrefix = (ownerKey, orderId) =>
   `order-events/${cleanPathPart(ownerKey)}/${cleanPathPart(orderId)}/`;
 

@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, House, Receipt, Scissors, Truck } from 'lucide-react';
+import { Check, House, ImagePlus, Receipt, Scissors, Truck, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
@@ -591,16 +591,66 @@ async function fetchOrderThread(customer: LockerCustomer, orderId: string): Prom
   return payload?.data?.events ?? [];
 }
 
-async function postOrderMessage(customer: LockerCustomer, orderId: string, body: string) {
+interface ChatAttachment { id: string; filename: string; contentType: string; bytes: number }
+
+function attachmentUrl(customer: LockerCustomer, orderId: string, attachmentId: string) {
+  const url = new URL('/api/order-thread', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  url.searchParams.set('orderId', orderId);
+  url.searchParams.set('attachment', attachmentId);
+  return url.toString();
+}
+
+/**
+ * Phone photos are routinely 5-10MB, well past what a function body accepts,
+ * so shrink before sending rather than failing at the door.
+ */
+async function shrinkImage(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Could not read that file.'));
+    reader.readAsDataURL(file);
+  });
+  if (file.type === 'image/gif') return dataUrl; // resizing would kill the animation
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('That image could not be read.'));
+    el.src = dataUrl;
+  });
+  const MAX = 1600;
+  const scale = Math.min(1, MAX / Math.max(image.width, image.height));
+  if (scale === 1 && dataUrl.length < 3_000_000) return dataUrl;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(image.height * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+async function postOrderMessage(
+  customer: LockerCustomer,
+  orderId: string,
+  body: string,
+  attachment?: { dataUrl: string; filename: string } | null,
+) {
   const response = await fetch(new URL('/api/order-thread', window.location.origin), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ownerKey: ownerKey(customer), orderId, type: 'chat', body,
+      attachment: attachment ?? null,
       actorName: [customer.firstName, customer.lastName].filter(Boolean).join(' ') || null,
     }),
   });
-  if (!response.ok) throw new Error('Message could not be sent.');
+  if (!response.ok) {
+    const failure = await response.json().catch(() => null);
+    throw new Error(failure?.error || 'Message could not be sent.');
+  }
   const payload = await response.json();
   return payload?.data?.event as OrderEvent;
 }
@@ -626,7 +676,22 @@ function OrderChatPanel({ customer, order }: { customer: LockerCustomer; order: 
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [pending, setPending] = useState<{ dataUrl: string; filename: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const attach = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only images can be attached.');
+      return;
+    }
+    try {
+      setPending({ dataUrl: await shrinkImage(file), filename: file.name });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'That image could not be read.');
+    }
+  };
 
   useEffect(() => {
     let live = true;
@@ -644,12 +709,13 @@ function OrderChatPanel({ customer, order }: { customer: LockerCustomer; order: 
 
   const send = async () => {
     const body = draft.trim();
-    if (!body || sending) return;
+    if ((!body && !pending) || sending) return;
     setSending(true);
     try {
-      const created = await postOrderMessage(customer, String(order.id), body);
+      const created = await postOrderMessage(customer, String(order.id), body, pending);
       setEvents((current) => [...current, created]);
       setDraft('');
+      setPending(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Message could not be sent.');
     } finally {
@@ -690,6 +756,7 @@ function OrderChatPanel({ customer, order }: { customer: LockerCustomer; order: 
             );
           }
           const mine = event.actor?.kind === 'customer';
+          const attachments = (event.payload?.attachments ?? []) as ChatAttachment[];
           return (
             <div
               key={event.id}
@@ -699,13 +766,58 @@ function OrderChatPanel({ customer, order }: { customer: LockerCustomer; order: 
                   : 'mr-8 rounded-2xl rounded-bl-md bg-[#f4f1ec] px-3.5 py-2 text-[13px] leading-snug text-[#1c1b1b]'
               }
             >
+              {attachments.map((file) => (
+                <a
+                  key={file.id}
+                  href={attachmentUrl(customer, String(order.id), file.id)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mb-2 block"
+                >
+                  <img
+                    src={attachmentUrl(customer, String(order.id), file.id)}
+                    alt={file.filename}
+                    className="max-h-48 w-full rounded-lg bg-white/90 object-contain"
+                  />
+                </a>
+              ))}
               {event.body}
             </div>
           );
         })}
       </div>
 
+      {pending ? (
+        <div className="flex items-center gap-2 border-t border-[#eee9e2] bg-[#faf8f5] px-3 py-2">
+          <img src={pending.dataUrl} alt="" className="h-10 w-10 rounded-md object-cover" />
+          <span className="min-w-0 flex-1 truncate text-[11px] text-[#8a8580]">{pending.filename}</span>
+          <button
+            type="button"
+            onClick={() => setPending(null)}
+            aria-label="Remove image"
+            className="rounded-full p-1 text-[#8a8580] hover:bg-[#f0ece6]"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex items-end gap-2 border-t border-[#eee9e2] bg-white px-3 py-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { void attach(e.target.files?.[0]); e.target.value = ''; }}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          aria-label="Attach an image"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f4f1ec] text-[#5c5852] hover:bg-[#ece7e0]"
+        >
+          <ImagePlus size={16} />
+        </button>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -719,7 +831,7 @@ function OrderChatPanel({ customer, order }: { customer: LockerCustomer; order: 
         <button
           type="button"
           onClick={send}
-          disabled={sending || !draft.trim()}
+          disabled={sending || (!draft.trim() && !pending)}
           className="h-9 shrink-0 rounded-xl bg-[#1c1b1b] px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-40"
         >
           {sending ? '…' : 'Send'}

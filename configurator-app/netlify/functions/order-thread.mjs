@@ -2,7 +2,10 @@ import { timingSafeEqual } from 'node:crypto';
 
 import { connectLambda, getStore } from '@netlify/blobs';
 
-import { appendEvent, buildEvent, listEvents } from '../lib/order-events.mjs';
+import {
+  appendEvent, buildEvent, listEvents,
+  attachmentKey, decodeAttachment,
+} from '../lib/order-events.mjs';
 
 // Read and write one order's thread.
 //
@@ -39,6 +42,18 @@ function adminKeyOk(event) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+const binaryResponse = (bytes, contentType, filename) => ({
+  statusCode: 200,
+  headers: {
+    'Access-Control-Allow-Origin': '*',
+    'Content-Type': contentType,
+    'Content-Disposition': `inline; filename="${String(filename || 'attachment').replace(/"/g, '')}"`,
+    'Cache-Control': 'private, max-age=300',
+  },
+  body: Buffer.from(bytes).toString('base64'),
+  isBase64Encoded: true,
+});
+
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return json(200, { ok: true });
   connectLambda(event);
@@ -50,6 +65,18 @@ export const handler = async (event) => {
     if (!q.ownerKey || !q.orderId) {
       return json(400, { error: 'ownerKey and orderId are required' });
     }
+    if (q.attachment) {
+      const blob = await store.get(attachmentKey(q.ownerKey, q.orderId, q.attachment), {
+        type: 'arrayBuffer',
+      });
+      if (!blob) return json(404, { error: 'Attachment not found' });
+      const meta = await store.get(
+        `${attachmentKey(q.ownerKey, q.orderId, q.attachment)}.meta`,
+        { type: 'json' },
+      );
+      return binaryResponse(blob, meta?.contentType ?? 'application/octet-stream', meta?.filename);
+    }
+
     const wantsInternal = q.internal === '1';
     if (wantsInternal && !isAdmin) return json(403, { error: 'Admin key required' });
     const events = await listEvents(store, q.ownerKey, q.orderId, {
@@ -69,7 +96,29 @@ export const handler = async (event) => {
 
   const { ownerKey, orderId, type = 'chat' } = payload;
   if (!ownerKey || !orderId) return json(400, { error: 'ownerKey and orderId are required' });
-  if (!payload.body?.trim()) return json(400, { error: 'body is required' });
+
+  // A message may be text, an image, or both — a photo of a seam often says
+  // more than the sentence describing it.
+  let attachment = null;
+  if (payload.attachment?.dataUrl) {
+    const decoded = decodeAttachment(payload.attachment.dataUrl);
+    if (decoded.error) return json(400, { error: decoded.error });
+    const id = `att_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const key = attachmentKey(ownerKey, orderId, id);
+    await store.set(key, decoded.bytes);
+    const meta = {
+      id,
+      filename: String(payload.attachment.filename ?? 'image').slice(0, 200),
+      contentType: decoded.contentType,
+      bytes: decoded.bytes.length,
+    };
+    await store.setJSON(`${key}.meta`, meta);
+    attachment = meta;
+  }
+
+  if (!payload.body?.trim() && !attachment) {
+    return json(400, { error: 'A message or an image is required' });
+  }
 
   // Without the admin key a caller is a customer: chat only, always visible,
   // always attributed to the customer. They cannot write notes, cannot post as
@@ -79,7 +128,8 @@ export const handler = async (event) => {
     const built = buildEvent({
       orderId, ownerKey, type: 'chat', visibility: 'customer',
       actorKind: 'customer', actorName: payload.actorName ?? null,
-      title: 'Message from the customer', body: payload.body,
+      title: 'Message from the customer', body: payload.body ?? null,
+      payload: attachment ? { attachments: [attachment] } : null,
     });
     await appendEvent(store, built);
     return json(200, { data: { event: built } });
@@ -91,8 +141,10 @@ export const handler = async (event) => {
     actorKind: payload.actorKind ?? 'staff',
     actorName: payload.actorName ?? 'DSPLN',
     title: payload.title ?? (type === 'note' ? 'Internal note' : 'Message from DSPLN'),
-    body: payload.body,
-    payload: payload.payload ?? null,
+    body: payload.body ?? null,
+    payload: attachment
+      ? { ...(payload.payload ?? {}), attachments: [attachment] }
+      : payload.payload ?? null,
   });
   await appendEvent(store, built);
   return json(200, { data: { event: built } });
