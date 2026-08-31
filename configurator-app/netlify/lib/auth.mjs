@@ -2,6 +2,8 @@ import { betterAuth } from 'better-auth';
 import { organization } from 'better-auth/plugins';
 import pg from 'pg';
 
+import { mailIsConfigured, sendPasswordReset, sendVerification } from './mailer.mjs';
+
 // DSPLN's own identity service.
 //
 // Runs as a Netlify function rather than on the portal's Cloudflare Worker:
@@ -54,10 +56,20 @@ export function getAuth() {
     database: pool,
     emailAndPassword: {
       enabled: true,
-      // Verification needs an email provider, which DSPLN does not have yet.
-      // Requiring it before one exists would lock out every new signup.
+      // Only require verification once mail can actually be sent. Requiring it
+      // first would lock out every new signup with no way to let them in.
       requireEmailVerification: false,
       minPasswordLength: 8,
+      sendResetPassword: async ({ user, url }) => {
+        await sendPasswordReset({ to: user.email, url, name: user.name });
+      },
+    },
+    emailVerification: {
+      sendOnSignUp: mailIsConfigured(),
+      autoSignInAfterVerification: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        await sendVerification({ to: user.email, url, name: user.name });
+      },
     },
     user: {
       modelName: 'user',
