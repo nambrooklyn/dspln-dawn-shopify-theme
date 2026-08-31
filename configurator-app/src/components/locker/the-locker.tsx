@@ -300,6 +300,47 @@ function orderProgress(order: LockerOrder): OrderProgress {
   return { index: 0, actionMessage };
 }
 
+const STORE_ORIGIN = 'https://dspln.com';
+const STORE_LOGO =
+  'https://dspln.com/cdn/shop/t/26/assets/dspln-header-logo.webp?v=81944404610336235851784498170';
+
+/**
+ * The store's header, rebuilt for the standalone Locker.
+ *
+ * Matches the theme: white ground, thin rule, three-column grid with the mark
+ * centred — so moving off the iframe does not feel like leaving DSPLN. Shown
+ * only when the Locker is its own page; the portal's admin embed keeps its
+ * chrome-free view.
+ */
+function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => void }) {
+  return (
+    <header className="sticky top-0 z-40 border-b border-[#e6e4df] bg-white">
+      <div className="mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-3 sm:px-8">
+        <nav className="flex items-center gap-5">
+          <a href={STORE_ORIGIN} className={`${label} text-[#1c1b1b] hover:opacity-70`}>Shop</a>
+          <a href={`${STORE_ORIGIN}/pages/how-to-use-customizer`} className={`${label} hidden text-[#1c1b1b] hover:opacity-70 sm:inline`}>Guide</a>
+        </nav>
+
+        <a href={STORE_ORIGIN} aria-label="DSPLN" className="justify-self-center">
+          <img src={STORE_LOGO} alt="DSPLN" width={200} height={42} className="h-[34px] w-auto sm:h-[42px]" />
+        </a>
+
+        <div className="flex items-center justify-end gap-4">
+          {email ? (
+            <span className="hidden max-w-[190px] truncate text-xs text-[#8a8580] md:inline">{email}</span>
+          ) : null}
+          {onSignOut ? (
+            <button type="button" onClick={onSignOut} className={`${label} text-[#1c1b1b] hover:opacity-70`}>
+              Log out
+            </button>
+          ) : null}
+          <a href={`${STORE_ORIGIN}/cart`} className={`${label} text-[#1c1b1b] hover:opacity-70`}>Cart</a>
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function OrderTimeline({ order }: { order: LockerOrder }) {
   const progress = orderProgress(order);
   const tracking = progress.tracking;
@@ -996,6 +1037,16 @@ async function indexLockerCustomer(customer: LockerCustomer, orders?: LockerOrde
 
 export function TheLocker() {
   const customer = useMemo(queryCustomer, []);
+  // Embedded means someone else draws the chrome — the storefront page, or the
+  // portal's admin view. Standing alone, the Locker draws the store header
+  // itself so leaving the iframe does not feel like leaving DSPLN.
+  const isEmbedded = useMemo(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('embedded') === '1';
+    } catch {
+      return false;
+    }
+  }, []);
   const storefrontLockerUrl =
     typeof window !== 'undefined' && window.location.hostname.startsWith('dev--')
       ? 'https://dspln-dev-2.myshopify.com/pages/locker'
@@ -1165,6 +1216,7 @@ export function TheLocker() {
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
+      {!isEmbedded ? <LockerHeader email={customer.email} /> : null}
       {/* Stacked (mobile) rows must not stretch: the profile band stays
           content-height and the main area absorbs the leftover screen. */}
       <div className="grid min-h-screen w-full min-w-0 grid-cols-1 grid-rows-[auto_1fr] lg:grid-cols-[84px_300px_minmax(0,1fr)] lg:grid-rows-1">
