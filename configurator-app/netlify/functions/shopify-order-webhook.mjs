@@ -9,6 +9,7 @@ import {
   lookupKey,
   moveRecord,
   ownerKeyForCustomer,
+  writeEmailIndex,
 } from '../lib/design-ownership.mjs';
 
 // Stamps the real Shopify order number onto the saved design records once an
@@ -112,6 +113,12 @@ async function applyOrderToDesigns(order, shopDomain) {
 
       const targetKey = claimed ? designKey(next) : lookup.key;
       await moveRecord(store, lookup.key, targetKey, next);
+      if (claimed) {
+        await writeEmailIndex(store, next.customerEmail, {
+          customerId: next.shopifyCustomerId,
+          ownerKey: next.ownerKey,
+        });
+      }
       results.push({ id, updated: true, orderName: order.name, claimed });
     } catch (error) {
       console.error('[order-webhook] failed to stamp design', id, error);

@@ -2,6 +2,8 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 import { connectLambda, getStore } from '@netlify/blobs';
 
+import { emailIndexKey, writeEmailIndex } from '../lib/design-ownership.mjs';
+
 const STORE_NAME = 'dspln-customer-designs';
 
 // Store-wide listings (all designs / the studio summary) are DSPLN-internal
@@ -1036,6 +1038,21 @@ export const handler = async (event) => {
         if (!adminKeyOk(event)) return jsonResponse(403, { error: 'Admin key required' });
         const email = String(query.customerEmail || '').trim().toLowerCase();
         if (!email) return jsonResponse(400, { error: 'customerEmail is required' });
+
+        // One read; claims write this index. The full scan below is only a
+        // self-healing fallback for records claimed before the index existed,
+        // and it rewrites the index so the slow path runs at most once.
+        const indexed = await store.get(emailIndexKey(email), { type: 'json' });
+        if (indexed?.customerId) {
+          return jsonResponse(200, {
+            data: {
+              customerId: String(indexed.customerId),
+              ownerKey: indexed.ownerKey ?? null,
+              designCount: null,
+            },
+          });
+        }
+
         const records = (await listRecords(store, 'designs/')).filter(
           (record) =>
             String(record?.customerEmail || '').trim().toLowerCase() === email &&
@@ -1043,6 +1060,12 @@ export const handler = async (event) => {
         );
         records.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
         const match = records[0] ?? null;
+        if (match) {
+          await writeEmailIndex(store, email, {
+            customerId: match.shopifyCustomerId,
+            ownerKey: match.ownerKey,
+          });
+        }
         return jsonResponse(200, {
           data: {
             customerId: match?.shopifyCustomerId ?? null,

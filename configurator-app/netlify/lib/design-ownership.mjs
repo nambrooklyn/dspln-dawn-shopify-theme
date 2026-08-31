@@ -14,6 +14,21 @@ const cleanPathPart = (value) =>
   encodeURIComponent(String(value || 'unknown')).replace(/%/g, '~');
 
 export const lookupKey = (id) => `lookup/${id}.json`;
+
+// email -> {customerId, ownerKey}, one blob per address. The admin resolves a
+// customer in one read instead of scanning every design (421 blobs and
+// counting — a scan blows straight through the portal's 8s budget).
+export const emailIndexKey = (email) =>
+  `customer-email-index/${cleanPathPart(String(email).trim().toLowerCase())}.json`;
+
+export async function writeEmailIndex(store, email, { customerId, ownerKey }) {
+  if (!email || !customerId) return;
+  await store.setJSON(emailIndexKey(email), {
+    customerId: String(customerId),
+    ownerKey,
+    updatedAt: new Date().toISOString(),
+  });
+}
 export const studioIndexKey = (id) => `studio-index/${id}.json`;
 
 export const designKey = ({ ownerKey, productHandle, id }) =>
@@ -128,7 +143,10 @@ export async function claimDesignForCustomer(store, { designId, shopDomain, cust
   };
   const newKey = designKey(claimed);
 
-  if (!dryRun) await moveRecord(store, lookup.key, newKey, claimed);
+  if (!dryRun) {
+    await moveRecord(store, lookup.key, newKey, claimed);
+    await writeEmailIndex(store, claimed.customerEmail, { customerId, ownerKey });
+  }
 
   return {
     designId,
