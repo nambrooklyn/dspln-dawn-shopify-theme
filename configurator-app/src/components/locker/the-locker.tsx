@@ -314,27 +314,40 @@ const STORE_LOGO =
  */
 function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => void }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-[#e6e4df] bg-white">
-      <div className="mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-3 sm:px-8">
-        <nav className="flex items-center gap-5">
-          <a href={STORE_ORIGIN} className={`${label} text-[#1c1b1b] hover:opacity-70`}>Shop</a>
-          <a href={`${STORE_ORIGIN}/pages/how-to-use-customizer`} className={`${label} hidden text-[#1c1b1b] hover:opacity-70 sm:inline`}>Guide</a>
+    <header className="sticky top-0 z-40 bg-[#1c1b1b] text-white">
+      <div className="mx-auto grid max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3">
+        <nav className="flex items-center gap-6">
+          <a href={STORE_ORIGIN} className={`${label} text-white hover:opacity-75`}>Shop</a>
+          <a
+            href={`${STORE_ORIGIN}/pages/how-to-use-customizer`}
+            className={`${label} hidden text-white hover:opacity-75 sm:inline`}
+          >
+            Guide
+          </a>
         </nav>
 
         <a href={STORE_ORIGIN} aria-label="DSPLN" className="justify-self-center">
-          <img src={STORE_LOGO} alt="DSPLN" width={200} height={42} className="h-[34px] w-auto sm:h-[42px]" />
+          <img
+            src={STORE_LOGO}
+            alt="DSPLN"
+            width={200}
+            height={42}
+            className="h-[34px] w-auto sm:h-[42px]"
+          />
         </a>
 
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex items-center justify-end gap-5">
           {email ? (
-            <span className="hidden max-w-[190px] truncate text-xs text-[#8a8580] md:inline">{email}</span>
+            <span className="hidden max-w-[200px] truncate text-xs text-white/60 lg:inline">
+              {email}
+            </span>
           ) : null}
           {onSignOut ? (
-            <button type="button" onClick={onSignOut} className={`${label} text-[#1c1b1b] hover:opacity-70`}>
+            <button type="button" onClick={onSignOut} className={`${label} text-white hover:opacity-75`}>
               Log out
             </button>
           ) : null}
-          <a href={`${STORE_ORIGIN}/cart`} className={`${label} text-[#1c1b1b] hover:opacity-70`}>Cart</a>
+          <a href={`${STORE_ORIGIN}/cart`} className={`${label} text-white hover:opacity-75`}>Cart</a>
         </div>
       </div>
     </header>
