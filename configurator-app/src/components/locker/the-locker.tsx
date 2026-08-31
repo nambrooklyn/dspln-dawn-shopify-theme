@@ -7,7 +7,7 @@
  * saved designs, uploaded artwork, fit profile, and Shopify order history.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
@@ -230,7 +230,7 @@ const PRODUCTION_SUBLINE: Record<string, string> = {
 };
 
 /** Typical production time, shown while we have no promised date to quote. */
-const LEAD_TIME_NOTE = 'Typically ready in 3–4 weeks';
+const LEAD_TIME_NOTE = 'Typically ready in 7 days';
 
 interface OrderProgress {
   index: number;
@@ -289,29 +289,25 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
   // middle one, so the source is worth naming.
   const stageDetail = (index: number) => {
     if (index === 0) {
-      const paid = /paid/i.test(order.financialStatus || '') && !/unpaid|pending/i.test(order.financialStatus || '');
       const refunded = /refund/i.test(order.financialStatus || '');
       return {
         when: formatDate(order.processedAt),
-        sub: refunded ? 'Refunded' : paid ? 'Payment received' : 'Awaiting payment',
-        owner: 'Shopify',
+        sub: refunded ? 'Refunded' : 'Order received',
       };
     }
     if (index === 1) {
       return {
-        when: progress.index === 1 ? '' : '',
+        when: '',
         sub: progress.index >= 1 ? (progress.subLine ?? LEAD_TIME_NOTE) : LEAD_TIME_NOTE,
-        owner: 'DSPLN',
       };
     }
     if (index === 2) {
       return {
-        when: tracking ? '' : '',
+        when: '',
         sub: tracking ? `${tracking.company ?? ''} ${tracking.number ?? ''}`.trim() : 'Tracking appears here',
-        owner: 'Shopify',
       };
     }
-    return { when: '', sub: progress.index === 3 ? 'Delivered' : 'Estimated after dispatch', owner: 'Shopify' };
+    return { when: '', sub: progress.index === 3 ? 'Delivered' : 'Estimated after dispatch' };
   };
 
   return (
@@ -353,15 +349,6 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
               {detail.sub ? (
                 <p className="mt-1 pr-2 text-[11px] leading-snug text-[#666]">{detail.sub}</p>
               ) : null}
-              <span
-                className={`mt-2 inline-block px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] ${
-                  detail.owner === 'DSPLN'
-                    ? 'bg-[#f3f0e9] text-[#6b5f3f]'
-                    : 'bg-[#f4f4f2] text-[#999]'
-                }`}
-              >
-                {detail.owner}
-              </span>
             </li>
           );
         })}
@@ -522,12 +509,18 @@ function eventTone(type: OrderEvent['type']) {
   return { dot: 'bg-[#c9c7c1]', tag: 'Note' };
 }
 
-/** Every stage change, email and message on one order, oldest first. */
-function OrderActivity({ customer, order }: { customer: LockerCustomer; order: LockerOrder }) {
+/**
+ * The order's conversation, styled as the Design Assistant panel in the
+ * configurator so the two read as one product. Chat is bubbles; stage and
+ * email events are quiet centre lines between them, the way a messaging app
+ * shows "delivered" — one thread, without the log drowning the conversation.
+ */
+function OrderChatPanel({ customer, order }: { customer: LockerCustomer; order: LockerOrder }) {
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -537,6 +530,11 @@ function OrderActivity({ customer, order }: { customer: LockerCustomer; order: L
       .catch(() => { if (live) setLoaded(true); });
     return () => { live = false; };
   }, [customer, order.id]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [events]);
 
   const send = async () => {
     const body = draft.trim();
@@ -554,70 +552,72 @@ function OrderActivity({ customer, order }: { customer: LockerCustomer; order: L
   };
 
   return (
-    <section className="border border-[#ddd] p-5">
-      <h3 className={`${label} text-[#666]`}>Activity</h3>
+    <section className="flex h-[min(30rem,70dvh)] flex-col overflow-hidden rounded-2xl border border-[#e3ded7] bg-white shadow-lg">
+      <header className="flex items-center gap-2 border-b border-[#eee9e2] bg-[#faf8f5] px-4 py-3">
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#5c0000] text-[8px] font-bold tracking-[-0.04em] text-white">
+          DS
+        </span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1c1b1b]">
+            Order chat
+          </p>
+          <p className="truncate text-[11px] text-[#8a8580]">
+            Ask us anything about {order.name}
+          </p>
+        </div>
+      </header>
 
-      {loaded && !events.length ? (
-        <p className="mt-4 text-sm text-[#777]">
-          Nothing yet. Updates about this order will appear here.
-        </p>
-      ) : null}
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        {loaded && !events.length ? (
+          <p className="mr-8 rounded-2xl rounded-bl-md bg-[#f4f1ec] px-3.5 py-2 text-[13px] leading-snug text-[#1c1b1b]">
+            Hi{customer.firstName ? ` ${customer.firstName}` : ''} — questions about this order come
+            straight to us here.
+          </p>
+        ) : null}
 
-      <ol className="mt-4 flex flex-col">
         {events.map((event) => {
-          const tone = eventTone(event.type);
+          if (event.type !== 'chat') {
+            return (
+              <p key={event.id} className="py-1 text-center text-[11px] text-[#a5a09a]">
+                {event.title} · {formatDate(event.createdAt)}
+              </p>
+            );
+          }
           const mine = event.actor?.kind === 'customer';
           return (
-            <li key={event.id} className="grid grid-cols-[74px_18px_1fr] items-start">
-              <span className="py-3 pr-2 text-right text-[11px] leading-snug tabular-nums text-[#999]">
-                {formatDate(event.createdAt)}
-              </span>
-              <span className="relative flex justify-center pt-3">
-                <span aria-hidden="true" className="absolute bottom-0 top-0 w-px bg-[#e6e4df]" />
-                <span className={`relative mt-[5px] h-2 w-2 rounded-full ring-4 ring-white ${tone.dot}`} />
-              </span>
-              <div className="py-3 pl-1">
-                <p className="text-sm leading-relaxed">
-                  <span className={`${label} mr-2 text-[#999]`}>{tone.tag}</span>
-                  {event.title}
-                </p>
-                {event.body ? (
-                  <div
-                    className={`mt-2 max-w-[52ch] border px-3 py-2 text-sm ${
-                      mine ? 'border-[#e6e4df] bg-[#faf9f7]' : 'border-transparent bg-[#f3efe9]'
-                    }`}
-                  >
-                    <span className={`${label} mb-1 block text-[#999]`}>
-                      {event.actor?.name || (mine ? 'You' : 'DSPLN')}
-                    </span>
-                    {event.body}
-                  </div>
-                ) : null}
-              </div>
-            </li>
+            <div
+              key={event.id}
+              className={
+                mine
+                  ? 'ml-8 rounded-2xl rounded-br-md bg-[#1c1b1b] px-3.5 py-2 text-[13px] leading-snug text-white'
+                  : 'mr-8 rounded-2xl rounded-bl-md bg-[#f4f1ec] px-3.5 py-2 text-[13px] leading-snug text-[#1c1b1b]'
+              }
+            >
+              {event.body}
+            </div>
           );
         })}
-      </ol>
+      </div>
 
-      <div className="mt-5 border border-[#ddd]">
+      <div className="flex items-end gap-2 border-t border-[#eee9e2] bg-white px-3 py-3">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          rows={3}
-          placeholder="Ask us about this order\u2026"
-          className="w-full resize-none px-4 py-3 text-sm outline-none"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
+          }}
+          rows={1}
+          placeholder="Ask us about this order"
+          className="max-h-24 min-h-[2.25rem] flex-1 resize-none rounded-xl bg-[#f4f1ec] px-3 py-2 text-[13px] leading-snug outline-none placeholder:text-[#a5a09a]"
         />
-        <div className="flex items-center justify-between border-t border-[#eee] px-4 py-2">
-          <span className="text-xs text-[#999]">We reply here and by email.</span>
-          <button
-            type="button"
-            onClick={send}
-            disabled={sending || !draft.trim()}
-            className={`${label} bg-[#1c1b1b] px-5 py-2 text-white disabled:opacity-40`}
-          >
-            {sending ? 'Sending' : 'Send'}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={send}
+          disabled={sending || !draft.trim()}
+          className="h-9 shrink-0 rounded-xl bg-[#1c1b1b] px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-40"
+        >
+          {sending ? '…' : 'Send'}
+        </button>
       </div>
     </section>
   );
@@ -1414,10 +1414,6 @@ export function TheLocker() {
                     <OrderTimeline order={selectedOrder} />
                   </div>
 
-                  <div className="pt-5">
-                    <OrderActivity customer={customer} order={selectedOrder} />
-                  </div>
-
                   <div className="grid gap-5 pt-5 lg:grid-cols-[minmax(0,1fr)_300px]">
                     <div>
                       <h3 className={`${label} mb-3 px-1`}>Items</h3>
@@ -1460,6 +1456,8 @@ export function TheLocker() {
                       </div>
                     </div>
                     <aside className="space-y-4 lg:pt-7">
+                      <OrderChatPanel customer={customer} order={selectedOrder} />
+
                       <div className="rounded-xl border border-[#e5e5e2] bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
                         <h3 className={`${label} mb-3`}>Billing address</h3>
                         <AddressBlock address={selectedOrder.billingAddress} />
