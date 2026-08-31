@@ -235,6 +235,8 @@ const LEAD_TIME_NOTE = 'Typically ready in 7 days';
 
 const STAGE_ICONS = [Receipt, Scissors, Truck, House] as const;
 
+const ORDER_GROUPS = ['Kimono', 'Belt', 'Pant', 'Rashguard', 'Grappling Short'] as const;
+
 interface OrderProgress {
   index: number;
   subLine?: string;
@@ -286,114 +288,126 @@ function OrderTimeline({ order }: { order: LockerOrder }) {
   const progress = orderProgress(order);
   const tracking = progress.tracking;
 
-  // A waypoint rail rather than a segmented bar: each stage carries a date, a
-  // sub-state and WHO said so, which turns "In production" from a claim into
-  // evidence. Shopify owns Ordered / Shipped / Delivered; the PO owns the
-  // middle one, so the source is worth naming.
+  // The order header lives INSIDE this card: number and status on the left,
+  // arrival and tracking on the right, the rail beneath. One card answering
+  // "which order, where is it, when does it land" instead of two saying
+  // overlapping things.
   const stageDetail = (index: number) => {
     if (index === 0) {
       const refunded = /refund/i.test(order.financialStatus || '');
-      return {
-        when: formatDate(order.processedAt),
-        sub: refunded ? 'Refunded' : 'Order received',
-      };
+      return { when: formatDate(order.processedAt), sub: refunded ? 'Refunded' : 'Order received' };
     }
     if (index === 1) {
-      return {
-        when: '',
-        sub: progress.index >= 1 ? (progress.subLine ?? LEAD_TIME_NOTE) : LEAD_TIME_NOTE,
-      };
+      return { when: '', sub: progress.index >= 1 ? (progress.subLine ?? LEAD_TIME_NOTE) : LEAD_TIME_NOTE };
     }
     if (index === 2) {
-      return {
-        when: '',
-        sub: tracking ? `${tracking.company ?? ''} ${tracking.number ?? ''}`.trim() : 'Tracking appears here',
-      };
+      return { when: '', sub: tracking ? 'On its way to you' : 'Tracking appears here' };
     }
     return { when: '', sub: progress.index === 3 ? 'Delivered' : 'Estimated after dispatch' };
   };
 
   return (
-    <div className="border border-[#ddd] p-5">
+    <div className="rounded-2xl border border-[#e5e5e2] bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-xl uppercase tracking-[0.14em] sm:text-2xl">
+            Order <span className="text-[#5c0000]">{order.name}</span>
+          </h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <StatusBadge value={order.financialStatus} />
+            <StatusBadge value={order.fulfillmentStatus} />
+          </div>
+          {order.cancelledAt ? (
+            <p className="mt-2 text-sm text-[#8a1c1c]">
+              Cancelled {formatDate(order.cancelledAt)}
+              {order.cancelReason ? ` · ${order.cancelReason}` : ''}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="text-left text-sm leading-relaxed sm:text-right">
+          <p className="text-[#666]">
+            Placed <span className="font-medium text-[#1c1b1b]">{formatDate(order.processedAt)}</span>
+          </p>
+          {tracking?.number ? (
+            <p className="mt-1 break-all text-[#666]">
+              {tracking.company ?? 'Tracking'}{' '}
+              {tracking.url ? (
+                <a href={tracking.url} target="_blank" rel="noreferrer" className="font-medium text-[#1c1b1b] underline underline-offset-2">
+                  {tracking.number}
+                </a>
+              ) : (
+                <span className="font-medium text-[#1c1b1b]">{tracking.number}</span>
+              )}
+            </p>
+          ) : (
+            <p className="mt-1 text-[#999]">Tracking appears here once it ships</p>
+          )}
+        </div>
+      </div>
+
       {progress.actionMessage ? (
-        <p className="mb-5 border border-[#842323] bg-[#fdf6f6] px-4 py-3 text-sm text-[#842323]">
+        <p className="mt-6 border border-[#842323] bg-[#fdf6f6] px-4 py-3 text-sm text-[#842323]">
           <span className={`${label} mr-2`}>Action needed</span>
           {progress.actionMessage}
         </p>
       ) : null}
 
-      <ol className="flex flex-col gap-5 sm:flex-row sm:gap-0">
+      <ol className="mt-8 flex flex-col gap-7 sm:flex-row sm:gap-0">
         {ORDER_STAGES.map((stage, index) => {
           const reached = !progress.cancelled && index <= progress.index;
           const current = !progress.cancelled && index === progress.index;
           const detail = stageDetail(index);
           const StageIcon = STAGE_ICONS[index] ?? Receipt;
           return (
-            <li key={stage} className="relative min-w-0 flex-1 sm:pr-4">
+            <li key={stage} className="relative min-w-0 flex-1 sm:pr-5">
               <div
                 aria-hidden="true"
-                className={`h-[2px] w-full ${reached ? 'bg-[#1c1b1b]' : 'bg-[#e2e2df]'}`}
+                className={`h-[3px] w-full rounded-full ${reached ? 'bg-[#5c0000]' : 'bg-[#e6e4df]'}`}
               />
               <span
                 aria-hidden="true"
-                className={`absolute left-0 top-[-9px] flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                className={`absolute left-0 top-[-9px] flex h-[21px] w-[21px] items-center justify-center rounded-full ${
                   current
-                    ? 'border-[#1c1b1b] bg-white ring-4 ring-[#1c1b1b1a]'
+                    ? 'bg-[#5c0000] text-white ring-4 ring-[#5c0000]/15'
                     : reached
-                      ? 'border-[#1c1b1b] bg-[#1c1b1b] text-white'
-                      : 'border-[#d5d5d0] bg-white'
+                      ? 'bg-[#5c0000] text-white'
+                      : 'bg-white ring-[3px] ring-[#e6e4df]'
                 }`}
               >
-                {reached && !current ? <Check size={11} strokeWidth={3} /> : null}
+                {reached ? <Check size={12} strokeWidth={3.5} /> : null}
               </span>
-              <div className="mt-5 flex items-center gap-2">
+
+              <div className="mt-6 flex items-start gap-3">
                 <StageIcon
-                  size={16}
-                  strokeWidth={1.5}
+                  size={34}
+                  strokeWidth={1.25}
                   aria-hidden="true"
-                  className={reached ? 'text-[#1c1b1b]' : 'text-[#c4c4bf]'}
+                  className={`shrink-0 ${reached ? 'text-[#5c0000]' : 'text-[#c9c7c1]'}`}
                 />
-                <p className={`text-xs font-medium ${reached ? 'text-[#1c1b1b]' : 'text-[#999]'}`}>
-                  {stage}
-                </p>
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold leading-tight ${reached ? 'text-[#1c1b1b]' : 'text-[#a5a09a]'}`}>
+                    {stage}
+                  </p>
+                  {detail.when ? (
+                    <p className="mt-1 text-[11px] tabular-nums text-[#8a8580]">{detail.when}</p>
+                  ) : null}
+                  {detail.sub ? (
+                    <p className="mt-0.5 pr-2 text-[11px] leading-snug text-[#8a8580]">{detail.sub}</p>
+                  ) : null}
+                </div>
               </div>
-              {detail.when ? (
-                <p className="mt-1 text-[11px] tabular-nums text-[#888]">{detail.when}</p>
-              ) : null}
-              {detail.sub ? (
-                <p className="mt-1 pr-2 text-[11px] leading-snug text-[#666]">{detail.sub}</p>
-              ) : null}
             </li>
           );
         })}
       </ol>
 
       {progress.cancelled ? (
-        <p className="mt-4 text-xs text-[#842323]">{progress.actionMessage}</p>
-      ) : null}
-
-      {progress.tracking?.number ? (
-        <p className="mt-4 text-xs text-[#777]">
-          {progress.tracking.company ? `${progress.tracking.company} · ` : ''}
-          {progress.tracking.url ? (
-            <a
-              href={progress.tracking.url}
-              target="_blank"
-              rel="noreferrer"
-              className="underline underline-offset-4"
-            >
-              {progress.tracking.number}
-            </a>
-          ) : (
-            progress.tracking.number
-          )}
-        </p>
+        <p className="mt-5 text-xs text-[#842323]">{progress.actionMessage}</p>
       ) : null}
     </div>
   );
 }
-
-const ORDER_GROUPS = ['Kimono', 'Belt', 'Pant', 'Rashguard', 'Grappling Short'] as const;
 
 function cleanOrderTitle(item: NonNullable<LockerOrder['items']>[number]): string {
   return (item.productTitle || item.title).replace(/\s+-\s+tda_price[_-]?\d*.*$/i, '').trim();
@@ -1404,26 +1418,6 @@ export function TheLocker() {
                   >
                     ← All orders
                   </button>
-                  <div className="rounded-xl border border-[#e5e5e2] bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                    <p className={label}>Order details</p>
-                    <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-                      <div>
-                        <h2 className="text-2xl uppercase tracking-[0.16em]">Order {selectedOrder.name}</h2>
-                        <p className="mt-2 text-sm text-[#666]">Placed {formatDate(selectedOrder.processedAt)}</p>
-                        {selectedOrder.cancelledAt ? (
-                          <p className="mt-2 text-sm text-[#8a1c1c]">
-                            Cancelled {formatDate(selectedOrder.cancelledAt)}
-                            {selectedOrder.cancelReason ? ` · ${selectedOrder.cancelReason}` : ''}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex gap-2">
-                        <StatusBadge value={selectedOrder.financialStatus} />
-                        <StatusBadge value={selectedOrder.fulfillmentStatus} />
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="pt-5">
                     <OrderTimeline order={selectedOrder} />
                   </div>
