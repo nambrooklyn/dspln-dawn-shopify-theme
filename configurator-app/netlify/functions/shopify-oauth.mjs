@@ -61,7 +61,12 @@ export default async (request) => {
   // ---- start the grant -------------------------------------------------
   if (url.pathname.endsWith('/install')) {
     // Installing is an admin act, not something a passer-by should trigger.
-    if (!adminKey || url.searchParams.get('key') !== adminKey) {
+    // SHOPIFY_INSTALL_KEY is a single-purpose alternative for when the admin
+    // key is not to hand — Netlify stores secrets write-only, so a key that
+    // was never written down cannot be read back. Delete it once installed.
+    const offered = url.searchParams.get('key');
+    const accepted = [adminKey, process.env.SHOPIFY_INSTALL_KEY].filter(Boolean);
+    if (!accepted.length || !offered || !accepted.includes(offered)) {
       return html('<h1>Not found</h1>', 404);
     }
     const state = randomBytes(16).toString('hex');
