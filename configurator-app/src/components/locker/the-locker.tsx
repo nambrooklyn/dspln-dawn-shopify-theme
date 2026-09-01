@@ -249,19 +249,15 @@ const LEAD_TIME_NOTE = 'Typically ready in 7 days';
 
 const STAGE_ICONS = [Receipt, Scissors, Truck, House] as const;
 
-// Expected arrival = production + transit. Tune these two numbers and every
-// order's estimate moves with them.
-const PRODUCTION_DAYS = 7;
-const TRANSIT_DAYS = 5;
+// One lead time for everyone: seven days from the order. No destination zones
+// and no separate transit leg — the quoted number is the number.
+const LEAD_TIME_DAYS = 7;
 
 function expectedArrival(order: LockerOrder): { value: string } | null {
-  const shippedAt = order.fulfillments?.find((f) => f.createdAt)?.createdAt;
-  const base = shippedAt ?? order.processedAt;
-  if (!base) return null;
-  const from = new Date(base);
+  if (!order.processedAt) return null;
+  const from = new Date(order.processedAt);
   if (Number.isNaN(from.getTime())) return null;
-  // Once it is with the carrier, only transit remains.
-  from.setDate(from.getDate() + (shippedAt ? TRANSIT_DAYS : PRODUCTION_DAYS + TRANSIT_DAYS));
+  from.setDate(from.getDate() + LEAD_TIME_DAYS);
   return { value: formatDate(from.toISOString()) };
 }
 
@@ -1199,6 +1195,21 @@ export function TheLocker() {
   // or the visitor is signed in with a DSPLN account. The URL wins so the
   // embedded Locker and the portal's admin view keep working unchanged.
   const urlCustomer = useMemo(queryCustomer, []);
+
+  // The storefront used to hand identity over inside an iframe src. Now that
+  // /pages/locker navigates here outright, those same params sit in the visible
+  // address bar and in history — so read them once, then take them back out.
+  useEffect(() => {
+    if (!urlCustomer || typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      let touched = false;
+      ['customerId', 'customerEmail', 'firstName', 'lastName', 'shop', 'storefrontOrigin'].forEach((key) => {
+        if (url.searchParams.has(key)) { url.searchParams.delete(key); touched = true; }
+      });
+      if (touched) window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch { /* an unscrubbed URL is cosmetic — never break the Locker over it */ }
+  }, [urlCustomer]);
   const [sessionCustomer, setSessionCustomer] = useState<LockerCustomer | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
 
@@ -1256,10 +1267,6 @@ export function TheLocker() {
       return false;
     }
   }, []);
-  const storefrontLockerUrl =
-    typeof window !== 'undefined' && window.location.hostname.startsWith('dev--')
-      ? 'https://dspln-dev-2.myshopify.com/pages/locker'
-      : 'https://dspln.com/pages/locker';
   const [page, setPage] = useState<LockerPage>(() => {
     try {
       const wanted = new URLSearchParams(window.location.search).get('page');
