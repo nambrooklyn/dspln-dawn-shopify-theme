@@ -500,45 +500,129 @@ const STORE_LOGO =
  * only when the Locker is its own page; the portal's admin embed keeps its
  * chrome-free view.
  */
+interface StoreHeaderPayload { html: string; cssLinks: string[]; inlineStyle: string; themeCss?: string }
+
+let storeHeaderCache: StoreHeaderPayload | null = null;
+
+/**
+ * The store's own header, rendered from the same HTML dspln.com serves —
+ * fetched through /api/store-header and mounted in a shadow root so Dawn's
+ * stylesheets cannot restyle the Locker around it. Fonts and CSS variables
+ * go to the document head: @font-face does not register inside shadow DOM,
+ * and :root variables inherit across the boundary.
+ */
 function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => void }) {
+  const [payload, setPayload] = useState<StoreHeaderPayload | null>(storeHeaderCache);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (storeHeaderCache) return;
+    let live = true;
+    fetch(new URL('/api/store-header', window.location.origin))
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        const data = body?.data as StoreHeaderPayload | undefined;
+        if (data?.html && live) { storeHeaderCache = data; setPayload(data); }
+      })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!payload || !hostRef.current) return;
+    if (payload.inlineStyle && !document.getElementById('dspln-store-theme-css')) {
+      const style = document.createElement('style');
+      style.id = 'dspln-store-theme-css';
+      style.textContent = payload.inlineStyle;
+      document.head.appendChild(style);
+    }
+    const root = hostRef.current.shadowRoot ?? hostRef.current.attachShadow({ mode: 'open' });
+    // The theme's variable block must ALSO live inside the shadow root:
+    // Dawn's color schemes are class-scoped rules (.color-scheme-N { --… }),
+    // and document-level styles do not apply across the shadow boundary —
+    // only :root custom properties inherit through. :root itself does not
+    // match inside a shadow tree, so it becomes :host here.
+    const shadowVars = payload.inlineStyle.replace(/:root/g, ':host');
+    const themeCss = (payload.themeCss ?? '').replace(/:root/g, ':host');
+    root.innerHTML = [
+      `<style>${shadowVars}</style>`,
+      ...payload.cssLinks.map((href) => `<link rel="stylesheet" href="${href}">`),
+      // After the links so the theme's overrides win, as they do on the store.
+      `<style>${themeCss}</style>`,
+      // Dawn gates drawer/menu visibility behind a .js ancestor that
+      // theme.liquid puts on <html>; inside a shadow root that ancestor has
+      // to be provided.
+      `<div class="js">${payload.html}</div>`,
+    ].join('\n');
+
+    // Dawn's own JS cannot run here — its classes query the document for
+    // elements that live in this shadow tree and throw. This is the small
+    // shadow-aware equivalent: the menu-opening class drives the same CSS
+    // transitions Dawn's MenuDrawer would.
+    const shadow = root;
+    const openDrawer = (details: HTMLDetailsElement) => {
+      details.setAttribute('open', '');
+      requestAnimationFrame(() => details.classList.add('menu-opening'));
+      const hostRect = hostRef.current?.getBoundingClientRect();
+      if (hostRect) {
+        shadow.host.setAttribute(
+          'style',
+          `--header-bottom-position: ${Math.round(hostRect.bottom)}px; --viewport-height: ${window.innerHeight}px`,
+        );
+      }
+    };
+    const closeDrawer = (details: HTMLDetailsElement) => {
+      details.classList.remove('menu-opening');
+      window.setTimeout(() => details.removeAttribute('open'), 300);
+    };
+    const onClick = (event: Event) => {
+      const path = event.composedPath();
+      const summary = path.find(
+        (node): node is HTMLElement => node instanceof HTMLElement && node.tagName === 'SUMMARY',
+      );
+      if (!summary) return;
+      const details = summary.parentElement as HTMLDetailsElement | null;
+      if (!details || details.tagName !== 'DETAILS') return;
+      // Only drive drawers/submenus; plain disclosure menus toggle natively.
+      if (!summary.closest('header-drawer, menu-drawer')) return;
+      event.preventDefault();
+      if (details.hasAttribute('open') && details.classList.contains('menu-opening')) closeDrawer(details);
+      else openDrawer(details);
+    };
+    shadow.addEventListener('click', onClick);
+    return () => shadow.removeEventListener('click', onClick);
+  }, [payload]);
+
   return (
-    <header className="sticky top-0 z-40 bg-[#1c1b1b] text-white">
-      <div className="mx-auto grid max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3">
-        <nav className="flex items-center gap-6">
-          <a href={STORE_ORIGIN} className={`${label} text-white hover:opacity-75`}>Shop</a>
-          <a
-            href={`${STORE_ORIGIN}/pages/how-to-use-customizer`}
-            className={`${label} hidden text-white hover:opacity-75 sm:inline`}
-          >
-            Guide
-          </a>
-        </nav>
-
-        <a href={STORE_ORIGIN} aria-label="DSPLN" className="justify-self-center">
-          <img
-            src={STORE_LOGO}
-            alt="DSPLN"
-            width={200}
-            height={42}
-            className="h-[34px] w-auto sm:h-[42px]"
-          />
-        </a>
-
-        <div className="flex items-center justify-end gap-5">
-          {email ? (
-            <span className="hidden max-w-[200px] truncate text-xs text-white/60 lg:inline">
-              {email}
-            </span>
-          ) : null}
+    <div className="sticky top-0 z-40 bg-white">
+      {payload ? (
+        <div ref={hostRef} />
+      ) : (
+        <header className="bg-[#1c1b1b] text-white">
+          <div className="mx-auto grid max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3">
+            <nav className="flex items-center gap-6">
+              <a href={STORE_ORIGIN} className={`${label} text-white hover:opacity-75`}>Shop</a>
+            </nav>
+            <a href={STORE_ORIGIN} aria-label="DSPLN" className="justify-self-center">
+              <img src={STORE_LOGO} alt="DSPLN" width={200} height={42} className="h-[34px] w-auto sm:h-[42px]" />
+            </a>
+            <div className="flex items-center justify-end gap-5">
+              <a href={`${STORE_ORIGIN}/cart`} className={`${label} text-white hover:opacity-75`}>Cart</a>
+            </div>
+          </div>
+        </header>
+      )}
+      {email || onSignOut ? (
+        <div className="flex items-center justify-end gap-5 border-b border-[#e6e4df] bg-[#faf9f7] px-6 py-2">
+          {email ? <span className="max-w-[240px] truncate text-xs text-[#8a8580]">{email}</span> : null}
           {onSignOut ? (
-            <button type="button" onClick={onSignOut} className={`${label} text-white hover:opacity-75`}>
+            <button type="button" onClick={onSignOut} className="text-[11px] uppercase tracking-[0.16em] text-[#1c1b1b] underline underline-offset-2 hover:opacity-70">
               Log out
             </button>
           ) : null}
-          <a href={`${STORE_ORIGIN}/cart`} className={`${label} text-white hover:opacity-75`}>Cart</a>
         </div>
-      </div>
-    </header>
+      ) : null}
+    </div>
   );
 }
 
