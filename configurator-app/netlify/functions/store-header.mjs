@@ -58,6 +58,11 @@ export default async () => {
     ];
     const base = home.match(/"(\/\/dspln\.com\/cdn\/[^"]*\/base\.css[^"]*)"/);
     if (base) cssLinks.unshift(`https:${base[1]}`);
+    // Dawn's behavior lives in custom elements (header-drawer, details-modal…)
+    // defined in global.js. The registry is document-global, so loading it
+    // once upgrades the elements inside the shadow root too.
+    const globalJs = home.match(/"(\/\/dspln\.com\/cdn\/[^"]*\/global\.js[^"]*)"/);
+    const globalJsUrl = globalJs ? `https:${globalJs[1]}` : null;
     // Stylesheets the header depends on but does not link itself.
     for (const name of ['component-localization-form', 'component-predictive-search']) {
       const extra = home.match(new RegExp(`"(//dspln\\.com/cdn/[^"]*/${name}\\.css[^"]*)"`));
@@ -88,6 +93,7 @@ export default async () => {
         cssLinks,
         inlineStyle,
         themeCss,
+        globalJsUrl,
         fetchedAt: new Date().toISOString(),
       },
     });

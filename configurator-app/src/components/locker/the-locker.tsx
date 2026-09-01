@@ -500,7 +500,7 @@ const STORE_LOGO =
  * only when the Locker is its own page; the portal's admin embed keeps its
  * chrome-free view.
  */
-interface StoreHeaderPayload { html: string; cssLinks: string[]; inlineStyle: string; themeCss?: string }
+interface StoreHeaderPayload { html: string; cssLinks: string[]; inlineStyle: string; themeCss?: string; globalJsUrl?: string | null }
 
 let storeHeaderCache: StoreHeaderPayload | null = null;
 
@@ -530,6 +530,26 @@ function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => 
 
   useEffect(() => {
     if (!payload || !hostRef.current) return;
+    if (payload.globalJsUrl && !document.getElementById('dspln-store-global-js')) {
+      // Globals Dawn's classes read; without them a constructor throws and
+      // that element simply stays inert, but the stubs keep them all alive.
+      const w = window as unknown as Record<string, unknown>;
+      w.routes = w.routes ?? {
+        cart_add_url: 'https://dspln.com/cart/add',
+        cart_change_url: 'https://dspln.com/cart/change',
+        cart_update_url: 'https://dspln.com/cart/update',
+        cart_url: 'https://dspln.com/cart',
+        predictive_search_url: 'https://dspln.com/search/suggest',
+      };
+      w.cartStrings = w.cartStrings ?? { error: '', quantityError: '' };
+      w.variantStrings = w.variantStrings ?? { addToCart: '', soldOut: '', unavailable: '' };
+      w.accessibilityStrings = w.accessibilityStrings ?? {};
+      const script = document.createElement('script');
+      script.id = 'dspln-store-global-js';
+      script.src = payload.globalJsUrl;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
     if (payload.inlineStyle && !document.getElementById('dspln-store-theme-css')) {
       const style = document.createElement('style');
       style.id = 'dspln-store-theme-css';
