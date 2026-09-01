@@ -42,12 +42,11 @@
         {{ 'general.continue_shopping' | t }}
       </a>
 
-      {%- if shop.customer_accounts_enabled and customer == null -%}
-        <h2 class="cart__login-title">{{ 'sections.cart.login.title' | t }}</h2>
-        <p class="cart__login-paragraph">
-          {{ 'sections.cart.login.paragraph_html' | t: link: routes.account_login_url }}
-        </p>
-      {%- endif -%}
+      {%- comment -%}
+        Dawn offers a Shopify account sign-in here. DSPLN signs people in at the
+        Locker, not Shopify, so this prompt is gone rather than sending a
+        customer to an account system nothing else on the site links to.
+      {%- endcomment -%}
     </div>
 
     <form action="{{ routes.cart_url }}" class="cart__contents critical-hidden" method="post" id="cart">
