@@ -15,7 +15,7 @@ import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
 import { GI_PRODUCT_CONFIGS } from '../configurators/shared/gi-product-config';
 import { uploadArtworkImage } from '../configurators/shared/preview-upload';
 
-type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders';
+type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders' | 'settings';
 
 interface LockerSession {
   signedIn: boolean;
@@ -338,9 +338,94 @@ async function fetchLockerSession(): Promise<LockerSession> {
 
 type AuthMode = 'sign-in' | 'sign-up' | 'forgot';
 
+// The free shipping code the sign-up page promises. It is paid out ONLY after
+// an account exists — arriving with ?offer=free-shipping is a claim to it, not
+// the code itself, so the page cannot be shared around to skip signing up.
+const SIGNUP_OFFER_CODE = 'MEMBERSHIPPING';
+const OFFER_FLAG = 'dspln:locker:offer';
+
+const wantsOffer = () => {
+  try {
+    return new URLSearchParams(window.location.search).get('offer') === 'free-shipping';
+  } catch {
+    return false;
+  }
+};
+
+const claimOffer = () => {
+  // sessionStorage, not state: creating the account remounts the whole Locker.
+  try { window.sessionStorage.setItem(OFFER_FLAG, '1'); } catch { /* private mode */ }
+};
+
+const takeClaimedOffer = () => {
+  try {
+    const claimed = window.sessionStorage.getItem(OFFER_FLAG) === '1';
+    return claimed;
+  } catch {
+    return false;
+  }
+};
+
+const clearOffer = () => {
+  try { window.sessionStorage.removeItem(OFFER_FLAG); } catch { /* private mode */ }
+};
+
+function OfferBanner({ onDismiss }: { onDismiss: () => void }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="border-b border-[#e6d7d7] bg-[#fdf7f7] px-6 py-4">
+      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[#8a1c1c]">
+            Welcome to DSPLN
+          </p>
+          <p className="mt-1 text-sm text-[#444]">
+            Your free shipping code — use it at checkout on your first order.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <code className="select-all border border-[#d8c9c9] bg-white px-4 py-3 text-sm tracking-[0.18em] text-[#1c1b1b]">
+            {SIGNUP_OFFER_CODE}
+          </code>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard?.writeText(SIGNUP_OFFER_CODE).then(
+                () => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); },
+                () => undefined,
+              );
+            }}
+            className="text-[11px] uppercase tracking-[0.16em] text-[#1c1b1b] underline underline-offset-2 hover:opacity-70"
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Dismiss"
+            className="text-lg leading-none text-[#8a8580] hover:text-[#1c1b1b]"
+          >
+            &times;
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** DSPLN's own sign-in — the only way into the Locker. */
 function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
-  const [mode, setMode] = useState<AuthMode>('sign-in');
+  // ?auth=sign-up opens straight on account creation — the storefront's
+  // "sign up" entry points land people here to join, not to sign in.
+  const [mode, setMode] = useState<AuthMode>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('auth') === 'sign-up'
+        ? 'sign-up'
+        : 'sign-in';
+    } catch {
+      return 'sign-in';
+    }
+  });
   const [providers, setProviders] = useState<string[]>([]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -360,6 +445,8 @@ function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
   }, []);
 
   const signInWith = (provider: string) => {
+    // Google leaves and comes back; the claim has to survive the round trip.
+    if (wantsOffer()) claimOffer();
     const callbackURL = `${window.location.origin}/locker`;
     // Better Auth answers with the provider's URL rather than redirecting, so
     // the browser has to be sent there deliberately.
@@ -379,6 +466,7 @@ function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
     try {
       if (mode === 'sign-up') {
         await authRequest('/sign-up/email', { email, password, name: name || email.split('@')[0] });
+        if (wantsOffer()) claimOffer();
         onSignedIn();
       } else if (mode === 'sign-in') {
         await authRequest('/sign-in/email', { email, password });
@@ -1320,6 +1408,19 @@ async function indexLockerCustomer(customer: LockerCustomer, orders?: LockerOrde
   }).catch(() => undefined);
 }
 
+interface LockerPreferences { marketingEmail: boolean; orderEmail: boolean; updatedAt?: string | null }
+
+const defaultPreferences: LockerPreferences = { marketingEmail: true, orderEmail: true };
+
+async function fetchPreferences(customer: LockerCustomer): Promise<LockerPreferences> {
+  const url = new URL('/api/locker-preferences', window.location.origin);
+  url.searchParams.set('ownerKey', ownerKey(customer));
+  const response = await fetch(url);
+  if (!response.ok) return defaultPreferences;
+  const payload = await response.json();
+  return payload?.data?.preferences ?? defaultPreferences;
+}
+
 export function TheLocker() {
   // Identity has two sources now: the storefront hands one over in the URL,
   // or the visitor is signed in with a DSPLN account. The URL wins so the
@@ -1400,7 +1501,7 @@ export function TheLocker() {
   const [page, setPage] = useState<LockerPage>(() => {
     try {
       const wanted = new URLSearchParams(window.location.search).get('page');
-      if (wanted === 'design-tool' || wanted === 'designs' || wanted === 'uploads' || wanted === 'fit' || wanted === 'orders') {
+      if (wanted === 'design-tool' || wanted === 'designs' || wanted === 'uploads' || wanted === 'fit' || wanted === 'orders' || wanted === 'settings') {
         return wanted;
       }
     } catch {
@@ -1414,6 +1515,11 @@ export function TheLocker() {
   const [fit, setFit] = useState<FitProfile>(emptyFit);
   const [selectedDesign, setSelectedDesign] = useState<LockerDesign | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<LockerOrder | null>(null);
+  const [preferences, setPreferences] = useState<LockerPreferences>(defaultPreferences);
+  const [savingPreferences, setSavingPreferences] = useState(false);
+  // Paid out once the account exists — see SIGNUP_OFFER_CODE.
+  const [showOffer, setShowOffer] = useState(false);
+  useEffect(() => { if (takeClaimedOffer()) setShowOffer(true); }, []);
   const [loading, setLoading] = useState(Boolean(customer));
   const [savingFit, setSavingFit] = useState(false);
   const [error, setError] = useState('');
@@ -1446,6 +1552,7 @@ export function TheLocker() {
       fetchUploads(customer),
       fetchFit(customer),
       fetchArchivedOrders(customer),
+      fetchPreferences(customer),
     ]);
     if (results[0].status === 'fulfilled') setDesigns(results[0].value);
     if (results[1].status === 'fulfilled') setUploads(results[1].value);
@@ -1454,6 +1561,7 @@ export function TheLocker() {
       const archived = results[3].value;
       setOrders((current) => mergeOrders(archived, current));
     }
+    if (results[4].status === 'fulfilled') setPreferences(results[4].value);
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') {
       setError(failure.reason instanceof Error ? failure.reason.message : 'Could not load the Locker.');
@@ -1497,6 +1605,29 @@ export function TheLocker() {
     window.parent?.postMessage({ type: 'dspln:locker:ready' }, customer?.storefrontOrigin ?? '*');
     return () => window.removeEventListener('message', receiveStorefrontContext);
   }, [customer]);
+
+  const savePreferences = async (next: LockerPreferences) => {
+    if (!customer) return;
+    const previous = preferences;
+    setPreferences(next); // optimistic: a toggle that lags feels broken
+    setSavingPreferences(true);
+    try {
+      const response = await fetch('/api/locker-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerKey: ownerKey(customer), preferences: next }),
+      });
+      if (!response.ok) throw new Error('Could not save your notification settings.');
+      const payload = await response.json();
+      setPreferences(payload?.data?.preferences ?? next);
+      toast.success('Notification settings saved');
+    } catch (cause) {
+      setPreferences(previous);
+      toast.error((cause as Error).message);
+    } finally {
+      setSavingPreferences(false);
+    }
+  };
 
   const saveFit = async () => {
     if (!customer) return;
@@ -1545,6 +1676,7 @@ export function TheLocker() {
     { id: 'uploads', text: 'Uploads' },
     ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit', short: 'Fit' }] : []),
     { id: 'orders', text: 'Orders' },
+    { id: 'settings', text: 'Settings' },
   ];
 
   return (
@@ -1554,6 +1686,9 @@ export function TheLocker() {
           email={customer.email}
           onSignOut={customer.dsplnAccount ? signOut : undefined}
         />
+      ) : null}
+      {showOffer ? (
+        <OfferBanner onDismiss={() => { clearOffer(); setShowOffer(false); }} />
       ) : null}
       {/* Stacked (mobile) rows must not stretch: the profile band stays
           content-height and the main area absorbs the leftover screen. */}
@@ -2124,8 +2259,212 @@ export function TheLocker() {
               )}
             </section>
           ) : null}
+
+          {!loading && page === 'settings' ? (
+            <LockerSettings
+              customer={customer}
+              preferences={preferences}
+              savingPreferences={savingPreferences}
+              onSavePreferences={savePreferences}
+              onOpenFit={showFit ? () => setPage('fit') : undefined}
+              onSignOut={customer.dsplnAccount ? signOut : undefined}
+            />
+          ) : null}
         </main>
       </div>
     </div>
+  );
+}
+
+/**
+ * Settings: the account itself, and what we are allowed to email about.
+ *
+ * No billing here. DTC members are charged at Shopify checkout, so there is
+ * no card and no plan for DSPLN to show them; billing belongs to the B2B
+ * side, on Stripe, when that exists.
+ */
+function LockerSettings({
+  customer,
+  preferences,
+  savingPreferences,
+  onSavePreferences,
+  onOpenFit,
+  onSignOut,
+}: {
+  customer: LockerCustomer;
+  preferences: LockerPreferences;
+  savingPreferences: boolean;
+  onSavePreferences: (next: LockerPreferences) => void;
+  onOpenFit?: () => void;
+  onSignOut?: () => void;
+}) {
+  const [name, setName] = useState(`${customer.firstName} ${customer.lastName}`.trim());
+  const [savingName, setSavingName] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const dsplnAccount = Boolean(customer.dsplnAccount);
+  const card = 'border border-[#e6e4df] bg-white p-6 sm:p-8';
+  const heading = 'text-[11px] uppercase tracking-[0.18em] text-[#8a8580]';
+  const field = 'w-full border border-[#d8d5cf] px-4 py-3 text-sm outline-none focus:border-[#1c1b1b]';
+
+  const saveName = async () => {
+    setSavingName(true);
+    try {
+      await authRequest('/update-user', { name });
+      toast.success('Name updated');
+    } catch (cause) {
+      toast.error((cause as Error).message);
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const savePassword = async () => {
+    setSavingPassword(true);
+    try {
+      await authRequest('/change-password', {
+        currentPassword,
+        newPassword,
+        // Changing a password should end sessions elsewhere; that is the
+        // whole point of changing it.
+        revokeOtherSessions: true,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      toast.success('Password changed');
+    } catch (cause) {
+      toast.error((cause as Error).message);
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  return (
+    <section className="max-w-3xl space-y-6">
+      <div className={card}>
+        <h2 className={heading}>Your details</h2>
+        <div className="mt-5 space-y-4">
+          <label className="block">
+            <span className="mb-2 block text-xs text-[#666]">Name</span>
+            <input className={field} value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-xs text-[#666]">Email</span>
+            <input className={`${field} bg-[#faf9f7] text-[#8a8580]`} value={customer.email} readOnly />
+            <span className="mt-2 block text-xs text-[#999]">
+              Your email identifies your Locker and links your past orders. Message us to change it.
+            </span>
+          </label>
+          {dsplnAccount ? (
+            <button
+              type="button"
+              onClick={() => void saveName()}
+              disabled={savingName}
+              className={`bg-[#1c1b1b] px-9 py-4 text-white ${label} disabled:opacity-50`}
+            >
+              {savingName ? 'Saving' : 'Save'}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className={card}>
+        <h2 className={heading}>Notifications</h2>
+        <label className="mt-5 flex items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 accent-[#1c1b1b]"
+            checked={preferences.marketingEmail}
+            disabled={savingPreferences}
+            onChange={(e) =>
+              onSavePreferences({ ...preferences, marketingEmail: e.target.checked })
+            }
+          />
+          <span className="text-sm leading-relaxed text-[#444]">
+            New drops, offers and DSPLN news
+            <span className="mt-1 block text-xs text-[#999]">
+              Members get these by default. Turn it off here and we will stop.
+            </span>
+          </span>
+        </label>
+        <div className="mt-5 flex items-start gap-3 border-t border-[#f0efec] pt-5">
+          <input type="checkbox" className="mt-1 h-4 w-4" checked readOnly disabled />
+          <span className="text-sm leading-relaxed text-[#8a8580]">
+            Order updates
+            <span className="mt-1 block text-xs text-[#999]">
+              Where your order is and anything it needs from you. These are not marketing, so
+              they stay on.
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {onOpenFit ? (
+        <div className={card}>
+          <h2 className={heading}>Sizing and fit</h2>
+          <p className="mt-4 text-sm leading-relaxed text-[#666]">
+            Your measurements, saved once and reused for every custom order.
+          </p>
+          <button
+            type="button"
+            onClick={onOpenFit}
+            className="mt-5 border border-[#1c1b1b] px-9 py-4 text-[11px] uppercase tracking-[0.16em] hover:bg-[#faf9f7]"
+          >
+            Open sizing profile
+          </button>
+        </div>
+      ) : null}
+
+      {dsplnAccount ? (
+        <div className={card}>
+          <h2 className={heading}>Password</h2>
+          <div className="mt-5 space-y-4">
+            <input
+              className={field}
+              type="password"
+              placeholder="Current password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+            />
+            <input
+              className={field}
+              type="password"
+              placeholder="New password"
+              minLength={8}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => void savePassword()}
+              disabled={savingPassword || !currentPassword || newPassword.length < 8}
+              className={`bg-[#1c1b1b] px-9 py-4 text-white ${label} disabled:opacity-50`}
+            >
+              {savingPassword ? 'Saving' : 'Change password'}
+            </button>
+            <p className="text-xs text-[#999]">
+              Signed in with Google? You have no password to change — keep using Google.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {onSignOut ? (
+        <div className={card}>
+          <h2 className={heading}>Session</h2>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="mt-5 border border-[#1c1b1b] px-9 py-4 text-[11px] uppercase tracking-[0.16em] hover:bg-[#faf9f7]"
+          >
+            Log out
+          </button>
+        </div>
+      ) : null}
+    </section>
   );
 }
