@@ -500,7 +500,7 @@ const STORE_LOGO =
  * only when the Locker is its own page; the portal's admin embed keeps its
  * chrome-free view.
  */
-interface StoreHeaderPayload { html: string; cssLinks: string[]; inlineStyle: string; themeCss?: string; globalJsUrl?: string | null }
+interface StoreHeaderPayload { html: string; cssLinks: string[]; inlineStyle: string; themeCss?: string }
 
 let storeHeaderCache: StoreHeaderPayload | null = null;
 
@@ -530,26 +530,6 @@ function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => 
 
   useEffect(() => {
     if (!payload || !hostRef.current) return;
-    if (payload.globalJsUrl && !document.getElementById('dspln-store-global-js')) {
-      // Globals Dawn's classes read; without them a constructor throws and
-      // that element simply stays inert, but the stubs keep them all alive.
-      const w = window as unknown as Record<string, unknown>;
-      w.routes = w.routes ?? {
-        cart_add_url: 'https://dspln.com/cart/add',
-        cart_change_url: 'https://dspln.com/cart/change',
-        cart_update_url: 'https://dspln.com/cart/update',
-        cart_url: 'https://dspln.com/cart',
-        predictive_search_url: 'https://dspln.com/search/suggest',
-      };
-      w.cartStrings = w.cartStrings ?? { error: '', quantityError: '' };
-      w.variantStrings = w.variantStrings ?? { addToCart: '', soldOut: '', unavailable: '' };
-      w.accessibilityStrings = w.accessibilityStrings ?? {};
-      const script = document.createElement('script');
-      script.id = 'dspln-store-global-js';
-      script.src = payload.globalJsUrl;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
     if (payload.inlineStyle && !document.getElementById('dspln-store-theme-css')) {
       const style = document.createElement('style');
       style.id = 'dspln-store-theme-css';
@@ -574,6 +554,43 @@ function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => 
       // to be provided.
       `<div class="js">${payload.html}</div>`,
     ].join('\n');
+
+    // Dawn's own JS cannot run here — its classes query the document for
+    // elements that live in this shadow tree and throw. This is the small
+    // shadow-aware equivalent: the menu-opening class drives the same CSS
+    // transitions Dawn's MenuDrawer would.
+    const shadow = root;
+    const openDrawer = (details: HTMLDetailsElement) => {
+      details.setAttribute('open', '');
+      requestAnimationFrame(() => details.classList.add('menu-opening'));
+      const hostRect = hostRef.current?.getBoundingClientRect();
+      if (hostRect) {
+        shadow.host.setAttribute(
+          'style',
+          `--header-bottom-position: ${Math.round(hostRect.bottom)}px; --viewport-height: ${window.innerHeight}px`,
+        );
+      }
+    };
+    const closeDrawer = (details: HTMLDetailsElement) => {
+      details.classList.remove('menu-opening');
+      window.setTimeout(() => details.removeAttribute('open'), 300);
+    };
+    const onClick = (event: Event) => {
+      const path = event.composedPath();
+      const summary = path.find(
+        (node): node is HTMLElement => node instanceof HTMLElement && node.tagName === 'SUMMARY',
+      );
+      if (!summary) return;
+      const details = summary.parentElement as HTMLDetailsElement | null;
+      if (!details || details.tagName !== 'DETAILS') return;
+      // Only drive drawers/submenus; plain disclosure menus toggle natively.
+      if (!summary.closest('header-drawer, menu-drawer')) return;
+      event.preventDefault();
+      if (details.hasAttribute('open') && details.classList.contains('menu-opening')) closeDrawer(details);
+      else openDrawer(details);
+    };
+    shadow.addEventListener('click', onClick);
+    return () => shadow.removeEventListener('click', onClick);
   }, [payload]);
 
   return (
