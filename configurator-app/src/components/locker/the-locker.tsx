@@ -17,6 +17,17 @@ import { uploadArtworkImage } from '../configurators/shared/preview-upload';
 
 type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders';
 
+interface LockerSession {
+  signedIn: boolean;
+  user?: { id: string; email: string; name: string; emailVerified: boolean };
+  ownerKey?: string;
+  shopifyCustomerId?: string | null;
+  shopDomain?: string;
+  linked?: boolean;
+  /** Social buttons the server actually has credentials for. */
+  socialProviders?: string[];
+}
+
 interface LockerCustomer {
   customerId: string;
   email: string;
@@ -24,6 +35,9 @@ interface LockerCustomer {
   lastName: string;
   shopDomain: string;
   storefrontOrigin: string;
+  /** Set when the identity came from a DSPLN account rather than Shopify. */
+  ownerKeyOverride?: string;
+  dsplnAccount?: boolean;
 }
 
 interface LockerOrder {
@@ -180,7 +194,9 @@ function queryCustomer(): LockerCustomer | null {
 }
 
 function ownerKey(customer: LockerCustomer): string {
-  return `shopify:${customer.shopDomain}:${customer.customerId}`;
+  // A DSPLN member linked to a past Shopify customer reads the very same
+  // records; an unlinked one carries a dspln: key of their own.
+  return customer.ownerKeyOverride ?? `shopify:${customer.shopDomain}:${customer.customerId}`;
 }
 
 function formatDate(value?: string): string {
@@ -235,19 +251,15 @@ const LEAD_TIME_NOTE = 'Typically ready in 7 days';
 
 const STAGE_ICONS = [Receipt, Scissors, Truck, House] as const;
 
-// Expected arrival = production + transit. Tune these two numbers and every
-// order's estimate moves with them.
-const PRODUCTION_DAYS = 7;
-const TRANSIT_DAYS = 5;
+// One lead time for everyone: seven days from the order. No destination zones
+// and no separate transit leg — the quoted number is the number.
+const LEAD_TIME_DAYS = 7;
 
 function expectedArrival(order: LockerOrder): { value: string } | null {
-  const shippedAt = order.fulfillments?.find((f) => f.createdAt)?.createdAt;
-  const base = shippedAt ?? order.processedAt;
-  if (!base) return null;
-  const from = new Date(base);
+  if (!order.processedAt) return null;
+  const from = new Date(order.processedAt);
   if (Number.isNaN(from.getTime())) return null;
-  // Once it is with the carrier, only transit remains.
-  from.setDate(from.getDate() + (shippedAt ? TRANSIT_DAYS : PRODUCTION_DAYS + TRANSIT_DAYS));
+  from.setDate(from.getDate() + LEAD_TIME_DAYS);
   return { value: formatDate(from.toISOString()) };
 }
 
@@ -301,6 +313,182 @@ function orderProgress(order: LockerOrder): OrderProgress {
 }
 
 const STORE_ORIGIN = 'https://dspln.com';
+
+async function authRequest(path: string, body: Record<string, unknown>) {
+  const response = await fetch(new URL(`/api/auth${path}`, window.location.origin), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error?.message || 'That did not work. Try again.');
+  }
+  return payload;
+}
+
+async function fetchLockerSession(): Promise<LockerSession> {
+  const response = await fetch(new URL('/api/locker-session', window.location.origin), {
+    credentials: 'include',
+  });
+  if (!response.ok) return { signedIn: false };
+  return (await response.json()) as LockerSession;
+}
+
+type AuthMode = 'sign-in' | 'sign-up' | 'forgot';
+
+/** DSPLN's own sign-in — the only way into the Locker. */
+function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
+  const [mode, setMode] = useState<AuthMode>('sign-in');
+  const [providers, setProviders] = useState<string[]>([]);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [sent, setSent] = useState('');
+
+  // Only draw a social button the server can honour: the providers switch on
+  // env vars alone, so asking is the only way to know.
+  useEffect(() => {
+    let live = true;
+    void fetchLockerSession()
+      .then((session) => { if (live) setProviders(session.socialProviders ?? []); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+
+  const signInWith = (provider: string) => {
+    const callbackURL = `${window.location.origin}/locker`;
+    // Better Auth answers with the provider's URL rather than redirecting, so
+    // the browser has to be sent there deliberately.
+    authRequest('/sign-in/social', { provider, callbackURL })
+      .then((payload) => {
+        const url = (payload as { url?: string } | null)?.url;
+        if (url) window.location.assign(url);
+        else setError('That sign-in is unavailable right now.');
+      })
+      .catch((cause) => setError(cause instanceof Error ? cause.message : 'That did not work. Try again.'));
+  };
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError(''); setSent('');
+    try {
+      if (mode === 'sign-up') {
+        await authRequest('/sign-up/email', { email, password, name: name || email.split('@')[0] });
+        onSignedIn();
+      } else if (mode === 'sign-in') {
+        await authRequest('/sign-in/email', { email, password });
+        onSignedIn();
+      } else {
+        // Better Auth 1.7 renamed this from /forget-password; the old path
+        // 404s silently, which reads to a customer as "nothing happened".
+        await authRequest('/request-password-reset', {
+          email, redirectTo: `${window.location.origin}/locker?reset=1`,
+        });
+        setSent('If that address has an account, a reset link is on its way.');
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'That did not work. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const field =
+    'w-full border border-[#d8d5cf] px-4 py-3 text-sm outline-none focus:border-[#1c1b1b]';
+
+  return (
+    <main className="min-h-screen bg-white font-sans text-[#1c1b1b]">
+      <LockerHeader />
+      <div className="mx-auto flex max-w-md flex-col px-6 py-16">
+        <h1 className="text-2xl uppercase tracking-[0.2em]">The Locker</h1>
+        <p className="mt-3 text-sm leading-relaxed text-[#666]">
+          {mode === 'sign-up'
+            ? 'Create an account and your designs, uploads and orders live in one place.'
+            : mode === 'forgot'
+              ? 'We will email you a link to choose a new password.'
+              : 'Sign in to your designs, uploads and orders.'}
+        </p>
+
+        <form onSubmit={submit} className="mt-8 flex flex-col gap-3">
+          {mode === 'sign-up' ? (
+            <input className={field} placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+          ) : null}
+          <input
+            className={field} type="email" required placeholder="Email" value={email}
+            onChange={(e) => setEmail(e.target.value)} autoComplete="email"
+          />
+          {mode !== 'forgot' ? (
+            <input
+              className={field} type="password" required minLength={8} placeholder="Password"
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
+            />
+          ) : null}
+
+          {error ? <p className="text-sm text-[#8a1c1c]">{error}</p> : null}
+          {sent ? <p className="text-sm text-[#3d6b2f]">{sent}</p> : null}
+
+          <button type="submit" disabled={busy} className={`mt-2 bg-[#1c1b1b] px-9 py-4 text-white ${label} disabled:opacity-50`}>
+            {busy ? 'Working' : mode === 'sign-up' ? 'Create account' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
+          </button>
+        </form>
+
+        {providers.includes('google') && mode !== 'forgot' ? (
+          <>
+            <div className="mt-6 flex items-center gap-4 text-[11px] uppercase tracking-[0.16em] text-[#999]">
+              <span className="h-px flex-1 bg-[#e6e4df]" />
+              or
+              <span className="h-px flex-1 bg-[#e6e4df]" />
+            </div>
+            <button
+              type="button"
+              onClick={() => signInWith('google')}
+              className="mt-6 flex w-full items-center justify-center gap-3 border border-[#d8d5cf] px-9 py-4 text-sm hover:border-[#1c1b1b]"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
+                <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z" />
+                <path fill="#FBBC05" d="M3.97 10.72a5.41 5.41 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z" />
+                <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z" />
+              </svg>
+              Continue with Google
+            </button>
+          </>
+        ) : null}
+
+        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[#666]">
+          {mode !== 'sign-in' ? (
+            <button type="button" className="underline underline-offset-2" onClick={() => { setMode('sign-in'); setError(''); }}>
+              Sign in instead
+            </button>
+          ) : null}
+          {mode !== 'sign-up' ? (
+            <button type="button" className="underline underline-offset-2" onClick={() => { setMode('sign-up'); setError(''); }}>
+              Create an account
+            </button>
+          ) : null}
+          {mode === 'sign-in' ? (
+            <button type="button" className="underline underline-offset-2" onClick={() => { setMode('forgot'); setError(''); }}>
+              Forgot password
+            </button>
+          ) : null}
+        </div>
+
+        <div className="mt-10 border-t border-[#e6e4df] pt-6">
+          <p className="text-xs leading-relaxed text-[#8a8580]">
+            Ordered before? Use the same email you ordered with and everything you have already
+            made will be waiting.
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
 const STORE_LOGO =
   'https://dspln.com/cdn/shop/t/26/assets/dspln-header-logo.webp?v=81944404610336235851784498170';
 
@@ -1049,7 +1237,72 @@ async function indexLockerCustomer(customer: LockerCustomer, orders?: LockerOrde
 }
 
 export function TheLocker() {
-  const customer = useMemo(queryCustomer, []);
+  // Identity has two sources now: the storefront hands one over in the URL,
+  // or the visitor is signed in with a DSPLN account. The URL wins so the
+  // embedded Locker and the portal's admin view keep working unchanged.
+  const urlCustomer = useMemo(queryCustomer, []);
+
+  // The storefront used to hand identity over inside an iframe src. Now that
+  // /pages/locker navigates here outright, those same params sit in the visible
+  // address bar and in history — so read them once, then take them back out.
+  useEffect(() => {
+    if (!urlCustomer || typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      let touched = false;
+      ['customerId', 'customerEmail', 'firstName', 'lastName', 'shop', 'storefrontOrigin'].forEach((key) => {
+        if (url.searchParams.has(key)) { url.searchParams.delete(key); touched = true; }
+      });
+      if (touched) window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch { /* an unscrubbed URL is cosmetic — never break the Locker over it */ }
+  }, [urlCustomer]);
+  const [sessionCustomer, setSessionCustomer] = useState<LockerCustomer | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  const loadSession = useCallback(async () => {
+    try {
+      const session = await fetchLockerSession();
+      if (session.signedIn && session.user) {
+        const [first, ...rest] = (session.user.name || '').split(' ');
+        setSessionCustomer({
+          customerId: session.shopifyCustomerId ?? session.user.id,
+          email: session.user.email,
+          firstName: first ?? '',
+          lastName: rest.join(' '),
+          shopDomain: session.shopDomain ?? 'f39242.myshopify.com',
+          storefrontOrigin: STORE_ORIGIN,
+          ownerKeyOverride: session.ownerKey,
+          dsplnAccount: true,
+        });
+      } else {
+        setSessionCustomer(null);
+      }
+    } catch {
+      setSessionCustomer(null);
+    } finally {
+      setSessionChecked(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (urlCustomer) { setSessionChecked(true); return; }
+    void loadSession();
+  }, [urlCustomer, loadSession]);
+
+  const signOut = useCallback(async () => {
+    try {
+      // Better Auth rejects a bodyless POST with 415 — it wants JSON.
+      await fetch(new URL('/api/auth/sign-out', window.location.origin), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+    } catch { /* signing out must not strand anyone on an error screen */ }
+    window.location.reload();
+  }, []);
+
+  const customer = urlCustomer ?? sessionCustomer;
   // Embedded means someone else draws the chrome — the storefront page, or the
   // portal's admin view. Standing alone, the Locker draws the store header
   // itself so leaving the iframe does not feel like leaving DSPLN.
@@ -1060,10 +1313,6 @@ export function TheLocker() {
       return false;
     }
   }, []);
-  const storefrontLockerUrl =
-    typeof window !== 'undefined' && window.location.hostname.startsWith('dev--')
-      ? 'https://dspln-dev-2.myshopify.com/pages/locker'
-      : 'https://dspln.com/pages/locker';
   const [page, setPage] = useState<LockerPage>(() => {
     try {
       const wanted = new URLSearchParams(window.location.search).get('page');
@@ -1186,24 +1435,11 @@ export function TheLocker() {
   };
 
   if (!customer) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-7 bg-white px-6 text-center font-sans text-[#1c1b1b]">
-        <div className="flex h-14 w-14 items-center justify-center bg-[#1c1b1b] text-2xl text-white">D</div>
-        <div>
-          <h1 className="text-2xl uppercase tracking-[0.24em]">The Locker</h1>
-          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-[#666]">
-            Open The Locker from the DSPLN store to sign in and access your designs, uploads,
-            sizing profile, and orders.
-          </p>
-        </div>
-        <a
-          href={storefrontLockerUrl}
-          className={`border border-[#1c1b1b] bg-[#1c1b1b] px-9 py-4 text-white ${label}`}
-        >
-          Open DSPLN Locker
-        </a>
-      </main>
-    );
+    // Don't flash a sign-in form at someone who is already signed in.
+    if (!sessionChecked) {
+      return <main className="min-h-screen bg-white font-sans" aria-busy="true" />;
+    }
+    return <LockerSignIn onSignedIn={() => { void loadSession(); }} />;
   }
 
   const initials =
@@ -1229,7 +1465,12 @@ export function TheLocker() {
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
-      {!isEmbedded ? <LockerHeader email={customer.email} /> : null}
+      {!isEmbedded ? (
+        <LockerHeader
+          email={customer.email}
+          onSignOut={customer.dsplnAccount ? signOut : undefined}
+        />
+      ) : null}
       {/* Stacked (mobile) rows must not stretch: the profile band stays
           content-height and the main area absorbs the leftover screen. */}
       <div className="grid min-h-screen w-full min-w-0 grid-cols-1 grid-rows-[auto_1fr] lg:grid-cols-[84px_300px_minmax(0,1fr)] lg:grid-rows-1">

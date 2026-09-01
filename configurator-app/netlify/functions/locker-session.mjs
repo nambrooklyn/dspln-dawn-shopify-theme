@@ -21,6 +21,16 @@ import { emailIndexKey } from '../lib/design-ownership.mjs';
 const STORE_NAME = 'dspln-customer-designs';
 const SHOP_DOMAIN = process.env.SHOPIFY_SHOP_DOMAIN || 'f39242.myshopify.com';
 
+// Which social buttons the sign-in screen should draw. The providers are
+// configured in lib/auth.mjs purely from env vars, so the UI must not guess —
+// a Google button with no credentials behind it just 500s on click.
+const socialProviders = () => {
+  const available = [];
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) available.push('google');
+  if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) available.push('facebook');
+  return available;
+};
+
 const json = (statusCode, body) => ({
   statusCode,
   headers: {
@@ -57,10 +67,10 @@ export const handler = async (event) => {
     session = await auth.api.getSession({ headers });
   } catch (error) {
     console.error('[locker-session] auth unavailable', error);
-    return json(200, { signedIn: false, reason: 'auth-unavailable' });
+    return json(200, { signedIn: false, socialProviders: socialProviders(), reason: 'auth-unavailable' });
   }
 
-  if (!session?.user) return json(200, { signedIn: false });
+  if (!session?.user) return json(200, { signedIn: false, socialProviders: socialProviders() });
 
   const user = session.user;
   let shopifyCustomerId = user.shopifyCustomerId ?? null;
