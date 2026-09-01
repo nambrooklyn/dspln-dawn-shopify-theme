@@ -1,8 +1,9 @@
 // The Locker's standalone header IS the store's header — not a lookalike.
 //
-// Shopify's section rendering endpoint returns the header section exactly as
-// dspln.com renders it, menus and all, so when the nav changes in the theme
-// editor the Locker follows without a deploy. This function packages that
+// The header group is cut straight out of the rendered homepage — the
+// section rendering API renders defaults, not the configured group — so when
+// the nav or scheme changes in the theme editor the Locker follows without a
+// deploy. This function packages that
 // HTML with the stylesheet links and the theme's font/variable block; the
 // client renders it in a shadow root so Dawn's CSS cannot restyle the app.
 //
@@ -31,15 +32,22 @@ const stripScripts = (html) =>
 
 export default async () => {
   try {
-    const [sectionRes, homeRes] = await Promise.all([
-      fetch(`${STORE_ORIGIN}/?sections=header`, { headers: { Accept: 'application/json' } }),
-      fetch(`${STORE_ORIGIN}/`, { headers: { Accept: 'text/html' } }),
-    ]);
-    if (!sectionRes.ok) return json({ error: 'Store header unavailable' }, 502);
+    const homeRes = await fetch(`${STORE_ORIGIN}/`, { headers: { Accept: 'text/html' } });
+    if (!homeRes.ok) return json({ error: 'Store header unavailable' }, 502);
+    const home = await homeRes.text();
 
-    const sections = await sectionRes.json();
-    let headerHtml = sections?.header ?? '';
-    if (!headerHtml) return json({ error: 'Store header unavailable' }, 502);
+    // NOT the section rendering API: /?sections=header renders the bare
+    // header section with DEFAULT settings — white scheme-1, no announcement
+    // bar. The store's real header is a section GROUP instance with its own
+    // configuration (color-scheme-4, announcement bar), and the only place it
+    // renders truthfully is the page itself. Dawn mounts the header group
+    // immediately before <main>, so that span of the homepage IS the header.
+    const start = home.search(/<div id="shopify-section-[^"]*"[^>]*class="[^"]*shopify-section-group-header-group/);
+    const end = home.search(/<main\b/);
+    if (start === -1 || end === -1 || end <= start) {
+      return json({ error: 'Store header unavailable' }, 502);
+    }
+    let headerHtml = home.slice(start, end);
 
     const cssLinks = [
       ...new Set(
@@ -48,31 +56,20 @@ export default async () => {
         ),
       ),
     ];
-
-    // base.css and the font/@font-face + :root variable block only exist in
-    // the full page head, not in the section payload.
-    let inlineStyle = '';
-    if (homeRes.ok) {
-      const home = await homeRes.text();
-      const base = home.match(/"(\/\/dspln\.com\/cdn\/[^"]*\/base\.css[^"]*)"/);
-      if (base) cssLinks.unshift(`https:${base[1]}`);
-      // Stylesheets the header depends on but does not link itself — the page
-      // template loads them (the country selector's caret is unbounded
-      // without localization-form.css).
-      for (const name of ['component-localization-form', 'component-predictive-search']) {
-        const extra = home.match(new RegExp(`"(//dspln\\.com/cdn/[^"]*/${name}\\.css[^"]*)"`));
-        if (extra && !cssLinks.includes(`https:${extra[1]}`)) cssLinks.push(`https:${extra[1]}`);
-      }
-      const styleBlocks = home.match(/<style[^>]*>[\s\S]*?<\/style>/g) ?? [];
-      inlineStyle =
-        styleBlocks
-          .filter((s) => s.includes('@font-face') || s.includes(':root'))
-          .map((s) => s.replace(/<\/?style[^>]*>/g, ''))
-          .join('\n') ?? '';
+    const base = home.match(/"(\/\/dspln\.com\/cdn\/[^"]*\/base\.css[^"]*)"/);
+    if (base) cssLinks.unshift(`https:${base[1]}`);
+    // Stylesheets the header depends on but does not link itself.
+    for (const name of ['component-localization-form', 'component-predictive-search']) {
+      const extra = home.match(new RegExp(`"(//dspln\\.com/cdn/[^"]*/${name}\\.css[^"]*)"`));
+      if (extra && !cssLinks.includes(`https:${extra[1]}`)) cssLinks.push(`https:${extra[1]}`);
     }
 
-    // The header links its stylesheets itself; strip them from the HTML so the
-    // client controls where they load (inside the shadow root, in order).
+    const styleBlocks = home.match(/<style[^>]*>[\s\S]*?<\/style>/g) ?? [];
+    const inlineStyle = styleBlocks
+      .filter((block) => block.includes('@font-face') || block.includes(':root'))
+      .map((block) => block.replace(/<\/?style[^>]*>/g, ''))
+      .join('\n');
+
     headerHtml = stripScripts(headerHtml).replace(/<link[^>]*rel="stylesheet"[^>]*>/g, '');
 
     return json({
