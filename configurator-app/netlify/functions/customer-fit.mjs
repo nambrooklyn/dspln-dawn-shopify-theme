@@ -1,7 +1,10 @@
 import { getStore } from '@netlify/blobs';
 
 const STORE_NAME = 'dspln-customer-fit';
-const OWNER_PATTERN = /^shopify:[a-z0-9.-]+:\d+$/i;
+// Two identities can own a Locker: a Shopify customer, and a DSPLN member who
+// has not (yet) been linked to one. Rejecting dspln: keys made every fresh
+// DSPLN account's sizing profile fail with "Invalid customer identity".
+const OWNER_PATTERN = /^(shopify:[a-z0-9.-]+:\d+|dspln:[A-Za-z0-9_-]+)$/;
 const MAX_TEXT = 500;
 
 const json = (body, status = 200) =>
