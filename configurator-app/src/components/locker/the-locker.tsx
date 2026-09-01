@@ -338,6 +338,81 @@ async function fetchLockerSession(): Promise<LockerSession> {
 
 type AuthMode = 'sign-in' | 'sign-up' | 'forgot';
 
+// The free shipping code the sign-up page promises. It is paid out ONLY after
+// an account exists — arriving with ?offer=free-shipping is a claim to it, not
+// the code itself, so the page cannot be shared around to skip signing up.
+const SIGNUP_OFFER_CODE = 'MEMBERSHIPPING';
+const OFFER_FLAG = 'dspln:locker:offer';
+
+const wantsOffer = () => {
+  try {
+    return new URLSearchParams(window.location.search).get('offer') === 'free-shipping';
+  } catch {
+    return false;
+  }
+};
+
+const claimOffer = () => {
+  // sessionStorage, not state: creating the account remounts the whole Locker.
+  try { window.sessionStorage.setItem(OFFER_FLAG, '1'); } catch { /* private mode */ }
+};
+
+const takeClaimedOffer = () => {
+  try {
+    const claimed = window.sessionStorage.getItem(OFFER_FLAG) === '1';
+    return claimed;
+  } catch {
+    return false;
+  }
+};
+
+const clearOffer = () => {
+  try { window.sessionStorage.removeItem(OFFER_FLAG); } catch { /* private mode */ }
+};
+
+function OfferBanner({ onDismiss }: { onDismiss: () => void }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="border-b border-[#e6d7d7] bg-[#fdf7f7] px-6 py-4">
+      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[#8a1c1c]">
+            Welcome to DSPLN
+          </p>
+          <p className="mt-1 text-sm text-[#444]">
+            Your free shipping code — use it at checkout on your first order.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <code className="select-all border border-[#d8c9c9] bg-white px-4 py-3 text-sm tracking-[0.18em] text-[#1c1b1b]">
+            {SIGNUP_OFFER_CODE}
+          </code>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard?.writeText(SIGNUP_OFFER_CODE).then(
+                () => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); },
+                () => undefined,
+              );
+            }}
+            className="text-[11px] uppercase tracking-[0.16em] text-[#1c1b1b] underline underline-offset-2 hover:opacity-70"
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Dismiss"
+            className="text-lg leading-none text-[#8a8580] hover:text-[#1c1b1b]"
+          >
+            &times;
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** DSPLN's own sign-in — the only way into the Locker. */
 function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
   // ?auth=sign-up opens straight on account creation — the storefront's
@@ -370,6 +445,8 @@ function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
   }, []);
 
   const signInWith = (provider: string) => {
+    // Google leaves and comes back; the claim has to survive the round trip.
+    if (wantsOffer()) claimOffer();
     const callbackURL = `${window.location.origin}/locker`;
     // Better Auth answers with the provider's URL rather than redirecting, so
     // the browser has to be sent there deliberately.
@@ -389,6 +466,7 @@ function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
     try {
       if (mode === 'sign-up') {
         await authRequest('/sign-up/email', { email, password, name: name || email.split('@')[0] });
+        if (wantsOffer()) claimOffer();
         onSignedIn();
       } else if (mode === 'sign-in') {
         await authRequest('/sign-in/email', { email, password });
@@ -1424,6 +1502,9 @@ export function TheLocker() {
   const [fit, setFit] = useState<FitProfile>(emptyFit);
   const [selectedDesign, setSelectedDesign] = useState<LockerDesign | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<LockerOrder | null>(null);
+  // Paid out once the account exists — see SIGNUP_OFFER_CODE.
+  const [showOffer, setShowOffer] = useState(false);
+  useEffect(() => { if (takeClaimedOffer()) setShowOffer(true); }, []);
   const [loading, setLoading] = useState(Boolean(customer));
   const [savingFit, setSavingFit] = useState(false);
   const [error, setError] = useState('');
@@ -1564,6 +1645,9 @@ export function TheLocker() {
           email={customer.email}
           onSignOut={customer.dsplnAccount ? signOut : undefined}
         />
+      ) : null}
+      {showOffer ? (
+        <OfferBanner onDismiss={() => { clearOffer(); setShowOffer(false); }} />
       ) : null}
       {/* Stacked (mobile) rows must not stretch: the profile band stays
           content-height and the main area absorbs the leftover screen. */}
