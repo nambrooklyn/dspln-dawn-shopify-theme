@@ -4,6 +4,7 @@ import {
   ImageIcon,
   Instagram,
   Linkedin,
+  Link2,
   Mail,
   MessageCircle,
   MessageSquareText,
@@ -210,7 +211,20 @@ export const DesignCommandBar = memo(
 
     return (
       <>
-        <div className="flex w-full justify-end">
+        <div className="flex w-full justify-end gap-2">
+          <button
+            type="button"
+            disabled={status === 'saving'}
+            onClick={() => void share()}
+            className="border-border bg-foreground text-background hover:bg-foreground/85 flex items-center gap-2 rounded border px-3 py-2 text-xs font-semibold shadow-sm disabled:cursor-wait disabled:opacity-60"
+            title="Create a checkout-ready customer link"
+          >
+            <Link2 className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {status === 'saving' ? 'Saving…' : 'Copy Customer Link'}
+            </span>
+            <span className="sm:hidden">Copy Link</span>
+          </button>
           <div className="relative">
           <button
             type="button"
