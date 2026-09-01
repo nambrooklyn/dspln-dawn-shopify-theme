@@ -362,7 +362,9 @@ function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
         await authRequest('/sign-in/email', { email, password });
         onSignedIn();
       } else {
-        await authRequest('/forget-password', {
+        // Better Auth 1.7 renamed this from /forget-password; the old path
+        // 404s silently, which reads to a customer as "nothing happened".
+        await authRequest('/request-password-reset', {
           email, redirectTo: `${window.location.origin}/locker?reset=1`,
         });
         setSent('If that address has an account, a reset link is on its way.');
