@@ -64,6 +64,16 @@ export default async () => {
       if (extra && !cssLinks.includes(`https:${extra[1]}`)) cssLinks.push(`https:${extra[1]}`);
     }
 
+    // The theme's own stylesheet repaints the header (--dspln-black over the
+    // scheme). Its :root variables cannot apply from a <link> inside a shadow
+    // root, so it ships inline; the client rewrites :root to :host.
+    let themeCss = '';
+    const globalCss = home.match(/"(\/\/dspln\.com\/cdn\/[^"]*\/dspln-global\.css[^"]*)"/);
+    if (globalCss) {
+      const cssRes = await fetch(`https:${globalCss[1]}`);
+      if (cssRes.ok) themeCss = await cssRes.text();
+    }
+
     const styleBlocks = home.match(/<style[^>]*>[\s\S]*?<\/style>/g) ?? [];
     const inlineStyle = styleBlocks
       .filter((block) => block.includes('@font-face') || block.includes(':root'))
@@ -77,6 +87,7 @@ export default async () => {
         html: absolutize(headerHtml),
         cssLinks,
         inlineStyle,
+        themeCss,
         fetchedAt: new Date().toISOString(),
       },
     });

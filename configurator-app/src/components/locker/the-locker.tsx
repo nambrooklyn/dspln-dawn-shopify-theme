@@ -500,7 +500,7 @@ const STORE_LOGO =
  * only when the Locker is its own page; the portal's admin embed keeps its
  * chrome-free view.
  */
-interface StoreHeaderPayload { html: string; cssLinks: string[]; inlineStyle: string }
+interface StoreHeaderPayload { html: string; cssLinks: string[]; inlineStyle: string; themeCss?: string }
 
 let storeHeaderCache: StoreHeaderPayload | null = null;
 
@@ -543,9 +543,12 @@ function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => 
     // only :root custom properties inherit through. :root itself does not
     // match inside a shadow tree, so it becomes :host here.
     const shadowVars = payload.inlineStyle.replace(/:root/g, ':host');
+    const themeCss = (payload.themeCss ?? '').replace(/:root/g, ':host');
     root.innerHTML = [
       `<style>${shadowVars}</style>`,
       ...payload.cssLinks.map((href) => `<link rel="stylesheet" href="${href}">`),
+      // After the links so the theme's overrides win, as they do on the store.
+      `<style>${themeCss}</style>`,
       payload.html,
     ].join('\n');
   }, [payload]);
