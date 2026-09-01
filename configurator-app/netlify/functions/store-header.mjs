@@ -56,6 +56,13 @@ export default async () => {
       const home = await homeRes.text();
       const base = home.match(/"(\/\/dspln\.com\/cdn\/[^"]*\/base\.css[^"]*)"/);
       if (base) cssLinks.unshift(`https:${base[1]}`);
+      // Stylesheets the header depends on but does not link itself — the page
+      // template loads them (the country selector's caret is unbounded
+      // without localization-form.css).
+      for (const name of ['component-localization-form', 'component-predictive-search']) {
+        const extra = home.match(new RegExp(`"(//dspln\\.com/cdn/[^"]*/${name}\\.css[^"]*)"`));
+        if (extra && !cssLinks.includes(`https:${extra[1]}`)) cssLinks.push(`https:${extra[1]}`);
+      }
       const styleBlocks = home.match(/<style[^>]*>[\s\S]*?<\/style>/g) ?? [];
       inlineStyle =
         styleBlocks

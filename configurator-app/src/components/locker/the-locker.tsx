@@ -537,12 +537,16 @@ function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => 
       document.head.appendChild(style);
     }
     const root = hostRef.current.shadowRoot ?? hostRef.current.attachShadow({ mode: 'open' });
+    // The theme's variable block must ALSO live inside the shadow root:
+    // Dawn's color schemes are class-scoped rules (.color-scheme-N { --… }),
+    // and document-level styles do not apply across the shadow boundary —
+    // only :root custom properties inherit through. :root itself does not
+    // match inside a shadow tree, so it becomes :host here.
+    const shadowVars = payload.inlineStyle.replace(/:root/g, ':host');
     root.innerHTML = [
+      `<style>${shadowVars}</style>`,
       ...payload.cssLinks.map((href) => `<link rel="stylesheet" href="${href}">`),
-      // The section HTML expects the page's own wrappers; color-scheme class
-      // gives it Dawn's scheme-1 variables (defined in the inline style, which
-      // inherits into the shadow root from :root).
-      `<div class="color-scheme-1 gradient">${payload.html}</div>`,
+      payload.html,
     ].join('\n');
   }, [payload]);
 
