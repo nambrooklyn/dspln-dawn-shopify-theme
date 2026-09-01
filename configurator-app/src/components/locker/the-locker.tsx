@@ -17,6 +17,15 @@ import { uploadArtworkImage } from '../configurators/shared/preview-upload';
 
 type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders';
 
+interface LockerSession {
+  signedIn: boolean;
+  user?: { id: string; email: string; name: string; emailVerified: boolean };
+  ownerKey?: string;
+  shopifyCustomerId?: string | null;
+  shopDomain?: string;
+  linked?: boolean;
+}
+
 interface LockerCustomer {
   customerId: string;
   email: string;
@@ -24,6 +33,9 @@ interface LockerCustomer {
   lastName: string;
   shopDomain: string;
   storefrontOrigin: string;
+  /** Set when the identity came from a DSPLN account rather than Shopify. */
+  ownerKeyOverride?: string;
+  dsplnAccount?: boolean;
 }
 
 interface LockerOrder {
@@ -180,7 +192,9 @@ function queryCustomer(): LockerCustomer | null {
 }
 
 function ownerKey(customer: LockerCustomer): string {
-  return `shopify:${customer.shopDomain}:${customer.customerId}`;
+  // A DSPLN member linked to a past Shopify customer reads the very same
+  // records; an unlinked one carries a dspln: key of their own.
+  return customer.ownerKeyOverride ?? `shopify:${customer.shopDomain}:${customer.customerId}`;
 }
 
 function formatDate(value?: string): string {
@@ -301,6 +315,136 @@ function orderProgress(order: LockerOrder): OrderProgress {
 }
 
 const STORE_ORIGIN = 'https://dspln.com';
+
+async function authRequest(path: string, body: Record<string, unknown>) {
+  const response = await fetch(new URL(`/api/auth${path}`, window.location.origin), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error?.message || 'That did not work. Try again.');
+  }
+  return payload;
+}
+
+async function fetchLockerSession(): Promise<LockerSession> {
+  const response = await fetch(new URL('/api/locker-session', window.location.origin), {
+    credentials: 'include',
+  });
+  if (!response.ok) return { signedIn: false };
+  return (await response.json()) as LockerSession;
+}
+
+type AuthMode = 'sign-in' | 'sign-up' | 'forgot';
+
+/** DSPLN's own sign-in. Shopify stays available beneath it during the change. */
+function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
+  const [mode, setMode] = useState<AuthMode>('sign-in');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [sent, setSent] = useState('');
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError(''); setSent('');
+    try {
+      if (mode === 'sign-up') {
+        await authRequest('/sign-up/email', { email, password, name: name || email.split('@')[0] });
+        onSignedIn();
+      } else if (mode === 'sign-in') {
+        await authRequest('/sign-in/email', { email, password });
+        onSignedIn();
+      } else {
+        await authRequest('/forget-password', {
+          email, redirectTo: `${window.location.origin}/locker?reset=1`,
+        });
+        setSent('If that address has an account, a reset link is on its way.');
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'That did not work. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const field =
+    'w-full border border-[#d8d5cf] px-4 py-3 text-sm outline-none focus:border-[#1c1b1b]';
+
+  return (
+    <main className="min-h-screen bg-white font-sans text-[#1c1b1b]">
+      <LockerHeader />
+      <div className="mx-auto flex max-w-md flex-col px-6 py-16">
+        <h1 className="text-2xl uppercase tracking-[0.2em]">The Locker</h1>
+        <p className="mt-3 text-sm leading-relaxed text-[#666]">
+          {mode === 'sign-up'
+            ? 'Create an account and your designs, uploads and orders live in one place.'
+            : mode === 'forgot'
+              ? 'We will email you a link to choose a new password.'
+              : 'Sign in to your designs, uploads and orders.'}
+        </p>
+
+        <form onSubmit={submit} className="mt-8 flex flex-col gap-3">
+          {mode === 'sign-up' ? (
+            <input className={field} placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+          ) : null}
+          <input
+            className={field} type="email" required placeholder="Email" value={email}
+            onChange={(e) => setEmail(e.target.value)} autoComplete="email"
+          />
+          {mode !== 'forgot' ? (
+            <input
+              className={field} type="password" required minLength={8} placeholder="Password"
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
+            />
+          ) : null}
+
+          {error ? <p className="text-sm text-[#8a1c1c]">{error}</p> : null}
+          {sent ? <p className="text-sm text-[#3d6b2f]">{sent}</p> : null}
+
+          <button type="submit" disabled={busy} className={`mt-2 bg-[#1c1b1b] px-9 py-4 text-white ${label} disabled:opacity-50`}>
+            {busy ? 'Working' : mode === 'sign-up' ? 'Create account' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
+          </button>
+        </form>
+
+        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[#666]">
+          {mode !== 'sign-in' ? (
+            <button type="button" className="underline underline-offset-2" onClick={() => { setMode('sign-in'); setError(''); }}>
+              Sign in instead
+            </button>
+          ) : null}
+          {mode !== 'sign-up' ? (
+            <button type="button" className="underline underline-offset-2" onClick={() => { setMode('sign-up'); setError(''); }}>
+              Create an account
+            </button>
+          ) : null}
+          {mode === 'sign-in' ? (
+            <button type="button" className="underline underline-offset-2" onClick={() => { setMode('forgot'); setError(''); }}>
+              Forgot password
+            </button>
+          ) : null}
+        </div>
+
+        <div className="mt-10 border-t border-[#e6e4df] pt-6">
+          <p className="text-xs leading-relaxed text-[#8a8580]">
+            Ordered before? Use the same email you ordered with and everything you have already
+            made will be waiting.
+          </p>
+          <a href={`${STORE_ORIGIN}/pages/locker`} className="mt-4 inline-block text-xs text-[#666] underline underline-offset-2">
+            Or open the Locker from the DSPLN store
+          </a>
+        </div>
+      </div>
+    </main>
+  );
+}
 const STORE_LOGO =
   'https://dspln.com/cdn/shop/t/26/assets/dspln-header-logo.webp?v=81944404610336235851784498170';
 
@@ -1049,7 +1193,53 @@ async function indexLockerCustomer(customer: LockerCustomer, orders?: LockerOrde
 }
 
 export function TheLocker() {
-  const customer = useMemo(queryCustomer, []);
+  // Identity has two sources now: the storefront hands one over in the URL,
+  // or the visitor is signed in with a DSPLN account. The URL wins so the
+  // embedded Locker and the portal's admin view keep working unchanged.
+  const urlCustomer = useMemo(queryCustomer, []);
+  const [sessionCustomer, setSessionCustomer] = useState<LockerCustomer | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  const loadSession = useCallback(async () => {
+    try {
+      const session = await fetchLockerSession();
+      if (session.signedIn && session.user) {
+        const [first, ...rest] = (session.user.name || '').split(' ');
+        setSessionCustomer({
+          customerId: session.shopifyCustomerId ?? session.user.id,
+          email: session.user.email,
+          firstName: first ?? '',
+          lastName: rest.join(' '),
+          shopDomain: session.shopDomain ?? 'f39242.myshopify.com',
+          storefrontOrigin: STORE_ORIGIN,
+          ownerKeyOverride: session.ownerKey,
+          dsplnAccount: true,
+        });
+      } else {
+        setSessionCustomer(null);
+      }
+    } catch {
+      setSessionCustomer(null);
+    } finally {
+      setSessionChecked(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (urlCustomer) { setSessionChecked(true); return; }
+    void loadSession();
+  }, [urlCustomer, loadSession]);
+
+  const signOut = useCallback(async () => {
+    try {
+      await fetch(new URL('/api/auth/sign-out', window.location.origin), {
+        method: 'POST', credentials: 'include',
+      });
+    } catch { /* signing out must not strand anyone on an error screen */ }
+    window.location.reload();
+  }, []);
+
+  const customer = urlCustomer ?? sessionCustomer;
   // Embedded means someone else draws the chrome — the storefront page, or the
   // portal's admin view. Standing alone, the Locker draws the store header
   // itself so leaving the iframe does not feel like leaving DSPLN.
@@ -1186,24 +1376,11 @@ export function TheLocker() {
   };
 
   if (!customer) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-7 bg-white px-6 text-center font-sans text-[#1c1b1b]">
-        <div className="flex h-14 w-14 items-center justify-center bg-[#1c1b1b] text-2xl text-white">D</div>
-        <div>
-          <h1 className="text-2xl uppercase tracking-[0.24em]">The Locker</h1>
-          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-[#666]">
-            Open The Locker from the DSPLN store to sign in and access your designs, uploads,
-            sizing profile, and orders.
-          </p>
-        </div>
-        <a
-          href={storefrontLockerUrl}
-          className={`border border-[#1c1b1b] bg-[#1c1b1b] px-9 py-4 text-white ${label}`}
-        >
-          Open DSPLN Locker
-        </a>
-      </main>
-    );
+    // Don't flash a sign-in form at someone who is already signed in.
+    if (!sessionChecked) {
+      return <main className="min-h-screen bg-white font-sans" aria-busy="true" />;
+    }
+    return <LockerSignIn onSignedIn={() => { void loadSession(); }} />;
   }
 
   const initials =
@@ -1229,7 +1406,12 @@ export function TheLocker() {
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
-      {!isEmbedded ? <LockerHeader email={customer.email} /> : null}
+      {!isEmbedded ? (
+        <LockerHeader
+          email={customer.email}
+          onSignOut={customer.dsplnAccount ? signOut : undefined}
+        />
+      ) : null}
       {/* Stacked (mobile) rows must not stretch: the profile band stays
           content-height and the main area absorbs the leftover screen. */}
       <div className="grid min-h-screen w-full min-w-0 grid-cols-1 grid-rows-[auto_1fr] lg:grid-cols-[84px_300px_minmax(0,1fr)] lg:grid-rows-1">
