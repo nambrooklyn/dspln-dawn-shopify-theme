@@ -549,7 +549,10 @@ function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => 
       ...payload.cssLinks.map((href) => `<link rel="stylesheet" href="${href}">`),
       // After the links so the theme's overrides win, as they do on the store.
       `<style>${themeCss}</style>`,
-      payload.html,
+      // Dawn gates drawer/menu visibility behind a .js ancestor that
+      // theme.liquid puts on <html>; inside a shadow root that ancestor has
+      // to be provided.
+      `<div class="js">${payload.html}</div>`,
     ].join('\n');
   }, [payload]);
 
