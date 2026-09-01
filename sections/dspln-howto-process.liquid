@@ -1,0 +1,35 @@
+{{ 'dspln-howto-customizer.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-howto-process" aria-label="Customizer process">
+  <div class="dspln-howto-process__inner">
+    <picture>
+      <source media="(max-width: 749px)" srcset="{{ 'dspln-howto-process-mobile.webp' | asset_url }}">
+      <img
+        src="{{ 'dspln-howto-process-desktop.webp' | asset_url }}"
+        alt="{{ section.settings.image_alt | escape }}"
+        width="1600"
+        height="800"
+        loading="lazy"
+      >
+    </picture>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN how-to process",
+  "settings": [
+    {
+      "type": "text",
+      "id": "image_alt",
+      "label": "Image alt text",
+      "default": "Customizer process steps"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN how-to process"
+    }
+  ]
+}
+{% endschema %}

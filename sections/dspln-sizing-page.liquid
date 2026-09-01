@@ -1,0 +1,512 @@
+{{ 'dspln-sizing-page-standalone.html' | asset_url | preload_tag: as: 'fetch' }}
+
+<section id="dspln-sizing-page-{{ section.id }}" class="dspln-sizing-page-section" data-dspln-sizing-page>
+  <iframe
+    class="dspln-sizing-page-frame"
+    title="{{ section.settings.iframe_title | escape }}"
+    loading="eager"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+    data-src="{{ 'dspln-sizing-page-standalone.html' | asset_url }}"
+  ></iframe>
+  <noscript>
+    <p class="dspln-sizing-page-fallback">
+      JavaScript is required to view the DSPLN sizing page.
+    </p>
+  </noscript>
+</section>
+
+<style>
+  .dspln-sizing-page-section {
+    width: 100%;
+    background: #ffffff;
+  }
+
+  .dspln-sizing-page-frame {
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+    height: 5600px;
+    border: 0;
+    background: #ffffff;
+  }
+
+  .dspln-sizing-page-fallback {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 48px 24px;
+    color: #1a1a1a;
+  }
+</style>
+
+<script>
+  (function () {
+    var section = document.getElementById('dspln-sizing-page-{{ section.id }}');
+    if (!section) return;
+
+    var iframe = section.querySelector('.dspln-sizing-page-frame');
+    if (!iframe || iframe.dataset.loaded === 'true') return;
+    iframe.dataset.loaded = 'true';
+
+    var src = iframe.dataset.src;
+    var fallbackHeight = 5600;
+
+    function resizeFrame() {
+      try {
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc) return;
+
+        var height = Math.max(
+          doc.documentElement ? doc.documentElement.scrollHeight : 0,
+          doc.body ? doc.body.scrollHeight : 0,
+          window.innerHeight
+        );
+
+        if (height) iframe.style.height = height + 'px';
+      } catch (error) {
+        iframe.style.height = fallbackHeight + 'px';
+      }
+    }
+
+    function injectSizeFinder() {
+      try {
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc || doc.getElementById('dspln-native-size-finder')) return true;
+
+        var mount = doc.querySelector('dc-import[name="SizeFinder"]');
+        if (!mount) return false;
+
+        var wrapper = doc.createElement('div');
+        wrapper.id = 'dspln-native-size-finder';
+        wrapper.innerHTML = `
+          <style>
+            #dspln-native-size-finder,
+            #dspln-native-size-finder * {
+              box-sizing: border-box;
+              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            }
+            #dspln-native-size-finder {
+              min-height: 640px;
+              background: #f0f0f0;
+              color: #1a1a1a;
+              display: flex;
+              flex-direction: column;
+            }
+            #dspln-native-size-finder .nf-head {
+              background: #fff;
+              border-bottom: 1px solid #e4e2e0;
+              color: #7B1A1A;
+              font-size: 19px;
+              font-weight: 500;
+              letter-spacing: 3px;
+              padding: 22px 28px 18px;
+              text-align: center;
+              text-transform: uppercase;
+            }
+            #dspln-native-size-finder .nf-form {
+              padding: 24px 32px;
+            }
+            #dspln-native-size-finder .nf-units {
+              display: flex;
+              justify-content: center;
+              gap: 10px;
+              margin-bottom: 20px;
+            }
+            #dspln-native-size-finder .nf-unit {
+              appearance: none;
+              background: transparent;
+              border: 0;
+              color: #9a9a9a;
+              cursor: pointer;
+              font-size: 12px;
+              font-weight: 700;
+              letter-spacing: 2px;
+              text-transform: uppercase;
+            }
+            #dspln-native-size-finder .nf-unit.is-active {
+              color: #7B1A1A;
+            }
+            #dspln-native-size-finder .nf-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 14px;
+            }
+            #dspln-native-size-finder label {
+              color: #4d4d4d;
+              display: block;
+              font-size: 13px;
+              margin-bottom: 7px;
+            }
+            #dspln-native-size-finder select,
+            #dspln-native-size-finder input {
+              appearance: none;
+              background: #fff;
+              border: 1px solid #d0d0d0;
+              border-radius: 0;
+              color: #222;
+              font-size: 15px;
+              min-height: 48px;
+              outline: 0;
+              padding: 12px 14px;
+              width: 100%;
+            }
+            #dspln-native-size-finder .nf-full {
+              grid-column: 1 / -1;
+            }
+            #dspln-native-size-finder .nf-result {
+              background: #fff;
+              border-top: 1px solid #e4e2e0;
+              display: flex;
+              flex: 1;
+              flex-direction: column;
+              justify-content: center;
+              min-height: 250px;
+              padding: 26px 32px 32px;
+            }
+            #dspln-native-size-finder .nf-empty {
+              color: #a7a7a7;
+              font-size: 14px;
+              text-align: center;
+            }
+            #dspln-native-size-finder .nf-label {
+              color: #333;
+              font-size: 14px;
+              margin-bottom: 4px;
+            }
+            #dspln-native-size-finder .nf-size {
+              color: #7B1A1A;
+              font-size: 76px;
+              font-weight: 900;
+              letter-spacing: -1px;
+              line-height: 0.95;
+              margin-bottom: 24px;
+            }
+            #dspln-native-size-finder .nf-note {
+              color: #555;
+              font-size: 14px;
+              line-height: 1.55;
+              margin-bottom: 18px;
+            }
+            #dspln-native-size-finder .nf-bars {
+              display: grid;
+              gap: 18px;
+              margin-top: 8px;
+            }
+            #dspln-native-size-finder .nf-bar-labels {
+              color: #777;
+              display: flex;
+              font-size: 10px;
+              justify-content: space-between;
+              letter-spacing: 1.8px;
+              margin-bottom: 7px;
+              text-transform: uppercase;
+            }
+            #dspln-native-size-finder .nf-track {
+              background: linear-gradient(to right, #aec6e8 0%, #aec6e8 22%, #2a4eaa 22%, #2a4eaa 78%, #aec6e8 78%, #aec6e8 100%);
+              height: 7px;
+              position: relative;
+            }
+            #dspln-native-size-finder .nf-tip {
+              border-left: 6px solid transparent;
+              border-right: 6px solid transparent;
+              border-bottom: 9px solid #1a1a1a;
+              height: 0;
+              left: 50%;
+              position: absolute;
+              top: 11px;
+              transform: translateX(-50%);
+              width: 0;
+            }
+            @media (max-width: 520px) {
+              #dspln-native-size-finder { min-height: 0; }
+              #dspln-native-size-finder .nf-grid { grid-template-columns: 1fr; }
+              #dspln-native-size-finder .nf-form,
+              #dspln-native-size-finder .nf-result { padding-left: 20px; padding-right: 20px; }
+            }
+          </style>
+          <div class="nf-head">Calculate My Size</div>
+          <div class="nf-form">
+            <div class="nf-units">
+              <button class="nf-unit is-active" type="button" data-unit="imperial">Imperial</button>
+              <span style="color:#c9c9c9">|</span>
+              <button class="nf-unit" type="button" data-unit="metric">Metric</button>
+            </div>
+            <div class="nf-grid">
+              <div>
+                <label for="nf-height">Height</label>
+                <select id="nf-height"></select>
+              </div>
+              <div>
+                <label for="nf-weight">Weight</label>
+                <input id="nf-weight" type="number" inputmode="decimal" placeholder="e.g. 157 lbs">
+              </div>
+              <div class="nf-full">
+                <label for="nf-fit">Fit preference</label>
+                <select id="nf-fit">
+                  <option value="0">Regular</option>
+                  <option value="-1">Snug (size down)</option>
+                  <option value="1">Loose (size up)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="nf-result" id="nf-result">
+            <div class="nf-empty">Enter your measurements above</div>
+          </div>
+        `;
+        mount.replaceWith(wrapper);
+
+        var unit = 'imperial';
+        var height = wrapper.querySelector('#nf-height');
+        var weight = wrapper.querySelector('#nf-weight');
+        var fit = wrapper.querySelector('#nf-fit');
+        var result = wrapper.querySelector('#nf-result');
+        var unitButtons = wrapper.querySelectorAll('.nf-unit');
+
+        var adultTable = [
+          ['A00','A00','A0S','A0S','A0S','A1S','A1S','A1S','','','','','','','','','','','','','',''],
+          ['A00','A00','A0S','A0S','A0S','A1S','A1S','A1S','','','','','','','','','','','','','',''],
+          ['A00','A00','A0','A0','A0','A1S','A1S','A1S','','','','','','','','','','','','','',''],
+          ['A00L','A00L','A0','A0','A0','A1S','A1S','A1S','','','','','','','','','','','','','',''],
+          ['A00L','A00L','A0','A0','A0','A1','A1','A1','A2S','A2S','A2S','','','','','','','','','','',''],
+          ['A00L','A00L','A0L','A0L','A0L','A1','A1','A1','A2S','A2S','A2S','','','','','','','','','','',''],
+          ['','','A0L','A0L','A0L','A1','A1','A1','A2S','A2S','A2S','','','','','','','','','','',''],
+          ['','','A0L','A0L','A0L','A1','A1','A1','A2S','A2S','A2S','A3S','A3S','A3S','','','','','','','',''],
+          ['','','','','','A1L','A1L','A1L','A2','A2','A2','A3S','A3S','A3S','','','','','','','',''],
+          ['','','','','','A1L','A1L','A1L','A2','A2','A2','A3S','A3S','A3S','','','','','','','',''],
+          ['','','','','','A1L','A1L','A1L','A2','A2','A2','A3S','A3S','A3S','A4S','A4S','A4S','','','','',''],
+          ['','','','','','A1L','A1L','A1L','A2','A2','A2','A3','A3','A3','A4S','A4S','A4S','','','','',''],
+          ['','','','','','','','','A2L','A2L','A2L','A3','A3','A3','A4S','A4S','A4S','A5S','A5S','A5S','A6S','A6S'],
+          ['','','','','','','','','A2L','A2L','A2L','A3','A3','A3','A4S','A4S','A4S','A5S','A5S','A5S','A6S','A6S'],
+          ['','','','','','','','','A2L','A2L','A2L','A3','A3','A3','A4','A4','A4','A5S','A5S','A5S','A6S','A6S'],
+          ['','','','','','','','','A2L','A2L','A2L','A3L','A3L','A3L','A4','A4','A4','A5S','A5S','A5S','A6S','A6S'],
+          ['','','','','','','','','','','','A3L','A3L','A3L','A4','A4','A4','A5','A5','A5','A6','A6'],
+          ['','','','','','','','','','','','A3L','A3L','A3L','A4','A4','A4','A5','A5','A5','A6','A6'],
+          ['','','','','','','','','','','','A3L','A3L','A3L','A4L','A4L','A4L','A5','A5','A5','A6','A6'],
+          ['','','','','','','','','','','','','','','A4L','A4L','A4L','A5','A5','A5','A6','A6'],
+          ['','','','','','','','','','','','','','','A4L','A4L','A4L','A5L','A5L','A5L','A6L','A6L'],
+          ['','','','','','','','','','','','','','','A4L','A4L','A4L','A5L','A5L','A5L','A6L','A6L'],
+          ['','','','','','','','','','','','','','','','','','A5L','A5L','A5L','A6L','A6L']
+        ];
+        var kidsTable = [
+          ['M0','M0','M1','M1','M1','','','','','','','','',''],
+          ['M0','M0','M1','M1','M1','','','','','','','','',''],
+          ['M0','M0','M1','M1','M1','','','','','','','','',''],
+          ['M0','M0','M1','M1','M1','M2','M2','M2','','','','','',''],
+          ['M0L','M0L','M1','M1','M1','M2','M2','M2','M3','M3','M3','','',''],
+          ['M0L','M0L','M1L','M1L','M1L','M2','M2','M2','M3','M3','M3','','',''],
+          ['M0L','M0L','M1L','M1L','M1L','M2','M2','M2','M3','M3','M3','','',''],
+          ['M0L','M0L','M1L','M1L','M1L','M2','M2','M2','M3','M3','M3','','',''],
+          ['','','M1L','M1L','M1L','M2L','M2L','M2L','M3','M3','M3','M4','M4','M4'],
+          ['','','M1L','M1L','M1L','M2L','M2L','M2L','M3','M3','M3','M4','M4','M4'],
+          ['','','','','','M2L','M2L','M2L','M3','M3','M3','M4','M4','M4'],
+          ['','','','','','M2L','M2L','M2L','M3','M3','M3','M4','M4','M4'],
+          ['','','','','','M2L','M2L','M2L','M3L','M3L','M3L','M4','M4','M4'],
+          ['','','','','','M2L','M2L','M2L','M3L','M3L','M3L','M4','M4','M4'],
+          ['','','','','','','','','M3L','M3L','M3L','M4','M4','M4'],
+          ['','','','','','','','','M3L','M3L','M3L','M4L','M4L','M4L'],
+          ['','','','','','','','','M3L','M3L','M3L','M4L','M4L','M4L'],
+          ['','','','','','','','','M3L','M3L','M3L','M4L','M4L','M4L'],
+          ['','','','','','','','','','','','M4L','M4L','M4L'],
+          ['','','','','','','','','','','','M4L','M4L','M4L'],
+          ['','','','','','','','','','','','M4L','M4L','M4L'],
+          ['','','','','','','','','','','','','',''],
+          ['','','','','','','','','','','','','',''],
+          ['','','','','','','','','','','','','','']
+        ];
+
+        function fillHeights() {
+          var current = height.value;
+          height.innerHTML = '<option value="">Select height</option>';
+          for (var inches = 36; inches <= 82; inches += 1) {
+            var option = doc.createElement('option');
+            option.value = inches;
+            if (unit === 'metric') option.textContent = Math.round(inches * 2.54) + ' cm';
+            else option.textContent = Math.floor(inches / 12) + "'" + (inches % 12) + '"';
+            height.appendChild(option);
+          }
+          if (current) height.value = current;
+          weight.placeholder = unit === 'metric' ? 'e.g. 71 kg' : 'e.g. 157 lbs';
+        }
+
+        function stripSuffix(size) {
+          return size.replace(/[SL]$/, '');
+        }
+
+        function shiftedSize(size, shift, order) {
+          if (!size || !shift) return size;
+          var suffix = /[SL]$/.test(size) ? size.slice(-1) : '';
+          var base = stripSuffix(size);
+          var index = order.indexOf(base);
+          if (index < 0) return size;
+          var next = order[Math.max(0, Math.min(order.length - 1, index + shift))];
+          return next + suffix;
+        }
+
+        function lookup(table, row, col) {
+          var value = '';
+          var radius = 0;
+          while (!value && radius < 6) {
+            for (var r = row - radius; r <= row + radius; r += 1) {
+              for (var c = col - radius; c <= col + radius; c += 1) {
+                if (table[r] && table[r][c]) return table[r][c];
+              }
+            }
+            radius += 1;
+          }
+          return value;
+        }
+
+        function percent(value, min, max) {
+          if (max <= min) return 50;
+          return Math.max(7, Math.min(93, ((value - min) / (max - min)) * 100));
+        }
+
+        function calculate() {
+          var inches = parseFloat(height.value);
+          var pounds = parseFloat(weight.value);
+          if (!inches || !pounds) {
+            result.innerHTML = '<div class="nf-empty">Enter your measurements above</div>';
+            return;
+          }
+          if (unit === 'metric') pounds = pounds * 2.20462;
+
+          var isKids = inches < 60 || pounds < 90;
+          var table = isKids ? kidsTable : adultTable;
+          var startHeight = isKids ? 36 : 60;
+          var startWeight = isKids ? 25 : 90;
+          var weightStep = isKids ? 5 : 10;
+          var order = isKids ? ['M0','M1','M2','M3','M4'] : ['A00','A0','A1','A2','A3','A4','A5','A6'];
+          var row = Math.round(inches - startHeight);
+          var col = Math.round((pounds - startWeight) / weightStep);
+          var baseSize = lookup(table, row, col);
+          var size = shiftedSize(baseSize, parseInt(fit.value, 10), order);
+
+          if (!size) {
+            result.innerHTML = '<div class="nf-empty">Outside the standard chart. We can build to your exact measurements.</div>';
+            return;
+          }
+
+          var weightMin = startWeight + Math.max(0, col - 1) * weightStep;
+          var weightMax = startWeight + Math.min(table[0].length - 1, col + 1) * weightStep;
+          var heightMin = startHeight + Math.max(0, row - 1);
+          var heightMax = startHeight + Math.min(table.length - 1, row + 1);
+          var note = isKids ? 'Kids sizes come in Standard and Long. Between sizes? Size up for room to grow.' : 'S = Short, no suffix = Regular, L = Long. Between sizes? Choose snug or loose above.';
+
+          result.innerHTML = `
+            <div class="nf-label">Your perfect size is:</div>
+            <div class="nf-size">${size}</div>
+            <div class="nf-note">${note}</div>
+            <div class="nf-bars">
+              <div>
+                <div class="nf-bar-labels"><span>Snug</span><span>Weight</span><span>Loose</span></div>
+                <div class="nf-track"><span class="nf-tip" style="left:${percent(pounds, weightMin, weightMax)}%"></span></div>
+              </div>
+              <div>
+                <div class="nf-bar-labels"><span>Short</span><span>Height</span><span>Long</span></div>
+                <div class="nf-track"><span class="nf-tip" style="left:${percent(inches, heightMin, heightMax)}%"></span></div>
+              </div>
+            </div>
+          `;
+        }
+
+        unitButtons.forEach(function (button) {
+          button.addEventListener('click', function () {
+            unit = button.dataset.unit;
+            unitButtons.forEach(function (item) { item.classList.toggle('is-active', item === button); });
+            fillHeights();
+            calculate();
+          });
+        });
+        height.addEventListener('change', calculate);
+        weight.addEventListener('input', calculate);
+        fit.addEventListener('change', calculate);
+        fillHeights();
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    // The standalone export serialized the calculator's markup but dropped every
+    // inline handler (onclick/oninput/onchange), while its <script> — which
+    // defines window.dsplnSetUnit/dsplnCalc/dsplnShift — still runs. Rebind the
+    // controls to those functions from out here (same-origin iframe).
+    function bindNativeCalc() {
+      try {
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        var win = iframe.contentWindow;
+        if (!doc || !win || typeof win.dsplnSetUnit !== 'function') return false;
+
+        var imp = doc.getElementById('dspln-btn-imp');
+        var met = doc.getElementById('dspln-btn-met');
+        if (!imp || !met) return false;
+        if (imp.dataset.dsplnBound === 'true') return true;
+        imp.dataset.dsplnBound = 'true';
+
+        imp.addEventListener('click', function () { win.dsplnSetUnit('imperial'); });
+        met.addEventListener('click', function () { win.dsplnSetUnit('metric'); });
+
+        var h = doc.getElementById('dspln-h');
+        var w = doc.getElementById('dspln-w');
+        var f = doc.getElementById('dspln-fit');
+        if (h && typeof win.dsplnCalc === 'function') h.addEventListener('change', function () { win.dsplnCalc(); });
+        if (w && typeof win.dsplnCalc === 'function') w.addEventListener('input', function () { win.dsplnCalc(); });
+        if (f && typeof win.dsplnCalc === 'function') f.addEventListener('change', function () { win.dsplnCalc(); });
+
+        var prev = doc.getElementById('dspln-prev');
+        var next = doc.getElementById('dspln-next');
+        if (prev && typeof win.dsplnShift === 'function') prev.addEventListener('click', function () { win.dsplnShift(-1); });
+        if (next && typeof win.dsplnShift === 'function') next.addEventListener('click', function () { win.dsplnShift(1); });
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    iframe.addEventListener('load', function () {
+      resizeFrame();
+      var attempts = 0;
+      var interval = window.setInterval(function () {
+        attempts += 1;
+        injectSizeFinder();
+        bindNativeCalc();
+        resizeFrame();
+        if (attempts >= 40) window.clearInterval(interval);
+      }, 250);
+    });
+
+    fetch(src)
+      .then(function (response) {
+        if (!response.ok) throw new Error('Unable to load sizing page asset');
+        return response.text();
+      })
+      .then(function (html) {
+        iframe.srcdoc = html;
+      })
+      .catch(function () {
+        iframe.src = src;
+      });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "DSPLN sizing page",
+  "enabled_on": {
+    "templates": ["page"]
+  },
+  "settings": [
+    {
+      "type": "text",
+      "id": "iframe_title",
+      "label": "Frame title",
+      "default": "DSPLN sizing page"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN sizing page"
+    }
+  ]
+}
+{% endschema %}

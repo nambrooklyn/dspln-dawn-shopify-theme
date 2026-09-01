@@ -1,0 +1,138 @@
+{{ 'dspln-academy-page.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-academy" aria-label="Academy store contact">
+  {% if section.settings.background_image != blank %}
+    <img class="dspln-academy__image" src="{{ section.settings.background_image | image_url: width: 2400 }}" alt="" width="{{ section.settings.background_image.width }}" height="{{ section.settings.background_image.height }}" loading="lazy">
+  {% else %}
+    <img class="dspln-academy__image" src="{{ 'dspln-academy-bg.png' | asset_url }}" alt="" width="1920" height="1212" loading="lazy">
+  {% endif %}
+
+  <div class="dspln-academy__inner">
+    {% if section.settings.eyebrow != blank %}
+      <div class="dspln-academy__eyebrow">{{ section.settings.eyebrow }}</div>
+    {% endif %}
+
+    {% if section.settings.heading != blank %}
+      <h1 class="dspln-academy__heading">{{ section.settings.heading }}</h1>
+    {% endif %}
+
+    {% if section.settings.text != blank %}
+      <div class="dspln-academy__intro">{{ section.settings.text }}</div>
+    {% endif %}
+
+    {% form 'contact', id: 'DSPLNAcademyForm', class: 'dspln-academy__form' %}
+      <input type="hidden" name="contact[Subject]" value="Academy store inquiry">
+
+      {% if form.posted_successfully? %}
+        <p class="dspln-academy__status" tabindex="-1" autofocus>Thanks for contacting us. We'll get back to you as soon as possible.</p>
+      {% endif %}
+
+      {% if form.errors %}
+        <ul class="dspln-academy__errors" role="alert">
+          {% for field in form.errors %}
+            <li>
+              {% if field == 'form' %}
+                {{ form.errors.messages[field] }}
+              {% else %}
+                {{ form.errors.translated_fields[field] | capitalize }} {{ form.errors.messages[field] }}
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <div class="dspln-academy__field-row">
+        <div class="dspln-academy__field">
+          <label for="DSPLNAcademyForm-name">Name</label>
+          <input
+            id="DSPLNAcademyForm-name"
+            type="text"
+            name="contact[Name]"
+            autocomplete="name"
+            value="{% if form.name %}{{ form.name }}{% elsif customer %}{{ customer.name }}{% endif %}"
+          >
+        </div>
+
+        <div class="dspln-academy__field">
+          <label for="DSPLNAcademyForm-email">Email *</label>
+          <input
+            id="DSPLNAcademyForm-email"
+            type="email"
+            name="contact[email]"
+            autocomplete="email"
+            autocapitalize="off"
+            spellcheck="false"
+            required
+            value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
+            {% if form.errors contains 'email' %}
+              aria-invalid="true"
+            {% endif %}
+          >
+        </div>
+      </div>
+
+      <div class="dspln-academy__field">
+        <label for="DSPLNAcademyForm-academy">Academy Name *</label>
+        <input id="DSPLNAcademyForm-academy" type="text" name="contact[Academy name]" required>
+      </div>
+
+      <div class="dspln-academy__field">
+        <label for="DSPLNAcademyForm-product">Dropdown</label>
+        <select id="DSPLNAcademyForm-product" name="contact[Academy product interest]">
+          <option value="Academy Gis">Academy Gis</option>
+          <option value="Rash Guards">Rash Guards</option>
+          <option value="Everything">Everything</option>
+        </select>
+      </div>
+
+      <div class="dspln-academy__field">
+        <label for="DSPLNAcademyForm-body">Message</label>
+        <textarea id="DSPLNAcademyForm-body" name="contact[Message]" rows="6">{{ form.body }}</textarea>
+      </div>
+
+      <button class="dspln-academy__button" type="submit">{{ section.settings.button_label }}</button>
+    {% endform %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN academy contact",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "background_image",
+      "label": "Background image"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Get in touch"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Let's Set Up Your Academy Store"
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "Text",
+      "default": "<p>We can design and build out your entire academy store with all your custom made products at zero minimums, zero cost and zero inventory.</p>"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button label",
+      "default": "Send message"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN academy contact"
+    }
+  ]
+}
+{% endschema %}

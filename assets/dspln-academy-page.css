@@ -1,0 +1,192 @@
+.dspln-academy {
+  position: relative;
+  overflow: hidden;
+  min-height: 78rem;
+  background: #101010;
+  color: #ffffff;
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+.dspln-academy__image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dspln-academy__inner {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 4.8rem, 72rem);
+  margin: 0 auto;
+  padding: clamp(3.2rem, 5vw, 5.8rem) 0;
+  text-align: center;
+}
+
+.dspln-academy__eyebrow {
+  display: block;
+  width: min(100%, 36rem);
+  margin: 0 auto 3.2rem;
+  padding: 0.7rem 1.6rem;
+  background: #ffffff;
+  color: #000000;
+  font-size: 1.45rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dspln-academy__heading {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(4.2rem, 5vw, 6.2rem);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  line-height: 1.18;
+  text-transform: uppercase;
+}
+
+.dspln-academy__intro {
+  margin: 3rem 0 4.8rem;
+  padding: 2rem 1rem;
+  border-top: 0.2rem solid rgba(255, 255, 255, 0.85);
+  border-bottom: 0.2rem solid rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.85rem;
+  line-height: 1.6;
+  text-transform: capitalize;
+}
+
+.dspln-academy__form {
+  text-align: left;
+}
+
+.dspln-academy__status {
+  margin: 0 0 2rem;
+  color: #ffffff;
+  font-size: 1.35rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.dspln-academy__errors {
+  margin: 0 0 2rem;
+  padding-left: 1.8rem;
+  color: #ffffff;
+  font-size: 1.35rem;
+}
+
+.dspln-academy__field {
+  margin-bottom: 1.2rem;
+}
+
+.dspln-academy__field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+.dspln-academy__field label {
+  display: block;
+  margin: 0 0 0.5rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1.45rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.dspln-academy__field input,
+.dspln-academy__field select,
+.dspln-academy__field textarea {
+  display: block;
+  width: 100%;
+  min-height: 4.8rem;
+  padding: 1.1rem 1.4rem;
+  border: 0.15rem solid rgba(255, 255, 255, 0.72);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.1);
+  color: #ffffff;
+  font: inherit;
+  font-size: 1.45rem;
+  backdrop-filter: blur(0.2rem);
+}
+
+.dspln-academy__field select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #ffffff 50%), linear-gradient(135deg, #ffffff 50%, transparent 50%);
+  background-position: calc(100% - 2rem) 50%, calc(100% - 1.5rem) 50%;
+  background-size: 0.6rem 0.6rem, 0.6rem 0.6rem;
+  background-repeat: no-repeat;
+}
+
+.dspln-academy__field option {
+  color: #000000;
+}
+
+.dspln-academy__field textarea {
+  min-height: 13.6rem;
+  resize: vertical;
+}
+
+.dspln-academy__field input:focus,
+.dspln-academy__field select:focus,
+.dspln-academy__field textarea:focus {
+  outline: 0.2rem solid rgba(255, 255, 255, 0.9);
+  outline-offset: 0.2rem;
+}
+
+.dspln-academy__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 5.2rem;
+  margin-top: 1.2rem;
+  padding: 1.3rem 2.4rem;
+  border: 0.1rem solid #ffffff;
+  background: #ffffff;
+  color: #000000;
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.dspln-academy__button:hover {
+  transform: translateY(-0.3rem);
+  background: #f3f3f3;
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-academy {
+    min-height: 0;
+  }
+
+  .dspln-academy__inner {
+    width: min(100% - 3.2rem, 54rem);
+    padding: 4rem 0;
+  }
+
+  .dspln-academy__eyebrow {
+    margin-bottom: 2rem;
+  }
+
+  .dspln-academy__heading {
+    font-size: clamp(3rem, 11vw, 4.8rem);
+  }
+
+  .dspln-academy__intro {
+    margin: 2rem 0 3rem;
+    font-size: 1.45rem;
+  }
+
+  .dspln-academy__field-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

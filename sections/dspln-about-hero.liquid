@@ -1,0 +1,59 @@
+{{ 'dspln-about-sections.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-about-hero" aria-label="{{ section.settings.heading | escape }}">
+  <div class="dspln-about-hero__inner">
+    <div class="dspln-about-hero__copy">
+      <h2 class="dspln-about-heading">{{ section.settings.heading }}</h2>
+      <p class="dspln-about-text">{{ section.settings.text }}</p>
+    </div>
+    <div class="dspln-about-hero__media">
+      {% if section.settings.image != blank %}
+        <img
+          src="{{ section.settings.image | image_url: width: 900 }}"
+          alt="{{ section.settings.image.alt | default: section.settings.heading | escape }}"
+          width="{{ section.settings.image.width }}"
+          height="{{ section.settings.image.height }}"
+          loading="lazy"
+        >
+      {% else %}
+        <img
+          src="{{ 'dspln-about-hero-man.jpg' | asset_url }}"
+          alt="{{ section.settings.heading | escape }}"
+          width="1200"
+          height="1200"
+          loading="lazy"
+        >
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN about hero",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "ABOUT"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "DSPLN is an atelier for high-quality kimonos created by @namcoanyc Tailored specifically for Brazilian Jiu Jitsu and meticulously crafted with a keen eye for detail, DSPLN kimonos seamlessly blend the elegance of traditional Japanese design with the durability required for intense BJJ training and rigorous grappling sessions."
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN about hero"
+    }
+  ]
+}
+{% endschema %}

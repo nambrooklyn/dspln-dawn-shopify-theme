@@ -1,0 +1,254 @@
+.dspln-artwork {
+  font-family: Helvetica, Arial, sans-serif;
+  color: #111111;
+}
+
+.dspln-artwork-hero {
+  background: #eeeeee;
+  padding: 3.2rem 2.4rem;
+}
+
+.dspln-artwork-hero__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(28rem, 40%);
+  align-items: stretch;
+  max-width: 118rem;
+  margin: 0 auto;
+  background: #ffffff;
+}
+
+.dspln-artwork-hero__copy {
+  padding: clamp(5.2rem, 7vw, 8rem) clamp(2.4rem, 5vw, 6rem);
+}
+
+.dspln-artwork-eyebrow {
+  margin: 0 0 1.4rem;
+  color: #7e0000;
+  font-size: clamp(2.2rem, 3vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dspln-artwork-hero__intro {
+  max-width: 58rem;
+  margin: 0 0 3.6rem;
+  color: #666666;
+  font-size: 1.4rem;
+  line-height: 1.8;
+}
+
+.dspln-artwork-hero__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 54rem;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.dspln-artwork-faq {
+  max-width: 68rem;
+}
+
+.dspln-artwork-faq details {
+  margin: 0 0 1rem;
+  background: #f3f3f3;
+  border: 0;
+  box-shadow: none;
+}
+
+.dspln-artwork-faq summary {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  min-height: 5.4rem;
+  padding: 1.6rem 2rem;
+  color: #666666;
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  list-style: none;
+  text-transform: capitalize;
+}
+
+.dspln-artwork-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.dspln-artwork-faq summary::before {
+  content: "+";
+  color: #333333;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.dspln-artwork-faq details[open] summary::before {
+  content: "-";
+}
+
+.dspln-artwork-faq p {
+  margin: 0;
+  padding: 0 2.4rem 2rem 5.2rem;
+  color: #666666;
+  font-size: 1.35rem;
+  line-height: 1.75;
+}
+
+.dspln-artwork-intro {
+  background: #5c0000;
+  color: #ffffff;
+}
+
+.dspln-artwork-intro__inner {
+  max-width: 92rem;
+  margin: 0 auto;
+  padding: 5.6rem 2.4rem;
+  text-align: center;
+}
+
+.dspln-artwork-intro h2 {
+  margin: 0 0 2rem;
+  color: #ffffff;
+  font-size: clamp(2.4rem, 3vw, 3rem);
+  font-weight: 200;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.dspln-artwork-intro p {
+  margin: 0 auto;
+  max-width: 78rem;
+  color: #efefef;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1.8;
+}
+
+.dspln-artwork-guide {
+  background: #ffffff;
+}
+
+.dspln-artwork-guide__inner {
+  max-width: 96rem;
+  margin: 0 auto;
+  padding: 5.6rem 2.4rem 7.2rem;
+}
+
+.dspln-artwork-guide__block {
+  display: flow-root;
+  padding: 3.2rem 0;
+  border-top: 0.1rem solid #d4d4d4;
+}
+
+.dspln-artwork-guide__block:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.dspln-artwork-guide h3 {
+  margin: 0 0 1.8rem;
+  color: #7e0000;
+  font-size: clamp(2.4rem, 3vw, 3.2rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.dspln-artwork-guide ol {
+  margin: 0;
+  padding-left: 2rem;
+}
+
+.dspln-artwork-guide li {
+  margin: 0 0 1.4rem;
+  color: #666666;
+  font-size: 1.45rem;
+  line-height: 1.8;
+}
+
+.dspln-artwork-guide strong {
+  color: #111111;
+}
+
+.dspln-artwork-guide__image {
+  float: right;
+  width: min(28rem, 34%);
+  margin: 0.4rem 0 2rem 3.2rem;
+}
+
+.dspln-artwork-guide__image img,
+.dspln-artwork-guide__wide img,
+.dspln-artwork-guide__logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.dspln-artwork-guide__wide {
+  margin: 3.2rem auto;
+  max-width: 92rem;
+}
+
+.dspln-artwork-guide__conclusion {
+  padding-top: 2rem;
+  text-align: center;
+}
+
+.dspln-artwork-guide__conclusion h3 {
+  color: #111111;
+  text-align: center;
+}
+
+.dspln-artwork-guide__conclusion p {
+  margin: 0 auto;
+  max-width: 78rem;
+  color: #666666;
+  font-size: 1.5rem;
+  line-height: 1.8;
+}
+
+.dspln-artwork-guide__logo {
+  width: 26.7rem;
+  margin: 4rem auto 0;
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-artwork-hero__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .dspln-artwork-hero {
+    padding: 2rem 1.6rem;
+  }
+
+  .dspln-artwork-hero__copy {
+    padding: 4rem 2rem;
+  }
+
+  .dspln-artwork-hero__media {
+    order: -1;
+  }
+
+  .dspln-artwork-hero__media img {
+    min-height: 42rem;
+  }
+
+  .dspln-artwork-eyebrow,
+  .dspln-artwork-intro h2,
+  .dspln-artwork-guide h3 {
+    text-align: center;
+  }
+
+  .dspln-artwork-guide__image {
+    float: none;
+    width: min(72%, 26rem);
+    margin: 0 auto 2.4rem;
+  }
+}

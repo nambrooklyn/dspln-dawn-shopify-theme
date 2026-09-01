@@ -1,0 +1,32 @@
+{% comment %}
+  Returns the DSPLN configurator preview image URL for a cart line.
+
+  Usage:
+  {% capture dspln_preview_url %}{% render 'dspln-line-item-preview-url', item: item %}{% endcapture %}
+{% endcomment %}
+
+{%- liquid
+  assign preview_image = ''
+
+  for property in item.properties
+    assign property_name = property.first | strip
+    assign property_value = property.last | strip
+    assign property_key = property_name | downcase
+
+    if property_value != blank
+      assign is_preview_value = false
+      if property_value contains 'http' or property_value contains 'data:image/'
+        assign is_preview_value = true
+      endif
+
+      if property_key == '_preview_image_url' and is_preview_value
+        assign preview_image = property_value
+        break
+      elsif property_key contains 'preview' and property_key contains 'image' and is_preview_value
+        assign preview_image = property_value
+        break
+      endif
+    endif
+  endfor
+-%}
+{{- preview_image -}}

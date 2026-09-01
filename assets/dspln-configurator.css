@@ -1,0 +1,151 @@
+.dspln-configurator-product {
+  background: rgb(var(--color-background));
+  color: rgb(var(--color-foreground));
+  /* Never let the configurator section drive page-level horizontal scroll. */
+  overflow-x: hidden;
+}
+
+.dspln-configurator-product__inner {
+  /* Full-bleed: a capped width leaves empty gutters beside the app's own
+     sidebars on monitors wider than the cap. */
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.dspln-configurator-product__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.dspln-configurator-product__title {
+  margin: 0;
+  font-size: clamp(2.4rem, 3vw, 4rem);
+  line-height: 1.05;
+}
+
+.dspln-configurator-product__price {
+  white-space: nowrap;
+}
+
+.dspln-configurator-product__frame-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--dspln-configurator-min-height, 760px);
+  border-block: 1px solid rgba(var(--color-foreground), 0.12);
+  background: rgb(var(--color-background));
+  overflow: hidden;
+}
+
+.dspln-configurator-product__frame {
+  display: block;
+  /* iOS Safari sizes an iframe to its content's default (~980px) viewport
+     unless forced otherwise, which makes the configurator render its desktop
+     two-column layout and overflow the phone screen (the page then pans
+     sideways). width:1px + min-width:100% forces the iframe to the container
+     width so the embedded app sees the real device width and lays out for
+     mobile. On desktop this resolves to 100%, unchanged. */
+  width: 1px;
+  min-width: 100%;
+  max-width: 100%;
+  min-height: var(--dspln-configurator-min-height, 760px);
+  border: 0;
+  background: rgb(var(--color-background));
+}
+
+@media screen and (max-width: 749px) {
+  html.dspln-mobile-configurator-takeover,
+  html.dspln-mobile-configurator-takeover body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  html.dspln-mobile-configurator-takeover .shopify-section.dspln-mobile-configurator-takeover-section {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    background: #fff;
+  }
+
+  /* Chatra belongs to the Shopify parent page. Keep that single instance
+     above the fullscreen configurator instead of loading a duplicate inside
+     the embedded app. */
+  html.dspln-mobile-configurator-takeover #chatra {
+    z-index: 2147483646 !important;
+  }
+
+  html.dspln-mobile-configurator-takeover #chatra:not(.chatra--expanded) {
+    position: fixed !important;
+    top: auto !important;
+    width: 48px !important;
+    height: 48px !important;
+    right: 16px !important;
+    bottom: 24px !important;
+    left: auto !important;
+    transform: none !important;
+  }
+
+  html.dspln-mobile-configurator-takeover #chatra.chatra--expanded {
+    top: calc(100dvh - min(44dvh, 26rem) - 12px) !important;
+    right: 12px !important;
+    bottom: auto !important;
+    left: 12px !important;
+    width: calc(100% - 24px) !important;
+    height: min(44dvh, 26rem) !important;
+    transform: none !important;
+    overflow: hidden !important;
+    border-radius: 24px !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  html.dspln-mobile-configurator-takeover #chatra.chatra--expanded #chatra__iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: inherit !important;
+  }
+
+  html.dspln-mobile-configurator-takeover.dspln-design-assistant-open #chatra {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  html.dspln-mobile-configurator-takeover .dspln-configurator-product,
+  html.dspln-mobile-configurator-takeover .dspln-configurator-product__inner,
+  html.dspln-mobile-configurator-takeover .dspln-configurator-product__frame-wrap,
+  html.dspln-mobile-configurator-takeover .dspln-configurator-product__frame {
+    width: 100%;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    margin: 0;
+    border: 0;
+  }
+
+  .dspln-configurator-product__inner {
+    padding: 0;
+  }
+
+  .dspln-configurator-product__header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 16px;
+    margin-bottom: 0;
+  }
+
+  .dspln-configurator-product__price {
+    white-space: normal;
+  }
+
+  .dspln-configurator-product__frame-wrap,
+  .dspln-configurator-product__frame {
+    min-height: var(--dspln-configurator-mobile-min-height, 780px);
+  }
+}

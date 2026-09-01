@@ -1,0 +1,42 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "howto_video_desktop": {
+      "type": "dspln-howto-video",
+      "settings": {
+        "heading": "HOW TO USE CUSTOMIZER",
+        "subheading": "WATCH VIDEO",
+        "video_url": "https://dspln.com/cdn/shop/videos/c/vp/c0d51789ec1d4d1da0ec528c3724986f/c0d51789ec1d4d1da0ec528c3724986f.HD-1080p-4.8Mbps-27328259.mp4?v=0",
+        "poster_image": "desktop"
+      }
+    },
+    "howto_process": {
+      "type": "dspln-howto-process",
+      "settings": {
+        "image_alt": "DSPLN customizer process steps"
+      }
+    },
+    "howto_video_phone": {
+      "type": "dspln-howto-video",
+      "settings": {
+        "heading": "CUSTOMIZE ON YOUR PHONE",
+        "subheading": "WATCH VIDEO",
+        "video_url": "https://dspln.com/cdn/shop/videos/c/vp/aad24bef4ea24b5bbee0bc9a15281dd6/aad24bef4ea24b5bbee0bc9a15281dd6.HD-1080p-7.2Mbps-27376173.mp4?v=0",
+        "poster_image": "phone"
+      }
+    }
+  },
+  "order": [
+    "howto_video_desktop",
+    "howto_process",
+    "howto_video_phone"
+  ]
+}

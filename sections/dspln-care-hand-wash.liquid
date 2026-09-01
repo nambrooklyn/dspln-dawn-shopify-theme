@@ -1,0 +1,50 @@
+{{ 'dspln-care-page.css' | asset_url | stylesheet_tag }}
+
+<section id="dspln-care-hand-wash" class="dspln-care dspln-care-handwash" aria-label="Hand wash">
+  <img class="dspln-care-handwash__image" src="{{ 'dspln-care-handwash-bg.webp' | asset_url }}" alt="" width="1500" height="500" loading="lazy">
+  <div class="dspln-care__inner">
+    <div class="dspln-care-section__head">
+      <h2 class="dspln-care__heading">HAND WASH</h2>
+      <p class="dspln-care__text">Hand washing and machine washing each have their pros and cons, but hand washing your gi is superior. Hand washing is gentler on your gi and allows for targeted cleaning, preserving its quality. In contrast, machine washing applies uniform and potentially harsh scrubbing, which can accelerate the aging of your gi.</p>
+    </div>
+    <div class="dspln-care-cards">
+      <article class="dspln-care-card">
+        <img class="dspln-care-handwash__exact-icon" src="{{ 'dspln-care-handwash-white-exact.png' | asset_url }}" alt="" width="148" height="146" loading="lazy">
+        <h3>WHITE GI</h3>
+        <p>Keeping gi inside out, use detergent safe for white fabrics. Scrub the entire gi in to itself by hand, with cold water. Scrub harder on tougher areas. Rinse thoroughly, and squeeze out excess water without ringing. Use bleach only if nothing else works on a tough stain. Do not use on entire gi.</p>
+      </article>
+      <article class="dspln-care-card">
+        <span class="dspln-care-handwash__icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <path d="M13 48h38L32 16 13 48Z" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+            <path d="M13 16l38 38M51 16 13 54" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <h3>COLORED GI</h3>
+        <p>Keep the gi inside out. Use detergent safe for colors that does not have bleach. Scrub the entire gi in to itself by hand, with cold water to prevent color running. Scrub harder on tougher areas. Rinse thoroughly, and gently squeeze out excess water without ringing.</p>
+      </article>
+      <article class="dspln-care-card">
+        <span class="dspln-care-handwash__icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="19" stroke="currentColor" stroke-width="4"/>
+            <path d="M19 45 45 19" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <h3>AVOID</h3>
+        <p>Do not wash gi right side out. Do not use bleach, chlorine, or detergents with harsh chemicals as they all break down fibers of the fabric. Do not ring the gi after washing as it causes stretching. Try not to use hot water as it ages the fabric and makes the weave tighten up causing shrinkage.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN care hand wash",
+  "settings": [],
+  "presets": [
+    {
+      "name": "DSPLN care hand wash"
+    }
+  ]
+}
+{% endschema %}

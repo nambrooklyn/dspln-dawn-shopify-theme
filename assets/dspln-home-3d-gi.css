@@ -1,0 +1,169 @@
+.dspln-home-3d-gi {
+  overflow: hidden;
+  background: #ffffff;
+  color: #1d1d1d;
+}
+
+.dspln-home-3d-gi__inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(28rem, 0.88fr) minmax(0, 1.12fr);
+  gap: 4rem;
+  align-items: center;
+  width: min(94.4rem, calc(100% - 6.4rem));
+  min-height: 56rem;
+  margin: 0 auto;
+  padding: 5.8rem 0;
+}
+
+.dspln-home-3d-gi__copy {
+  position: relative;
+  z-index: 2;
+  max-width: 50rem;
+  order: 2;
+}
+
+.dspln-home-3d-gi__eyebrow {
+  margin: 0 0 1.4rem;
+  color: #6d6d6d;
+  font-size: 1.2rem;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.dspln-home-3d-gi__heading {
+  margin: 0;
+  color: #520000;
+  font-size: clamp(2.8rem, 3vw, 4.2rem);
+  font-weight: 300;
+  letter-spacing: 0.09em;
+  line-height: 1.12;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dspln-home-3d-gi__text {
+  margin: 2.6rem 0 0;
+  color: #6d6d6d;
+  font-size: 1.5rem;
+  line-height: 1.8;
+}
+
+.dspln-home-3d-gi__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.6rem;
+  margin-top: 3.4rem;
+}
+
+.dspln-home-3d-gi__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18rem;
+  min-height: 4.8rem;
+  padding: 1.4rem 2.6rem;
+  border: 1px solid #520000;
+  color: #520000;
+  font-size: 1.2rem;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease;
+}
+
+.dspln-home-3d-gi__button--primary {
+  background: #520000;
+  color: #ffffff;
+}
+
+.dspln-home-3d-gi__button--secondary {
+  background: transparent;
+}
+
+.dspln-home-3d-gi__button:hover,
+.dspln-home-3d-gi__button:focus-visible {
+  transform: translateY(-0.4rem);
+  opacity: 0.82;
+  color: inherit;
+}
+
+.dspln-home-3d-gi__button--primary:hover,
+.dspln-home-3d-gi__button--primary:focus-visible {
+  color: #ffffff;
+}
+
+.dspln-home-3d-gi__viewer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  order: 1;
+  height: 56rem;
+  min-width: 0;
+}
+
+.dspln-home-3d-gi__viewer img {
+  display: block;
+  /* The turntable GIF is portrait (640x1036), not square: cap by the
+     container's height so it can never spill under the copy above. */
+  width: auto;
+  max-width: min(100%, 39rem);
+  height: auto;
+  max-height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@media screen and (max-width: 989px) {
+  .dspln-home-3d-gi__inner {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 5.6rem 0 4rem;
+  }
+
+  .dspln-home-3d-gi__copy {
+    max-width: 62rem;
+    text-align: center;
+    margin: 0 auto;
+    order: 1;
+  }
+
+  .dspln-home-3d-gi__actions {
+    justify-content: center;
+  }
+
+  .dspln-home-3d-gi__viewer {
+    order: 2;
+    height: 52rem;
+    margin-top: 3.2rem;
+  }
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-home-3d-gi__inner {
+    width: min(100% - 3.2rem, 62rem);
+    padding: 4.8rem 0 3.2rem;
+  }
+
+  .dspln-home-3d-gi__heading {
+    font-size: clamp(2.6rem, 9vw, 3.8rem);
+    white-space: normal;
+  }
+
+  .dspln-home-3d-gi__button {
+    width: 100%;
+  }
+
+  .dspln-home-3d-gi__viewer {
+    height: 42rem;
+  }
+}
