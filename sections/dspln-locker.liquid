@@ -1,11 +1,11 @@
 {%- comment -%}
-  The Locker no longer runs inside an iframe on this page. It is its own site at
-  locker.dspln.com, drawing the DSPLN header itself, and this page is the door:
-  it hands a signed-in Shopify customer straight through, and offers a signed-out
-  visitor both ways in — Shopify, or a DSPLN account.
+  The Locker is its own site at locker.dspln.com with its own sign-in, so this
+  page is only a door: it forwards straight through, carrying the identity of a
+  customer who happens to still have a Shopify session so their Locker opens
+  already signed in. Everyone else meets DSPLN's sign-in on arrival.
 
-  Both logins run side by side deliberately. The Shopify links come out only once
-  real customers have gone through the DSPLN account and stayed signed in.
+  There is deliberately no Shopify login here any more. Shopify accounts still
+  back checkout and order status, but they are no longer how anyone signs in.
 {%- endcomment -%}
 
 {%- liquid
@@ -15,10 +15,14 @@
   endif
 -%}
 
-{%- capture locker_handoff -%}
+{%- capture locker_url -%}
+{%- if customer -%}
 {{ locker_origin }}/locker?shop={{ shop.permanent_domain | url_encode }}&storefrontOrigin={{ request.origin | url_encode }}&customerId={{ customer.id | url_encode }}&customerEmail={{ customer.email | url_encode }}&firstName={{ customer.first_name | url_encode }}&lastName={{ customer.last_name | url_encode }}
+{%- else -%}
+{{ locker_origin }}/locker
+{%- endif -%}
 {%- endcapture -%}
-{%- assign locker_handoff = locker_handoff | strip -%}
+{%- assign locker_url = locker_url | strip -%}
 
 <style>
   .dspln-locker-page { width: 100%; max-width: 100%; min-height: 72vh; overflow-x: hidden; background: #fff; }
@@ -32,7 +36,6 @@
   }
   .dspln-locker-door h1 { margin: 0; font-size: 28px; letter-spacing: .24em; text-transform: uppercase; }
   .dspln-locker-door p { max-width: 430px; margin: 0; color: #666; font-size: 14px; line-height: 1.7; }
-  .dspln-locker-door__choices { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
   .dspln-locker-door__button {
     display: flex; min-width: 280px; min-height: 58px; align-items: center;
     justify-content: center; background: #1c1b1b; color: #fff;
@@ -40,10 +43,6 @@
     text-decoration: none;
   }
   .dspln-locker-door__button:hover { color: #fff; opacity: .88; }
-  .dspln-locker-door__button--secondary {
-    background: #fff; color: #1c1b1b; border: 1px solid #1c1b1b;
-  }
-  .dspln-locker-door__button--secondary:hover { color: #1c1b1b; background: #f5f5f3; opacity: 1; }
   .dspln-locker-door__note { font-size: 12px; letter-spacing: .06em; color: #999; }
 </style>
 
@@ -51,43 +50,23 @@
   <div class="dspln-locker-door">
     <div class="dspln-locker-door__mark">D</div>
     <h1>The Locker</h1>
-
-    {%- if customer -%}
-      <p>Your saved designs, uploaded artwork, sizing profile, and orders. Opening your Locker&hellip;</p>
-      <div class="dspln-locker-door__choices">
-        <a class="dspln-locker-door__button" href="{{ locker_handoff }}" id="dspln-locker-open">
-          Open The Locker
-        </a>
-      </div>
-      <p class="dspln-locker-door__note">If nothing happens, use the button above.</p>
-      <script>
-        (() => {
-          const link = document.getElementById('dspln-locker-open');
-          if (!link) return;
-          // replace(), not assign(): Back should return to wherever the customer
-          // came from, not bounce them off this page again.
-          window.location.replace(link.href);
-        })();
-      </script>
-    {%- else -%}
-      <p>Sign in to reach your saved designs, uploaded artwork, sizing profile, and orders.</p>
-      <div class="dspln-locker-door__choices">
-        {%- comment -%}
-          A direct link rather than <shopify-account>: that component opens its
-          own dropdown anchored to the top-right corner (it is built for a header
-          account icon), which reads as a stray Shopify widget on this page.
-        {%- endcomment -%}
-        <a class="dspln-locker-door__button" href="/customer_authentication/login?return_to=%2Fpages%2Flocker">
-          Sign in with your store account
-        </a>
-        <a class="dspln-locker-door__button dspln-locker-door__button--secondary" href="{{ locker_origin }}/locker">
-          Use a DSPLN account
-        </a>
-      </div>
-      <p class="dspln-locker-door__note">Both work. A DSPLN account finds your past orders by email.</p>
-    {%- endif -%}
+    <p>Your saved designs, uploaded artwork, sizing profile, and orders.</p>
+    <a class="dspln-locker-door__button" href="{{ locker_url }}" id="dspln-locker-open">
+      Open The Locker
+    </a>
+    <p class="dspln-locker-door__note">If nothing happens, use the button above.</p>
   </div>
 </section>
+
+<script>
+  (() => {
+    const link = document.getElementById('dspln-locker-open');
+    if (!link) return;
+    // replace(), not assign(): Back should return to wherever the customer came
+    // from, not bounce them off this page again.
+    window.location.replace(link.href);
+  })();
+</script>
 
 {% schema %}
 {
