@@ -1232,8 +1232,12 @@ export function TheLocker() {
 
   const signOut = useCallback(async () => {
     try {
+      // Better Auth rejects a bodyless POST with 415 — it wants JSON.
       await fetch(new URL('/api/auth/sign-out', window.location.origin), {
-        method: 'POST', credentials: 'include',
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
       });
     } catch { /* signing out must not strand anyone on an error screen */ }
     window.location.reload();
