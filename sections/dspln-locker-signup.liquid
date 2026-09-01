@@ -1,0 +1,80 @@
+{%- comment -%}
+  The sign-up door. The announcement bar has always promised free shipping
+  when you sign up; what you signed up for was a mailing list. Now it is a
+  DSPLN account — the Locker, where designs, uploads and orders live — and
+  this page forwards to its create-account screen.
+
+  A customer who somehow still holds a Shopify session is carried through
+  with their identity, exactly as /pages/locker does, so they land in a
+  Locker that already has their work in it rather than an empty sign-up.
+{%- endcomment -%}
+
+{%- liquid
+  assign locker_origin = 'https://locker.dspln.com'
+  if shop.permanent_domain contains 'dspln-dev-2'
+    assign locker_origin = 'https://dev--dspln-dawn-shopify-theme.netlify.app'
+  endif
+-%}
+
+{%- capture signup_url -%}
+{%- if customer -%}
+{{ locker_origin }}/locker?shop={{ shop.permanent_domain | url_encode }}&storefrontOrigin={{ request.origin | url_encode }}&customerId={{ customer.id | url_encode }}&customerEmail={{ customer.email | url_encode }}&firstName={{ customer.first_name | url_encode }}&lastName={{ customer.last_name | url_encode }}
+{%- else -%}
+{{ locker_origin }}/locker?auth=sign-up
+{%- endif -%}
+{%- endcapture -%}
+{%- assign signup_url = signup_url | strip -%}
+
+<style>
+  .dspln-signup-page { width: 100%; max-width: 100%; min-height: 72vh; overflow-x: hidden; background: #fff; }
+  .dspln-signup-door {
+    min-height: 72vh; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 28px; padding: 48px 24px; text-align: center;
+  }
+  .dspln-signup-door__mark {
+    display: flex; width: 58px; height: 58px; align-items: center;
+    justify-content: center; background: #1c1b1b; color: #fff; font-size: 24px;
+  }
+  .dspln-signup-door h1 { margin: 0; font-size: 28px; letter-spacing: .24em; text-transform: uppercase; }
+  .dspln-signup-door p { max-width: 440px; margin: 0; color: #666; font-size: 14px; line-height: 1.7; }
+  .dspln-signup-door__button {
+    display: flex; min-width: 280px; min-height: 58px; align-items: center;
+    justify-content: center; background: #1c1b1b; color: #fff;
+    font-size: 13px; letter-spacing: .18em; text-transform: uppercase;
+    text-decoration: none;
+  }
+  .dspln-signup-door__button:hover { color: #fff; opacity: .88; }
+  .dspln-signup-door__note { font-size: 12px; letter-spacing: .06em; color: #999; }
+</style>
+
+<section class="dspln-signup-page">
+  <div class="dspln-signup-door">
+    <div class="dspln-signup-door__mark">D</div>
+    <h1>{{ section.settings.heading | default: 'Create your account' }}</h1>
+    <p>{{ section.settings.body | default: 'Your designs, uploaded artwork, sizing profile and orders, all in one place.' }}</p>
+    <a class="dspln-signup-door__button" href="{{ signup_url }}" id="dspln-signup-open">
+      {{ section.settings.button_label | default: 'Sign up' }}
+    </a>
+    <p class="dspln-signup-door__note">If nothing happens, use the button above.</p>
+  </div>
+</section>
+
+<script>
+  (() => {
+    const link = document.getElementById('dspln-signup-open');
+    if (!link) return;
+    window.location.replace(link.href);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Locker Sign Up",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Create your account" },
+    { "type": "textarea", "id": "body", "label": "Body", "default": "Your designs, uploaded artwork, sizing profile and orders, all in one place." },
+    { "type": "text", "id": "button_label", "label": "Button label", "default": "Sign up" }
+  ],
+  "presets": [{ "name": "Locker Sign Up" }]
+}
+{% endschema %}

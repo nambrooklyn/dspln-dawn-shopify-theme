@@ -340,7 +340,17 @@ type AuthMode = 'sign-in' | 'sign-up' | 'forgot';
 
 /** DSPLN's own sign-in — the only way into the Locker. */
 function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
-  const [mode, setMode] = useState<AuthMode>('sign-in');
+  // ?auth=sign-up opens straight on account creation — the storefront's
+  // "sign up" entry points land people here to join, not to sign in.
+  const [mode, setMode] = useState<AuthMode>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('auth') === 'sign-up'
+        ? 'sign-up'
+        : 'sign-in';
+    } catch {
+      return 'sign-in';
+    }
+  });
   const [providers, setProviders] = useState<string[]>([]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
