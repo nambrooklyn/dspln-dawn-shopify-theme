@@ -1,5 +1,7 @@
 import { getStore } from '@netlify/blobs';
 
+import { adminGraphql, adminToken } from '../lib/shopify-admin.mjs';
+
 // A member's own settings: what we email them about, and what the Locker
 // shows. DSPLN owns this record rather than Shopify because a member exists
 // here before — and possibly without — a Shopify customer.
@@ -11,8 +13,6 @@ import { getStore } from '@netlify/blobs';
 
 const STORE_NAME = 'dspln-locker-preferences';
 const OWNER_PATTERN = /^(shopify:[a-z0-9.-]+:\d+|dspln:[A-Za-z0-9_-]+)$/;
-const API_VERSION = '2026-07';
-const SHOP_DOMAIN = process.env.SHOPIFY_SHOP_DOMAIN || 'f39242.myshopify.com';
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -39,19 +39,17 @@ const normalize = (input = {}, current = defaults()) => ({
 
 /** Mirror the marketing preference onto the Shopify customer, if we have one. */
 async function pushToShopify(ownerKey, marketingEmail) {
-  const token = process.env.SHOPIFY_ADMIN_TOKEN;
-  if (!token) return { skipped: 'no-token' };
+  if (!(await adminToken())) return { skipped: 'no-token' };
   const match = ownerKey.match(/^shopify:[^:]+:(\d+)$/);
   if (!match) return { skipped: 'no-shopify-customer' };
 
-  const query = `mutation($input: CustomerEmailMarketingConsentUpdateInput!) {
-    customerEmailMarketingConsentUpdate(input: $input) {
-      userErrors { field message }
-    }
-  }`;
-  const body = {
-    query,
-    variables: {
+  const result = await adminGraphql(
+    `mutation($input: CustomerEmailMarketingConsentUpdateInput!) {
+      customerEmailMarketingConsentUpdate(input: $input) {
+        userErrors { field message }
+      }
+    }`,
+    {
       input: {
         customerId: `gid://shopify/Customer/${match[1]}`,
         emailMarketingConsent: {
@@ -64,16 +62,10 @@ async function pushToShopify(ownerKey, marketingEmail) {
         },
       },
     },
-  };
-  const response = await fetch(`https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/graphql.json`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json().catch(() => null);
-  const errors = payload?.data?.customerEmailMarketingConsentUpdate?.userErrors ?? [];
-  if (!response.ok || errors.length) {
-    console.error('[locker-preferences] shopify consent push failed', response.status, errors);
+  );
+  const errors = result.data?.customerEmailMarketingConsentUpdate?.userErrors ?? [];
+  if (!result.ok || errors.length) {
+    console.error('[locker-preferences] consent push failed', result.reason, errors);
     return { pushed: false };
   }
   return { pushed: true };
