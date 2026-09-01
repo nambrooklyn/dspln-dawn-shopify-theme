@@ -500,45 +500,82 @@ const STORE_LOGO =
  * only when the Locker is its own page; the portal's admin embed keeps its
  * chrome-free view.
  */
+interface StoreHeaderPayload { html: string; cssLinks: string[]; inlineStyle: string }
+
+let storeHeaderCache: StoreHeaderPayload | null = null;
+
+/**
+ * The store's own header, rendered from the same HTML dspln.com serves —
+ * fetched through /api/store-header and mounted in a shadow root so Dawn's
+ * stylesheets cannot restyle the Locker around it. Fonts and CSS variables
+ * go to the document head: @font-face does not register inside shadow DOM,
+ * and :root variables inherit across the boundary.
+ */
 function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => void }) {
+  const [payload, setPayload] = useState<StoreHeaderPayload | null>(storeHeaderCache);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (storeHeaderCache) return;
+    let live = true;
+    fetch(new URL('/api/store-header', window.location.origin))
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        const data = body?.data as StoreHeaderPayload | undefined;
+        if (data?.html && live) { storeHeaderCache = data; setPayload(data); }
+      })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!payload || !hostRef.current) return;
+    if (payload.inlineStyle && !document.getElementById('dspln-store-theme-css')) {
+      const style = document.createElement('style');
+      style.id = 'dspln-store-theme-css';
+      style.textContent = payload.inlineStyle;
+      document.head.appendChild(style);
+    }
+    const root = hostRef.current.shadowRoot ?? hostRef.current.attachShadow({ mode: 'open' });
+    root.innerHTML = [
+      ...payload.cssLinks.map((href) => `<link rel="stylesheet" href="${href}">`),
+      // The section HTML expects the page's own wrappers; color-scheme class
+      // gives it Dawn's scheme-1 variables (defined in the inline style, which
+      // inherits into the shadow root from :root).
+      `<div class="color-scheme-1 gradient">${payload.html}</div>`,
+    ].join('\n');
+  }, [payload]);
+
   return (
-    <header className="sticky top-0 z-40 bg-[#1c1b1b] text-white">
-      <div className="mx-auto grid max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3">
-        <nav className="flex items-center gap-6">
-          <a href={STORE_ORIGIN} className={`${label} text-white hover:opacity-75`}>Shop</a>
-          <a
-            href={`${STORE_ORIGIN}/pages/how-to-use-customizer`}
-            className={`${label} hidden text-white hover:opacity-75 sm:inline`}
-          >
-            Guide
-          </a>
-        </nav>
-
-        <a href={STORE_ORIGIN} aria-label="DSPLN" className="justify-self-center">
-          <img
-            src={STORE_LOGO}
-            alt="DSPLN"
-            width={200}
-            height={42}
-            className="h-[34px] w-auto sm:h-[42px]"
-          />
-        </a>
-
-        <div className="flex items-center justify-end gap-5">
-          {email ? (
-            <span className="hidden max-w-[200px] truncate text-xs text-white/60 lg:inline">
-              {email}
-            </span>
-          ) : null}
+    <div className="sticky top-0 z-40 bg-white">
+      {payload ? (
+        <div ref={hostRef} />
+      ) : (
+        <header className="bg-[#1c1b1b] text-white">
+          <div className="mx-auto grid max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3">
+            <nav className="flex items-center gap-6">
+              <a href={STORE_ORIGIN} className={`${label} text-white hover:opacity-75`}>Shop</a>
+            </nav>
+            <a href={STORE_ORIGIN} aria-label="DSPLN" className="justify-self-center">
+              <img src={STORE_LOGO} alt="DSPLN" width={200} height={42} className="h-[34px] w-auto sm:h-[42px]" />
+            </a>
+            <div className="flex items-center justify-end gap-5">
+              <a href={`${STORE_ORIGIN}/cart`} className={`${label} text-white hover:opacity-75`}>Cart</a>
+            </div>
+          </div>
+        </header>
+      )}
+      {email || onSignOut ? (
+        <div className="flex items-center justify-end gap-5 border-b border-[#e6e4df] bg-[#faf9f7] px-6 py-2">
+          {email ? <span className="max-w-[240px] truncate text-xs text-[#8a8580]">{email}</span> : null}
           {onSignOut ? (
-            <button type="button" onClick={onSignOut} className={`${label} text-white hover:opacity-75`}>
+            <button type="button" onClick={onSignOut} className="text-[11px] uppercase tracking-[0.16em] text-[#1c1b1b] underline underline-offset-2 hover:opacity-70">
               Log out
             </button>
           ) : null}
-          <a href={`${STORE_ORIGIN}/cart`} className={`${label} text-white hover:opacity-75`}>Cart</a>
         </div>
-      </div>
-    </header>
+      ) : null}
+    </div>
   );
 }
 
