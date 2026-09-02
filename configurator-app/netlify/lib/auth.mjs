@@ -148,6 +148,12 @@ export function getAuth() {
       // must be cross-site to survive the iframe. Browsers still block
       // third-party cookies — the durable fix is serving the Locker from a
       // dspln.com subdomain, which is why AUTH_COOKIE_DOMAIN exists.
+      //
+      // SET IT ON PRODUCTION ONLY. A cookie scoped to .dspln.com is discarded
+      // outright on dev--…netlify.app, so sign-up returns 200, no session is
+      // held, and the Locker simply says you are signed out. It looks like an
+      // auth bug and is a cookie-domain mismatch. Unset for branch deploys,
+      // where the absent value below gives host-only cookies that work.
       crossSubDomainCookies: process.env.AUTH_COOKIE_DOMAIN
         ? { enabled: true, domain: process.env.AUTH_COOKIE_DOMAIN }
         : { enabled: false },

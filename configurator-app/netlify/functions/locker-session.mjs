@@ -2,7 +2,8 @@ import { connectLambda, getStore } from '@netlify/blobs';
 import pg from 'pg';
 
 import { getAuth } from '../lib/auth.mjs';
-import { emailIndexKey } from '../lib/design-ownership.mjs';
+import { emailIndexKey, writeEmailIndex } from '../lib/design-ownership.mjs';
+import { findOrCreateCustomer } from '../lib/shopify-admin.mjs';
 
 // Who is signed in with DSPLN, and which Locker is theirs?
 //
@@ -75,26 +76,68 @@ export const handler = async (event) => {
   const user = session.user;
   let shopifyCustomerId = user.shopifyCustomerId ?? null;
 
+  // Blobs must be wired up before anything reads them — the stored Shopify
+  // token lives in a blob too.
+  try { connectLambda(event); } catch { /* already connected */ }
+
+  /** Remember the link so neither Shopify nor the index is asked again. */
+  const rememberCustomer = async (customerId) => {
+    const db = getPool();
+    if (db) {
+      await db.query(
+        `update "user" set shopify_customer_id = $1, shop_domain = $2, updated_at = now() where id = $3`,
+        [customerId, SHOP_DOMAIN, user.id],
+      );
+    }
+    if (user.email) {
+      const store = getStore(STORE_NAME);
+      await writeEmailIndex(store, user.email, {
+        customerId,
+        ownerKey: `shopify:${SHOP_DOMAIN}:${customerId}`,
+      });
+    }
+  };
+
   // First sign-in: find the Shopify customer id this email already owns.
   if (!shopifyCustomerId && user.email) {
     try {
-      connectLambda(event);
       const store = getStore(STORE_NAME);
       const indexed = await store.get(emailIndexKey(user.email), { type: 'json' });
       if (indexed?.customerId) {
         shopifyCustomerId = String(indexed.customerId);
-        const db = getPool();
-        if (db) {
-          await db.query(
-            `update "user" set shopify_customer_id = $1, shop_domain = $2, updated_at = now() where id = $3`,
-            [shopifyCustomerId, SHOP_DOMAIN, user.id],
-          );
-        }
+        await rememberCustomer(shopifyCustomerId);
       }
     } catch (error) {
       // A failed match must not block sign-in — they simply start with an
       // empty Locker and can be linked later.
       console.error('[locker-session] could not link a Shopify customer', error);
+    }
+  }
+
+  // Still nothing: this member has never ordered, so Shopify has never heard
+  // of them. Give them a customer record — that is what makes a member
+  // reachable by marketing, and it is what turns their owner key into
+  // shopify:… so designs and future orders attach without an index lookup.
+  //
+  // Best effort by design: a member whose Shopify record cannot be made right
+  // now still gets their Locker, and the next sign-in tries again.
+  if (!shopifyCustomerId && user.email) {
+    try {
+      const [firstName, ...rest] = (user.name || '').trim().split(' ');
+      const result = await findOrCreateCustomer({
+        email: user.email,
+        firstName: firstName || undefined,
+        lastName: rest.join(' ') || undefined,
+      });
+      if (result?.customerId) {
+        shopifyCustomerId = result.customerId;
+        await rememberCustomer(shopifyCustomerId);
+        console.log(
+          `[locker-session] ${result.created ? 'created' : 'matched'} Shopify customer for member`,
+        );
+      }
+    } catch (error) {
+      console.error('[locker-session] could not create a Shopify customer', error);
     }
   }
 
