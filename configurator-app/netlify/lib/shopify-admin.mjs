@@ -14,7 +14,12 @@ export const shopDomain = () => process.env.SHOPIFY_SHOP_DOMAIN || 'f39242.mysho
 export async function adminToken() {
   if (process.env.SHOPIFY_ADMIN_TOKEN) return process.env.SHOPIFY_ADMIN_TOKEN;
   try {
-    const store = getStore({ name: AUTH_STORE, consistency: 'strong' });
+    // Eventual consistency deliberately: strong reads need an uncachedEdgeURL
+    // that Lambda-compat functions (locker-session) do not have, and asking
+    // for it there throws rather than degrading. The token is written once at
+    // install and read on every session — stale-by-seconds is not a risk, a
+    // thrown read is.
+    const store = getStore({ name: AUTH_STORE });
     const stored = await store.get(TOKEN_KEY, { type: 'json' });
     return stored?.accessToken ?? null;
   } catch (cause) {
