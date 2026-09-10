@@ -48,8 +48,26 @@ export function useGenerateTechPack(
     // The tech pack pages route to the right 3D model by configData.source.
     const source = isRashguard ? garmentType : `dspln-${garmentType}-configurator`;
 
+    const techPackPath = isRashguard ? 'rashguard' : 'gi';
+
+    // A saved design generates from its cloud record by id. The localStorage
+    // handoff CANNOT be used here: on the live site this configurator runs in
+    // an iframe on dspln.com, and the browser partitions the iframe's
+    // localStorage away from the top-level popup window (same origin or not),
+    // so the popup would find nothing — "Missing design id." This also keeps
+    // the admin-edit contract honest: the tech pack shows the SAVED design,
+    // exactly what the factory receives.
+    if (currentDesignId) {
+      window.open(
+        `/tech-pack/${techPackPath}?id=${encodeURIComponent(currentDesignId)}`,
+        '_blank',
+        'width=1200,height=800',
+      );
+      return;
+    }
+
     const designRecord = {
-      id: currentDesignId || 'studio-design',
+      id: 'studio-design',
       name: (currentDesignName ?? undefined) || 'Design',
       orderName: `#studio-${Date.now()}`,
       configData: {
@@ -62,15 +80,15 @@ export function useGenerateTechPack(
       },
     };
 
-    // Hand the payload over via localStorage: logo images make it far too
-    // large for a URL, and the tech pack tab is same-origin.
+    // Unsaved design: hand the payload over via localStorage (logo images are
+    // far too large for a URL). Only reliable in a top-level tab, never in the
+    // storefront iframe — but an iframe session always has a design id.
     const inlineKey = `dspln:studio-tech-pack:${Date.now()}`;
     try {
       window.localStorage.setItem(inlineKey, JSON.stringify(designRecord));
     } catch {
       return;
     }
-    const techPackPath = isRashguard ? 'rashguard' : 'gi';
     window.open(`/tech-pack/${techPackPath}?inline=${encodeURIComponent(inlineKey)}`, '_blank', 'width=1200,height=800');
   }, [garmentType, serialize, logos, currentDesignId, currentDesignName]);
 }
