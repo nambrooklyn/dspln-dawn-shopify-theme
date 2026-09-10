@@ -1,5 +1,4 @@
 import { storefrontOrigin } from './storefront-links';
-import { isStudioMode } from './studio-mode';
 import { uploadArtworkImageCached } from './preview-upload';
 
 type RashguardProductConfig = {
@@ -201,7 +200,6 @@ export async function saveRashguardCloudDesignRecord(
       name: draft.name,
       configData: {
         source: sourceForProduct(config),
-        studio: isStudioMode() || undefined,
         version: 1,
         spec: draft.spec,
         images,
