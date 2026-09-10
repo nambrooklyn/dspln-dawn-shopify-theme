@@ -1205,6 +1205,11 @@ export const handler = async (event) => {
 
       const now = new Date().toISOString();
       const id = payload.id || `gi_${randomUUID()}`;
+      // A re-save replaces the record wholesale, but the client only knows
+      // design state — the order linkage the Shopify webhook stamped
+      // (orderName/orderNumber/shopifyOrderId, which drive the tech pack's
+      // header and filename) must survive an admin order-edit save.
+      const existing = payload.id ? await getRecordById(store, payload.id) : null;
       let record = {
         id,
         ownerKey: payload.ownerKey,
@@ -1217,9 +1222,15 @@ export const handler = async (event) => {
         name: payload.name || 'Saved Gi Design',
         configData: payload.configData,
         thumbnailUrl: payload.thumbnailUrl || null,
-        createdAt: payload.createdAt || now,
+        createdAt: payload.createdAt || existing?.createdAt || now,
         updatedAt: now,
       };
+      const orderName = payload.orderName ?? existing?.orderName;
+      const orderNumber = payload.orderNumber ?? existing?.orderNumber;
+      const shopifyOrderId = existing?.shopifyOrderId;
+      if (orderName != null) record.orderName = orderName;
+      if (orderNumber != null) record.orderNumber = orderNumber;
+      if (shopifyOrderId != null) record.shopifyOrderId = shopifyOrderId;
 
       record = await enrichArtworkLinks(record);
 
