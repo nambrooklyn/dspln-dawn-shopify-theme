@@ -1,0 +1,124 @@
+{{ 'section-footer.css' | asset_url | stylesheet_tag }}
+{{ 'component-list-payment.css' | asset_url | stylesheet_tag }}
+
+<footer class="footer dspln-footer">
+  <div class="dspln-footer__inner">
+    <div class="dspln-footer__grid">
+      <div class="dspln-footer__column dspln-footer__about">
+        <h2 class="dspln-footer__heading">ABOUT</h2>
+        <p>
+          DSPLN is an atelier based in Brooklyn NY, of high-quality kimonos tailored specifically for Brazilian Jiu Jitsu.
+          Meticulously crafted with a keen eye for detail, DSPLN kimonos seamlessly blend the elegance of traditional Japanese
+          design with the durability required for intense BJJ training and rigorous grappling sessions.
+        </p>
+        <a class="dspln-footer__social" href="{{ settings.social_instagram_link | default: '#' }}" aria-label="Instagram">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+            <rect x="4" y="4" width="16" height="16" rx="4"></rect>
+            <circle cx="12" cy="12" r="3.5"></circle>
+            <circle cx="17.2" cy="6.8" r="0.9"></circle>
+          </svg>
+        </a>
+      </div>
+
+      <nav class="dspln-footer__column" aria-label="Footer menu">
+        <h2 class="dspln-footer__heading">MENU</h2>
+        <ul class="dspln-footer__links">
+          <li><a href="/">Home</a></li>
+          <li><a href="/products/customgi">Mens Gi</a></li>
+          <li><a href="/products/womens-custom-gi-suit">Womens Gi</a></li>
+          <li><a href="/products/custom-kids-gi">Kids Gi</a></li>
+          <li><a href="/pages/about">About</a></li>
+          <li><a href="/pages/philosophy">Our Philosophy</a></li>
+        </ul>
+      </nav>
+
+      <nav class="dspln-footer__column" aria-label="Footer resources">
+        <h2 class="dspln-footer__heading">RESOURCES</h2>
+        <ul class="dspln-footer__links">
+          <li><a href="/pages/how-to-use-customizer">How to Use Customizer</a></li>
+          <li><a href="/pages/artwork">Artwork Guidelines</a></li>
+          <li><a href="/pages/care-instructions">Care Instructions</a></li>
+          <li><a href="/pages/sizing">Sizing and Fit</a></li>
+          <li><a href="/products/the-process">The Process</a></li>
+          <li><a href="/pages/academy">Academy Program</a></li>
+        </ul>
+      </nav>
+
+      <nav class="dspln-footer__column" aria-label="Footer support">
+        <h2 class="dspln-footer__heading">SUPPORT</h2>
+        <ul class="dspln-footer__links">
+          <li><a href="/pages/contact">Contact</a></li>
+          <li><a href="/pages/shipping-policy">Shipping Policy</a></li>
+          <li><a href="/pages/refund-policy">Refund Policy</a></li>
+          <li><a href="/pages/terms-of-service">Terms of Service</a></li>
+          <li><a href="/pages/privacy-policy">Privacy Policy</a></li>
+        </ul>
+      </nav>
+
+      <div class="dspln-footer__column dspln-footer__newsletter">
+        <h2 class="dspln-footer__heading">NEWSLETTER</h2>
+        <p>Subscribe to receive updates, access to exclusive deals, and more.</p>
+
+        {% form 'customer', id: 'ContactFooter', class: 'dspln-footer__form' %}
+          <input type="hidden" name="contact[tags]" value="newsletter">
+          <label class="visually-hidden" for="NewsletterForm--{{ section.id }}">Email</label>
+          <input
+            id="NewsletterForm--{{ section.id }}"
+            class="dspln-footer__input"
+            type="email"
+            name="contact[email]"
+            value="{{ form.email }}"
+            aria-required="true"
+            autocorrect="off"
+            autocapitalize="off"
+            autocomplete="email"
+            placeholder="Enter your email address"
+            required
+          >
+          <button class="dspln-footer__button" type="submit">SUBSCRIBE</button>
+
+          {%- if form.errors -%}
+            <p class="dspln-footer__message" role="alert">
+              {{ form.errors.translated_fields.email | capitalize }} {{ form.errors.messages.email }}
+            </p>
+          {%- endif -%}
+
+          {%- if form.posted_successfully? -%}
+            <p class="dspln-footer__message" role="status">Thanks for subscribing.</p>
+          {%- endif -%}
+        {% endform %}
+      </div>
+    </div>
+
+    <div class="dspln-footer__bottom">
+      <p class="dspln-footer__copyright">&copy; DSPLN CUSTOM BJJ GIS</p>
+
+      {%- if section.settings.payment_enable -%}
+        <div class="dspln-footer__payment">
+          <span class="visually-hidden">{{ 'sections.footer.payment' | t }}</span>
+          <ul class="list list-payment" role="list">
+            {%- for type in shop.enabled_payment_types -%}
+              <li class="list-payment__item">
+                {{ type | payment_type_svg_tag: class: 'icon icon--full-color' }}
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "t:sections.footer.name",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "payment_enable",
+      "default": true,
+      "label": "t:sections.footer.settings.payment_enable.label"
+    }
+  ]
+}
+{% endschema %}

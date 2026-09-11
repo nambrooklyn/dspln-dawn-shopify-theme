@@ -1,0 +1,186 @@
+{{ 'dspln-stats-quotes.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  case section.settings.display_font
+    when 'theme-heading'
+      assign dsq_font = settings.type_header_font.family | append: ', ' | append: settings.type_header_font.fallback_families
+    when 'theme-body'
+      assign dsq_font = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+    when 'bodoni'
+      assign dsq_font = "'Bodoni 72', 'Bodoni MT', 'Bodoni Moda', Didot, serif"
+    when 'baskerville'
+      assign dsq_font = "Baskerville, 'Libre Baskerville', Georgia, serif"
+    when 'garamond'
+      assign dsq_font = "Garamond, 'EB Garamond', 'Adobe Garamond Pro', Georgia, serif"
+    when 'georgia'
+      assign dsq_font = "Georgia, 'Times New Roman', serif"
+    when 'palatino'
+      assign dsq_font = "Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif"
+    when 'times'
+      assign dsq_font = "'Times New Roman', Times, serif"
+    when 'optima'
+      assign dsq_font = "Optima, Candara, 'Segoe UI', sans-serif"
+    when 'futura'
+      assign dsq_font = "Futura, 'Century Gothic', 'Trebuchet MS', sans-serif"
+    when 'avenir'
+      assign dsq_font = "'Avenir Next', Avenir, 'Segoe UI', sans-serif"
+    when 'helvetica'
+      assign dsq_font = "'Helvetica Neue', Helvetica, Arial, sans-serif"
+    else
+      assign dsq_font = "Didot, 'Didot LT STD', 'Bodoni 72', 'Bodoni MT', Prata, 'Playfair Display', Georgia, serif"
+  endcase
+-%}
+
+<section class="dspln-stats-quotes" style="--dsq-display-font: {{ dsq_font }}; --dsq-bg: {{ section.settings.background_color | default: '#efece4' }}; --dsq-text: {{ section.settings.text_color | default: '#14141c' }};" aria-label="{{ section.settings.aria_label | default: 'Stats and testimonials' }}">
+  <div class="dspln-stats-quotes__inner">
+    {%- liquid
+      assign stat_blocks = section.blocks | where: 'type', 'stat'
+      assign quote_blocks = section.blocks | where: 'type', 'quote'
+    -%}
+
+    {%- if stat_blocks.size > 0 -%}
+      <div class="dspln-stats-quotes__stats" style="--stat-count: {{ stat_blocks.size }};">
+        {%- for block in stat_blocks -%}
+          <div class="dspln-stats-quotes__stat" {{ block.shopify_attributes }}>
+            <span class="dspln-stats-quotes__value">{{ block.settings.value }}</span>
+            <span class="dspln-stats-quotes__label">{{ block.settings.label }}</span>
+          </div>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    {%- if quote_blocks.size > 0 -%}
+      <div class="dspln-stats-quotes__quotes">
+        {%- for block in quote_blocks -%}
+          <figure class="dspln-stats-quotes__quote" {{ block.shopify_attributes }}>
+            <blockquote class="dspln-stats-quotes__text">&ldquo;{{ block.settings.text }}&rdquo;</blockquote>
+            <figcaption class="dspln-stats-quotes__attribution">
+              {{ block.settings.author }}
+              {%- if block.settings.link_label != blank -%}
+                &nbsp;[ {% if block.settings.link_url != blank %}<a href="{{ block.settings.link_url }}">{{ block.settings.link_label }}</a>{% else %}{{ block.settings.link_label }}{% endif %} ]
+              {%- endif -%}
+            </figcaption>
+          </figure>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN stats + quotes",
+  "tag": "section",
+  "class": "section-dspln-stats-quotes",
+  "settings": [
+    {
+      "type": "select",
+      "id": "display_font",
+      "label": "Display font (numerals + quotes)",
+      "default": "didot",
+      "options": [
+        { "value": "didot", "label": "Didot (default)" },
+        { "value": "theme-heading", "label": "Theme heading font" },
+        { "value": "theme-body", "label": "Theme body font" },
+        { "value": "bodoni", "label": "Bodoni" },
+        { "value": "baskerville", "label": "Baskerville" },
+        { "value": "garamond", "label": "Garamond" },
+        { "value": "georgia", "label": "Georgia" },
+        { "value": "palatino", "label": "Palatino" },
+        { "value": "times", "label": "Times New Roman" },
+        { "value": "optima", "label": "Optima" },
+        { "value": "futura", "label": "Futura" },
+        { "value": "avenir", "label": "Avenir Next" },
+        { "value": "helvetica", "label": "Helvetica Neue" }
+      ]
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#efece4"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text color",
+      "default": "#14141c"
+    },
+    {
+      "type": "text",
+      "id": "aria_label",
+      "label": "Accessibility label",
+      "default": "Stats and testimonials"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "stat",
+      "name": "Stat",
+      "settings": [
+        {
+          "type": "text",
+          "id": "value",
+          "label": "Value",
+          "default": "12,000+"
+        },
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Label",
+          "default": "GIS DELIVERED"
+        }
+      ]
+    },
+    {
+      "type": "quote",
+      "name": "Quote",
+      "settings": [
+        {
+          "type": "textarea",
+          "id": "text",
+          "label": "Quote (no surrounding quotation marks)",
+          "default": "Fit is perfect and the pearl weave is stiff in the best way. Recolored the whole thing indigo — got compliments all through the bracket."
+        },
+        {
+          "type": "text",
+          "id": "author",
+          "label": "Attribution",
+          "default": "MARCUS R. — BROWN BELT"
+        },
+        {
+          "type": "text",
+          "id": "link_label",
+          "label": "Tag label (e.g. SAMPLE — clear it once the quote is real)",
+          "default": "SAMPLE"
+        },
+        {
+          "type": "url",
+          "id": "link_url",
+          "label": "Tag link (optional)"
+        }
+      ]
+    }
+  ],
+  "max_blocks": 12,
+  "presets": [
+    {
+      "name": "DSPLN stats + quotes",
+      "blocks": [
+        { "type": "stat", "settings": { "value": "12,000+", "label": "GIS DELIVERED" } },
+        { "type": "stat", "settings": { "value": "40", "label": "COUNTRIES" } },
+        { "type": "stat", "settings": { "value": "4.9★", "label": "AVG RATING" } },
+        { "type": "stat", "settings": { "value": "3–4wk", "label": "LEAD TIME" } },
+        { "type": "quote" },
+        {
+          "type": "quote",
+          "settings": {
+            "text": "Designed my academy's team gi in the 3D tool and ordered 14. The embroidery came out cleaner than anything off the rack.",
+            "author": "ANA P. — ACADEMY OWNER"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

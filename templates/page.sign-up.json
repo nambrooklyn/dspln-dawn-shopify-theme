@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "main": {
+      "type": "dspln-locker-signup",
+      "settings": {
+        "heading": "Create your account",
+        "body": "Free shipping on your first order. Your designs, uploaded artwork, sizing profile and orders all live in your Locker.",
+        "button_label": "Sign up"
+      }
+    }
+  },
+  "order": ["main"]
+}

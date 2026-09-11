@@ -1,0 +1,39 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "philosophy_hero": {
+      "type": "dspln-philosophy-hero",
+      "settings": {
+        "eyebrow": "BLOOD SWEAT & TEARS",
+        "heading": "OUR PHILOSOPHY",
+        "text": "Discipline is the cornerstone upon which mastery is built, both in craft and in life. It is the unwavering commitment to the pursuit of excellence, the relentless drive to push beyond perceived limits, and the steadfast dedication to honing one's skills day in and day out. In the realm of craft, discipline is the silent companion of every artisan, guiding their hands as they shape raw materials into works of art. It is the patient repetition of technique, the willingness to embrace failure as a stepping stone to success, and the refusal to settle for anything less than perfection."
+      }
+    },
+    "philosophy_meaning": {
+      "type": "dspln-philosophy-meaning",
+      "settings": {
+        "heading": "BLOOD SWEAT & TEARS"
+      }
+    },
+    "philosophy_closing": {
+      "type": "dspln-philosophy-closing",
+      "settings": {
+        "eyebrow": "BLOOD SWEAT AND TEARS",
+        "heading": "OUR PHILOSOPHY"
+      }
+    }
+  },
+  "order": [
+    "philosophy_hero",
+    "philosophy_meaning",
+    "philosophy_closing"
+  ]
+}

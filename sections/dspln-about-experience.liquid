@@ -1,0 +1,33 @@
+{{ 'dspln-about-sections.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-about-band" aria-label="{{ section.settings.heading | escape }}">
+  <div class="dspln-about-band__inner">
+    <h2 class="dspln-about-heading">{{ section.settings.heading }}</h2>
+    <p class="dspln-about-text">{{ section.settings.text }}</p>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN about experience",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "A Personal Experience"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "Our process begins with a deep understanding of our clients' needs, preferences, and aspirations. Whether it's a specific fit, design, or customization request, we take pride in our ability to listen attentively and translate their vision into reality. Through our mastery and skill, we meticulously bring together traditional craftsmanship and modern innovation to create gis that not only meet but exceed expectations."
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN about experience"
+    }
+  ]
+}
+{% endschema %}

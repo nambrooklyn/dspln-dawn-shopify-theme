@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "main": {
+      "type": "dspln-locker",
+      "settings": {}
+    }
+  },
+  "order": ["main"]
+}

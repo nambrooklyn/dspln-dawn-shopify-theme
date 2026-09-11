@@ -1,0 +1,183 @@
+.dspln-contact {
+  position: relative;
+  overflow: hidden;
+  min-height: 58rem;
+  background: #001f3f;
+  color: #ffffff;
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+.dspln-contact__image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dspln-contact::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 26, 56, 0.18);
+  z-index: 1;
+}
+
+.dspln-contact__inner {
+  position: relative;
+  z-index: 2;
+  width: min(100% - 4.8rem, 112rem);
+  margin: 0 auto;
+  padding: clamp(7rem, 10vw, 12rem) 0;
+  display: flex;
+  justify-content: center;
+}
+
+.dspln-contact__panel {
+  width: min(100%, 58rem);
+  text-align: center;
+}
+
+.dspln-contact__heading {
+  margin: 0 0 1.4rem;
+  color: #ffffff;
+  font-size: clamp(2.4rem, 3.75vw, 3.9rem);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.dspln-contact__intro {
+  margin: 0 0 3rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1.45rem;
+  line-height: 1.75;
+}
+
+.dspln-contact__status {
+  margin: 0 0 2rem;
+  color: #ffffff;
+  font-size: 1.35rem;
+  line-height: 1.5;
+}
+
+.dspln-contact__errors {
+  margin: 0 0 2rem;
+  padding-left: 1.8rem;
+  color: #ffffff;
+  font-size: 1.35rem;
+}
+
+.dspln-contact__field {
+  margin-bottom: 1.4rem;
+  text-align: left;
+}
+
+.dspln-contact__field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.4rem;
+}
+
+.dspln-contact__field-row .dspln-contact__field {
+  margin-bottom: 1.4rem;
+}
+
+.dspln-contact__field label {
+  display: block;
+  margin: 0 0 0.7rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dspln-contact__field input,
+.dspln-contact__field textarea {
+  display: block;
+  width: 100%;
+  min-height: 4.8rem;
+  padding: 1.3rem 1.4rem;
+  border: 0.1rem solid rgba(255, 255, 255, 0.62);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font: inherit;
+  font-size: 1.4rem;
+  backdrop-filter: blur(0.2rem);
+}
+
+.dspln-contact__field textarea {
+  min-height: 13rem;
+  resize: vertical;
+}
+
+.dspln-contact__field input::placeholder,
+.dspln-contact__field textarea::placeholder {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.dspln-contact__field input:focus,
+.dspln-contact__field textarea:focus {
+  outline: 0.2rem solid rgba(255, 255, 255, 0.88);
+  outline-offset: 0.2rem;
+}
+
+.dspln-contact__button-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 2.4rem;
+}
+
+.dspln-contact__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26rem;
+  min-height: 4.8rem;
+  padding: 1.2rem 2.4rem;
+  border: 0.1rem solid #ffffff;
+  background: #ffffff;
+  color: #000000;
+  font-size: 1.2rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.dspln-contact__button:hover {
+  transform: translateY(-0.3rem);
+  background: #f3f3f3;
+  color: #000000;
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-contact {
+    min-height: 0;
+  }
+
+  .dspln-contact::before {
+    background: rgba(0, 26, 56, 0.82);
+  }
+
+  .dspln-contact__inner {
+    width: min(100% - 3.2rem, 54rem);
+    padding: 6rem 0;
+  }
+
+  .dspln-contact__field-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .dspln-contact__button {
+    width: 100%;
+    min-width: 0;
+  }
+}

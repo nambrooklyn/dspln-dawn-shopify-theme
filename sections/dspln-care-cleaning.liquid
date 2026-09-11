@@ -1,0 +1,24 @@
+{{ 'dspln-care-page.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-care dspln-care-band" aria-label="Cleaning and preservation">
+  <img class="dspln-care-band__image" src="{{ 'dspln-care-cleaning-bg.webp' | asset_url }}" alt="" width="1920" height="606" loading="lazy">
+  <div class="dspln-care-band__inner">
+    <h2 class="dspln-care__heading">CLEANING &amp; PRESERVATION</h2>
+    <div class="dspln-care__text">
+      <p>The Brazilian jiu-jitsu kimono stands out as a remarkable and distinctive garment, crafted from a single piece of fabric with minimal seams. This meticulous construction minimizes potential weak points, ensuring durability and longevity. Its innovative design truly sets it apart.</p>
+      <p>Keeping your Gi clean and well-maintained is essential, as it symbolizes the sport and its traditions. With proper care, it will endure for years, providing countless rewarding training sessions.</p>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN care cleaning",
+  "settings": [],
+  "presets": [
+    {
+      "name": "DSPLN care cleaning"
+    }
+  ]
+}
+{% endschema %}

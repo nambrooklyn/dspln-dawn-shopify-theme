@@ -1,0 +1,71 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "dspln-configurator-product",
+      "settings": {
+        "platform_origin": "https://dev--dspln-dawn-shopify-theme.netlify.app",
+        "configurator_slug": "womens-gi",
+        "product_family": "gi",
+        "customization_mode": "color-logo",
+        "product_group_label": "Women's Custom Gi",
+        "show_header": false,
+        "desktop_min_height": 860,
+        "mobile_min_height": 820
+      }
+    },
+    "size_recommender": {
+      "type": "dspln-size-recommender",
+      "settings": {
+        "guide_link": "shopify://pages/sizing"
+      }
+    },
+    "process": {
+      "type": "dspln-process",
+      "blocks": {
+        "step_1": {
+          "type": "step",
+          "settings": {
+            "heading": "Pick your parts",
+            "text": "Decide what components you want. Pick your kimono, belt and/or pants, or any combination of the three. All parts can be different sizes as well."
+          }
+        },
+        "step_2": {
+          "type": "step",
+          "settings": {
+            "heading": "Customize your gi",
+            "text": "Pick your size, colors and your graphics to add to your kimono, belt and/or pant. Our design tool lets you customize your gi exactly how you want it in 3D. Make it unique and one of a kind."
+          }
+        },
+        "step_3": {
+          "type": "step",
+          "settings": {
+            "heading": "Review and check out",
+            "text": "Once you place your order we will send you a 3D model of your personal gi. You can ask any questions and once we have your approval we will begin making your gi and send tracking details when it ships."
+          }
+        }
+      },
+      "block_order": [
+        "step_1",
+        "step_2",
+        "step_3"
+      ],
+      "settings": {
+        "heading": "THE PROCESS"
+      }
+    }
+  },
+  "order": [
+    "main",
+    "size_recommender",
+    "process"
+  ]
+}

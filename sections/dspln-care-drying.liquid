@@ -1,0 +1,40 @@
+{{ 'dspln-care-page.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-care dspln-care-drying" aria-label="Drying">
+  <img class="dspln-care-drying__image" src="{{ 'dspln-care-drying-bg.webp' | asset_url }}" alt="" width="1920" height="751" loading="lazy">
+  <div class="dspln-care__inner">
+    <div class="dspln-care-section__head">
+      <h2 class="dspln-care__heading">DRYING</h2>
+      <p class="dspln-care__text">Properly drying your gi is just as important as washing it. It's essential to promptly dry it after washing to achieve the best results. Avoid leaving your gi wet for an extended period, as this can lead to increased wrinkling and susceptibility to mildew. Follow the guidelines provided below for best practices.</p>
+    </div>
+    <div class="dspln-care-cards">
+      <article class="dspln-care-card">
+        <img class="dspln-care-drying__exact-icon" src="{{ 'dspln-care-drying-hanging-exact.png' | asset_url }}" alt="" width="148" height="146" loading="lazy">
+        <h3>HANGING</h3>
+        <p>Whenever feasible, opt for air drying your gi in a well-ventilated environment with low humidity. Sunlight serves as a natural disinfectant, assisting in the elimination of bacteria and prevention of odors. However direct sunlight exposure will lead to fading of colored gis. Therefore, it's advisable to dry the gi inside out.</p>
+      </article>
+      <article class="dspln-care-card">
+        <img class="dspln-care-drying__exact-icon" src="{{ 'dspln-care-drying-dryer-exact.png' | asset_url }}" alt="" width="148" height="146" loading="lazy">
+        <h3>DRYER</h3>
+        <p>If hang dry is not an option ands using a dryer is necessary, opt for the lowest heat setting available. The delicate option is preferable. Avoid tumble drying, as it is the primary cause of shrinkage. Hot temperatures of a dryer causes wet fabric weave to tighten quickly and unevenly causing heavy shrinkage and warping.</p>
+      </article>
+      <article class="dspln-care-card">
+        <img class="dspln-care-drying__exact-icon" src="{{ 'dspln-care-drying-storage-exact.png' | asset_url }}" alt="" width="148" height="146" loading="lazy">
+        <h3>STORAGE</h3>
+        <p>The best way to store your gi is to hang it on a blazer hanger in a well-ventilated and low-moisture environment. If folding is necessary, ensure the pants are inside the folded gi to prevent the lapel from creasing too tightly. Light ironing is an option, but it's not required if regularly used.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN care drying",
+  "settings": [],
+  "presets": [
+    {
+      "name": "DSPLN care drying"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,39 @@
+{{ 'dspln-care-page.css' | asset_url | stylesheet_tag }}
+
+<section id="dspln-care-machine-wash" class="dspln-care dspln-care-section dspln-care-machine" aria-label="Machine wash">
+  <div class="dspln-care__inner">
+    <div class="dspln-care-section__head">
+      <h2 class="dspln-care__heading">MACHINE WASH</h2>
+      <p class="dspln-care__text">Washing your gi by hand is the ideal method however if you need to machine wash follow directions below. Machine washing offers convenience and efficiency, making it quick and easy, It provides a thorough and uniform cleaning of your gi, ensuring consistent results with minimal effort.</p>
+    </div>
+    <div class="dspln-care-cards">
+      <article class="dspln-care-card">
+        <img src="{{ 'dspln-care-machine-white.png' | asset_url }}" alt="" width="300" height="300" loading="lazy">
+        <h3>WHITE GI</h3>
+        <p>Keeping gi inside out, use detergent safe for white fabrics. Wash alone. Use cold water on gentle cycle. Use normal cycle only if necessary for heavily soiled gi. Use bleach only by hand on tough stains if nothing else works.</p>
+      </article>
+      <article class="dspln-care-card">
+        <img src="{{ 'dspln-care-machine-colored.png' | asset_url }}" alt="" width="300" height="300" loading="lazy">
+        <h3>COLORED GI</h3>
+        <p>With gi inside out, use detergent safe for colored fabrics that does not have bleach. Wash alone. Use cold water on gentle cycle. Use normal cycle only if necessary for heavily soiled gi. Use bleach only by hand on tough stains if nothing else works.</p>
+      </article>
+      <article class="dspln-care-card">
+        <img src="{{ 'dspln-care-machine-avoid.png' | asset_url }}" alt="" width="300" height="300" loading="lazy">
+        <h3>AVOID</h3>
+        <p>Do not wash gi right side out. Do not use bleach, chlorine, or detergents with harsh chemicals as they all break down fibers of the fabric. Do not use fabric softeners. Do not to use hot water as it ages the fabric and makes the weave tighten up causing shrinkage.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN care machine",
+  "settings": [],
+  "presets": [
+    {
+      "name": "DSPLN care machine"
+    }
+  ]
+}
+{% endschema %}

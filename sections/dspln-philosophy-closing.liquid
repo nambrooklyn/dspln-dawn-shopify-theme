@@ -1,0 +1,50 @@
+{{ 'dspln-philosophy-page.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-philosophy-closing" aria-label="{{ section.settings.heading | escape }}">
+  <img
+    class="dspln-philosophy-closing__image"
+    src="{{ 'dspln-philosophy-closing.webp' | asset_url }}"
+    alt=""
+    width="1500"
+    height="476"
+    loading="lazy"
+  >
+  <div class="dspln-philosophy-closing__inner">
+    <div class="dspln-philosophy-closing__content">
+      <p class="dspln-philosophy-eyebrow">{{ section.settings.eyebrow }}</p>
+      <h2 class="dspln-philosophy-heading">{{ section.settings.heading }}</h2>
+      <div class="dspln-philosophy-text">{{ section.settings.text }}</div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN philosophy closing",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "BLOOD SWEAT AND TEARS"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "OUR PHILOSOPHY"
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "Text",
+      "default": "<p>Yet, discipline extends far beyond the confines of the workshop or studio; it permeates every facet of existence. In life, discipline is the compass that steers us towards our goals, the inner strength that propels us through adversity, and the beacon of light that illuminates the path to self-realization.</p><p>To master a skill requires not only talent and passion but also discipline, a discipline that demands sacrifice, resilience, and an unwavering commitment to growth. It is a lifelong journey, fraught with challenges and setbacks, but also rich with triumphs and revelations.</p><p>In the end, discipline is not merely a means to an end; it is the essence of mastery itself. It is the alchemy that transforms ordinary into extraordinary, potential into reality, and dreams into destiny. Embrace discipline, and you will unlock the boundless potential that lies within you, both as a craftsman and as a human being.</p>"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN philosophy closing"
+    }
+  ]
+}
+{% endschema %}

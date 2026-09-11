@@ -1,0 +1,52 @@
+{{ 'dspln-artwork-page.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-artwork dspln-artwork-hero" aria-label="Artwork guidelines">
+  <div class="dspln-artwork-hero__inner">
+    <div class="dspln-artwork-hero__copy">
+      <p class="dspln-artwork-eyebrow">ARTWORK GUIDELINES</p>
+      <p class="dspln-artwork-hero__intro">
+        Have questions about our artwork, files or embroidery? Find quick answers here. Need detailed instructions and specs? Scroll down.
+      </p>
+
+      <div class="dspln-artwork-faq">
+        <details>
+          <summary>What is the best file format?</summary>
+          <p>PNG files are preferred due to their superior quality. Ensure they have a transparent background. Keep their size under 4MB and dimensions at least 4 inches wide.</p>
+        </details>
+        <details>
+          <summary>What size will my logos be?</summary>
+          <p>All logos will be embroidered at a width of 4 inches, specifically on the left chest, sleeves, and pants. On the back of the kimono, they will be embroidered at a width of 10 inches. If you prefer smaller measurements, or a very specific placement of your logos, please leave a note for us during checkout.</p>
+        </details>
+        <details>
+          <summary>How can I remove the background?</summary>
+          <p>You can find excellent websites where you can upload your logo and have the background removed automatically for free. One such website is <a href="https://www.remove.bg/" target="_blank" rel="noopener">www.remove.bg</a>.</p>
+        </details>
+        <details>
+          <summary>How can I get some logos made?</summary>
+          <p>There are fantastic websites available that don't require any prior design or software knowledge. The most popular one is Canva. Additionally, there are amazing AI-powered platforms where you can generate artwork effortlessly. If you're interested in a customized design service, feel free to contact us, and I can provide you with pricing details.</p>
+        </details>
+      </div>
+    </div>
+    <div class="dspln-artwork-hero__media">
+      <img
+        src="{{ 'dspln-artwork-fighter.webp' | asset_url }}"
+        alt=""
+        width="1600"
+        height="1600"
+        loading="lazy"
+      >
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN artwork FAQ",
+  "settings": [],
+  "presets": [
+    {
+      "name": "DSPLN artwork FAQ"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,77 @@
+{%- comment -%}
+  The Locker is its own site at locker.dspln.com with its own sign-in, so this
+  page is only a door: it forwards straight through, carrying the identity of a
+  customer who happens to still have a Shopify session so their Locker opens
+  already signed in. Everyone else meets DSPLN's sign-in on arrival.
+
+  There is deliberately no Shopify login here any more. Shopify accounts still
+  back checkout and order status, but they are no longer how anyone signs in.
+{%- endcomment -%}
+
+{%- liquid
+  assign locker_origin = 'https://locker.dspln.com'
+  if shop.permanent_domain contains 'dspln-dev-2'
+    assign locker_origin = 'https://dev--dspln-dawn-shopify-theme.netlify.app'
+  endif
+-%}
+
+{%- capture locker_url -%}
+{%- if customer -%}
+{{ locker_origin }}/locker?shop={{ shop.permanent_domain | url_encode }}&storefrontOrigin={{ request.origin | url_encode }}&customerId={{ customer.id | url_encode }}&customerEmail={{ customer.email | url_encode }}&firstName={{ customer.first_name | url_encode }}&lastName={{ customer.last_name | url_encode }}
+{%- else -%}
+{{ locker_origin }}/locker
+{%- endif -%}
+{%- endcapture -%}
+{%- assign locker_url = locker_url | strip -%}
+
+<style>
+  .dspln-locker-page { width: 100%; max-width: 100%; min-height: 72vh; overflow-x: hidden; background: #fff; }
+  .dspln-locker-door {
+    min-height: 72vh; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 28px; padding: 48px 24px; text-align: center;
+  }
+  .dspln-locker-door__mark {
+    display: flex; width: 58px; height: 58px; align-items: center;
+    justify-content: center; background: #1c1b1b; color: #fff; font-size: 24px;
+  }
+  .dspln-locker-door h1 { margin: 0; font-size: 28px; letter-spacing: .24em; text-transform: uppercase; }
+  .dspln-locker-door p { max-width: 430px; margin: 0; color: #666; font-size: 14px; line-height: 1.7; }
+  .dspln-locker-door__button {
+    display: flex; min-width: 280px; min-height: 58px; align-items: center;
+    justify-content: center; background: #1c1b1b; color: #fff;
+    font-size: 13px; letter-spacing: .18em; text-transform: uppercase;
+    text-decoration: none;
+  }
+  .dspln-locker-door__button:hover { color: #fff; opacity: .88; }
+  .dspln-locker-door__note { font-size: 12px; letter-spacing: .06em; color: #999; }
+</style>
+
+<section class="dspln-locker-page">
+  <div class="dspln-locker-door">
+    <div class="dspln-locker-door__mark">D</div>
+    <h1>The Locker</h1>
+    <p>Your saved designs, uploaded artwork, sizing profile, and orders.</p>
+    <a class="dspln-locker-door__button" href="{{ locker_url }}" id="dspln-locker-open">
+      Open The Locker
+    </a>
+    <p class="dspln-locker-door__note">If nothing happens, use the button above.</p>
+  </div>
+</section>
+
+<script>
+  (() => {
+    const link = document.getElementById('dspln-locker-open');
+    if (!link) return;
+    // replace(), not assign(): Back should return to wherever the customer came
+    // from, not bounce them off this page again.
+    window.location.replace(link.href);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "The Locker",
+  "settings": [],
+  "presets": [{ "name": "The Locker" }]
+}
+{% endschema %}

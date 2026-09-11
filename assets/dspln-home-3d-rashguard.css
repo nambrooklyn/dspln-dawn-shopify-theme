@@ -1,0 +1,134 @@
+.dspln-home-3d-rashguard {
+  overflow: hidden;
+  background: #ffffff;
+  color: #520000;
+}
+
+.dspln-home-3d-rashguard__inner {
+  display: grid;
+  grid-template-columns: minmax(28rem, 0.9fr) minmax(0, 1.1fr);
+  gap: 6.4rem;
+  align-items: center;
+  width: min(112rem, calc(100% - 6.4rem));
+  margin: 0 auto;
+  padding: 7.2rem 0;
+}
+
+.dspln-home-3d-rashguard__viewer {
+  min-width: 0;
+  height: 40rem;
+}
+
+.dspln-home-3d-rashguard__viewer model-viewer {
+  width: 100%;
+  height: 100%;
+  --poster-color: transparent;
+}
+
+.dspln-home-3d-rashguard__copy {
+  max-width: 60rem;
+}
+
+.dspln-home-3d-rashguard__eyebrow {
+  margin: 0 0 1.4rem;
+  color: #969696;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.dspln-home-3d-rashguard__heading {
+  margin: 0;
+  color: #520000;
+  font-size: clamp(3.8rem, 4vw, 5.2rem);
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  line-height: 1.28;
+  text-transform: uppercase;
+}
+
+.dspln-home-3d-rashguard__text {
+  margin: 2.4rem 0 0;
+  color: #969696;
+  font-size: 1.6rem;
+  line-height: 1.75;
+}
+
+.dspln-home-3d-rashguard__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(16rem, 1fr));
+  gap: 0.4rem;
+  margin-top: 3.2rem;
+}
+
+.dspln-home-3d-rashguard__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 5.2rem;
+  padding: 1.5rem 2.4rem;
+  border: 1px solid #520000;
+  color: #520000;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.dspln-home-3d-rashguard__button--primary {
+  background: #520000;
+  color: #ffffff;
+}
+
+.dspln-home-3d-rashguard__button:hover,
+.dspln-home-3d-rashguard__button:focus-visible {
+  transform: translateY(-0.4rem);
+  opacity: 0.82;
+  color: #520000;
+}
+
+.dspln-home-3d-rashguard__button--primary:hover,
+.dspln-home-3d-rashguard__button--primary:focus-visible {
+  color: #ffffff;
+}
+
+@media screen and (max-width: 989px) {
+  .dspln-home-3d-rashguard__inner {
+    grid-template-columns: 1fr;
+    gap: 3.2rem;
+    padding: 5.6rem 0;
+  }
+
+  .dspln-home-3d-rashguard__copy {
+    max-width: 62rem;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .dspln-home-3d-rashguard__viewer {
+    height: 34rem;
+  }
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-home-3d-rashguard__inner {
+    width: min(100% - 3.2rem, 62rem);
+    padding: 4.8rem 0;
+  }
+
+  .dspln-home-3d-rashguard__heading {
+    font-size: clamp(3rem, 10vw, 4rem);
+  }
+
+  .dspln-home-3d-rashguard__actions {
+    grid-template-columns: 1fr;
+  }
+}

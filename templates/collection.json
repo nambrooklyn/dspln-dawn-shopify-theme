@@ -1,0 +1,89 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "banner": {
+      "type": "main-collection-banner",
+      "settings": {
+        "show_collection_description": false,
+        "show_collection_image": false,
+        "color_scheme": "scheme-1"
+      }
+    },
+    "product-grid": {
+      "type": "main-collection-product-grid",
+      "settings": {
+        "products_per_page": 36,
+        "columns_desktop": 3,
+        "columns_mobile": "2",
+        "color_scheme": "",
+        "image_ratio": "adapt",
+        "image_shape": "default",
+        "show_secondary_image": false,
+        "show_vendor": false,
+        "show_rating": false,
+        "quick_add": "none",
+        "enable_filtering": false,
+        "filter_type": "horizontal",
+        "enable_sorting": false,
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "dspln_howto_process_fH7r9r": {
+      "type": "dspln-howto-process",
+      "name": "DSPLN how-to process",
+      "settings": {
+        "image_alt": "Customizer process steps"
+      }
+    },
+    "dspln_process_fwkaXP": {
+      "type": "dspln-process",
+      "blocks": {
+        "step_xg9hzM": {
+          "type": "step",
+          "settings": {
+            "heading": "Pick your parts",
+            "text": "Decide what components you want. Pick your kimono, belt and/or pants, or any combination of the three. All parts can be different sizes as well."
+          }
+        },
+        "step_KhfRHh": {
+          "type": "step",
+          "settings": {
+            "heading": "Customize your gi",
+            "text": "Pick your size, colors and your graphics to add to your kimono, belt and/or pant. Our design tool lets you customize your gi exactly how you want it in 3D. Make it unique and one of a kind."
+          }
+        },
+        "step_jLheCx": {
+          "type": "step",
+          "settings": {
+            "heading": "Review and check out",
+            "text": "Once you place your order we will send you a 3D model of your personal gi. You can ask any questions and once we have your approval we will begin making your gi and send tracking details when it ships."
+          }
+        }
+      },
+      "block_order": [
+        "step_xg9hzM",
+        "step_KhfRHh",
+        "step_jLheCx"
+      ],
+      "name": "DSPLN process",
+      "settings": {
+        "heading": "THE PROCESS"
+      }
+    }
+  },
+  "order": [
+    "banner",
+    "product-grid",
+    "dspln_howto_process_fH7r9r",
+    "dspln_process_fwkaXP"
+  ]
+}

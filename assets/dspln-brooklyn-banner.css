@@ -1,0 +1,85 @@
+.dspln-brooklyn-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40.5rem;
+  overflow: hidden;
+  color: #ffffff;
+  text-align: center;
+  isolation: isolate;
+}
+
+.dspln-brooklyn-banner__image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.dspln-brooklyn-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(1, 16, 44, 0.22);
+  pointer-events: none;
+}
+
+.dspln-brooklyn-banner__content {
+  position: relative;
+  z-index: 2;
+  width: min(78rem, calc(100% - 4.8rem));
+  margin: 0 auto;
+  padding: 5.6rem 0;
+}
+
+.dspln-brooklyn-banner__eyebrow {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.dspln-brooklyn-banner__heading {
+  margin: 1.4rem 0 0;
+  color: #ffffff;
+  font-size: clamp(3.4rem, 4vw, 5.2rem);
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  line-height: 1.12;
+  text-transform: uppercase;
+}
+
+.dspln-brooklyn-banner__text {
+  margin: 2.2rem auto 0;
+  max-width: 70rem;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1.4rem;
+  line-height: 1.8;
+}
+
+@media screen and (max-width: 749px) {
+  .dspln-brooklyn-banner {
+    min-height: 45rem;
+  }
+
+  .dspln-brooklyn-banner__content {
+    width: min(100% - 3.2rem, 52rem);
+    padding: 4.8rem 0;
+  }
+
+  .dspln-brooklyn-banner__eyebrow {
+    font-size: 1.3rem;
+  }
+
+  .dspln-brooklyn-banner__heading {
+    font-size: clamp(2.8rem, 9vw, 3.8rem);
+  }
+}

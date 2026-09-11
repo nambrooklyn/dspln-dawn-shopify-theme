@@ -1,0 +1,80 @@
+{{ 'dspln-home-hero.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-home-hero" aria-label="The art of gi making">
+  <div class="dspln-home-hero__media" aria-hidden="true">
+    <img
+      src="{{ 'dspln-home-hero.webp' | asset_url }}"
+      alt=""
+      width="1600"
+      height="651"
+      fetchpriority="high"
+    >
+  </div>
+
+  <div class="dspln-home-hero__shade" aria-hidden="true"></div>
+
+  <div class="dspln-home-hero__content">
+    <h1 class="dspln-home-hero__title">{{ section.settings.heading }}</h1>
+    <p class="dspln-home-hero__subtitle">{{ section.settings.subheading }}</p>
+
+    <div class="dspln-home-hero__actions">
+      <a class="dspln-home-hero__button dspln-home-hero__button--primary" href="{{ section.settings.primary_link }}">
+        {{ section.settings.primary_label }}
+        <span aria-hidden="true">→</span>
+      </a>
+      <a class="dspln-home-hero__button dspln-home-hero__button--secondary" href="{{ section.settings.secondary_link }}">
+        {{ section.settings.secondary_label }}
+        <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN home hero",
+  "tag": "section",
+  "class": "section section-dspln-home-hero",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "THE ART OF GI MAKING"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "THE DISCIPLINE OF JIU JITSU"
+    },
+    {
+      "type": "text",
+      "id": "primary_label",
+      "label": "Primary button label",
+      "default": "START DESIGNING"
+    },
+    {
+      "type": "url",
+      "id": "primary_link",
+      "label": "Primary button link"
+    },
+    {
+      "type": "text",
+      "id": "secondary_label",
+      "label": "Secondary button label",
+      "default": "HOW IT'S DONE"
+    },
+    {
+      "type": "url",
+      "id": "secondary_link",
+      "label": "Secondary button link"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN home hero"
+    }
+  ]
+}
+{% endschema %}

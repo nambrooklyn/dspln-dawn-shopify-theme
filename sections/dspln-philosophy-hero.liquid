@@ -1,0 +1,50 @@
+{{ 'dspln-philosophy-page.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-philosophy-hero" aria-label="{{ section.settings.heading | escape }}">
+  <img
+    class="dspln-philosophy-hero__image"
+    src="{{ 'dspln-philosophy-hero.webp' | asset_url }}"
+    alt=""
+    width="1500"
+    height="476"
+    loading="lazy"
+  >
+  <div class="dspln-philosophy-hero__inner">
+    <div class="dspln-philosophy-hero__content">
+      <p class="dspln-philosophy-eyebrow">{{ section.settings.eyebrow }}</p>
+      <h2 class="dspln-philosophy-heading">{{ section.settings.heading }}</h2>
+      <div class="dspln-philosophy-text">{{ section.settings.text }}</div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN philosophy hero",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "BLOOD SWEAT & TEARS"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "OUR PHILOSOPHY"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "Discipline is the cornerstone upon which mastery is built, both in craft and in life. It is the unwavering commitment to the pursuit of excellence, the relentless drive to push beyond perceived limits, and the steadfast dedication to honing one's skills day in and day out. In the realm of craft, discipline is the silent companion of every artisan, guiding their hands as they shape raw materials into works of art. It is the patient repetition of technique, the willingness to embrace failure as a stepping stone to success, and the refusal to settle for anything less than perfection."
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN philosophy hero"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,29 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "dspln-configurator-product",
+      "settings": {
+        "platform_origin": "https://dev--dspln-dawn-shopify-theme.netlify.app",
+        "configurator_slug": "adult-grappling-short",
+        "product_family": "grappling-short",
+        "customization_mode": "sublimation",
+        "product_group_label": "Custom Adult Grappling Short",
+        "show_header": false,
+        "desktop_min_height": 860,
+        "mobile_min_height": 820
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

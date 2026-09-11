@@ -1,0 +1,104 @@
+{{ 'dspln-about-sections.css' | asset_url | stylesheet_tag }}
+
+<section class="dspln-about-craft" aria-label="{{ section.settings.heading | escape }}">
+  <div class="dspln-about-craft__inner">
+    <div class="dspln-about-craft__media">
+      {% if section.settings.video_watch_url != blank %}
+        <a class="dspln-about-craft__video" href="{{ section.settings.video_watch_url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ section.settings.video_label | escape }}">
+          <img
+            src="{{ 'dspln-about-video-poster.jpg' | asset_url }}"
+            alt="{{ section.settings.video_label | escape }}"
+            width="1280"
+            height="720"
+            loading="lazy"
+          >
+          <span class="dspln-about-craft__play" aria-hidden="true"></span>
+        </a>
+      {% elsif section.settings.image != blank %}
+        <img
+          src="{{ section.settings.image | image_url: width: 1100 }}"
+          alt="{{ section.settings.image.alt | default: section.settings.heading | escape }}"
+          width="{{ section.settings.image.width }}"
+          height="{{ section.settings.image.height }}"
+          loading="lazy"
+        >
+      {% else %}
+        <img
+          src="{{ 'dspln-blood-sweat-tears.webp' | asset_url }}"
+          alt="{{ section.settings.heading | escape }}"
+          width="1100"
+          height="620"
+          loading="lazy"
+        >
+      {% endif %}
+    </div>
+    <div class="dspln-about-craft__copy">
+      {% if section.settings.eyebrow != blank %}
+        <p class="dspln-about-craft__eyebrow">{{ section.settings.eyebrow }}</p>
+      {% endif %}
+      <h2 class="dspln-about-heading">{{ section.settings.heading }}</h2>
+      <p class="dspln-about-text">{{ section.settings.text }}</p>
+      {% if section.settings.button_link != blank and section.settings.button_label != blank %}
+        <a class="dspln-about-craft__button" href="{{ section.settings.button_link }}">{{ section.settings.button_label }}</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "DSPLN about craftsmanship",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Fallback image"
+    },
+    {
+      "type": "url",
+      "id": "video_watch_url",
+      "label": "Video watch URL"
+    },
+    {
+      "type": "text",
+      "id": "video_label",
+      "label": "Video label",
+      "default": "Watch Blood Sweat and Tears video"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "BLOOD SWEAT AND TEARS"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "PASSIONATE CRAFTSMANSHIP"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text",
+      "default": "@namcoanyc brings an unparalleled level of craftsmanship, attention to detail, precision, innovation, obsession to quality, and passion to his kimono making, resulting in truly unique and beautiful pieces that are a reflection of the culture and spirit of Brazilian jujitsu."
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button label",
+      "default": "WATCH VIDEO"
+    }
+  ],
+  "presets": [
+    {
+      "name": "DSPLN about craftsmanship"
+    }
+  ]
+}
+{% endschema %}
