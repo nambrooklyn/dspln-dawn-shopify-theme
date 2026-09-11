@@ -7,7 +7,7 @@ import {
   type DragEvent,
   type FormEvent,
 } from 'react';
-import { ImagePlus, Keyboard, LoaderCircle, Mic, MicOff, Send, WandSparkles, X } from 'lucide-react';
+import { Camera as CameraIcon, File as FileIcon, Image as ImageIcon, LoaderCircle, Mic, MicOff, Plus, Send, WandSparkles, X } from 'lucide-react';
 
 import {
   BELT_EMBROIDERY_DEFAULT,
@@ -259,7 +259,7 @@ export function DesignAssistant({
     ),
   };
   const [open, setOpen] = useState(false);
-  const [keyboardVisible, setKeyboardVisible] = useState(!voiceFirst);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
@@ -279,6 +279,8 @@ export function DesignAssistant({
   const artworkRef = useRef(new Map<string, AttachedArtwork>());
   const artworkInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLInputElement>(null);
+  const libraryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<{
     start: () => void;
     stop: () => void;
@@ -296,6 +298,14 @@ export function DesignAssistant({
 
   useEffect(() => {
     onOpenChange?.(open);
+    // Tell an embedding storefront page (theme iframe host) so it can hide
+    // the Chatra bubble while the assistant sheet is up.
+    if (typeof window !== 'undefined' && window.parent !== window) {
+      window.parent.postMessage(
+        { type: 'dspln:design-assistant:open-change', open },
+        '*',
+      );
+    }
   }, [onOpenChange, open]);
 
   useEffect(() => {
@@ -303,18 +313,14 @@ export function DesignAssistant({
   }, [bubbles, busy]);
 
   useEffect(() => {
-    if (open && voiceFirst) setKeyboardVisible(false);
     if (!open) {
       recognitionRef.current?.abort();
       recognitionRef.current = null;
       setListening(false);
       setVoiceError('');
+      setAttachMenuOpen(false);
     }
-  }, [open, voiceFirst]);
-
-  useEffect(() => {
-    if (keyboardVisible) promptInputRef.current?.focus();
-  }, [keyboardVisible]);
+  }, [open]);
 
   const toggleVoiceInput = useCallback(() => {
     if (listening) {
@@ -330,7 +336,7 @@ export function DesignAssistant({
     const Recognition =
       speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
     if (!Recognition) {
-      setVoiceError('Voice input is not supported in this browser. Tap the keyboard to type.');
+      setVoiceError('Voice input is not supported in this browser. Type your idea instead.');
       return;
     }
 
@@ -350,7 +356,7 @@ export function DesignAssistant({
       if (event.error !== 'aborted') {
         setVoiceError(
           event.error === 'not-allowed'
-            ? 'Microphone access is blocked. Allow it in your browser or tap the keyboard.'
+            ? 'Microphone access is blocked. Allow it in your browser or type instead.'
             : 'I could not hear that. Tap the microphone and try again.',
         );
       }
@@ -1266,93 +1272,109 @@ export function DesignAssistant({
               onChange={attachArtwork}
               className="hidden"
             />
-            {voiceFirst && !keyboardVisible ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
+            <input
+              ref={libraryInputRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={attachArtwork}
+              className="hidden"
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={attachArtwork}
+              className="hidden"
+            />
+            <div className="relative flex items-center gap-2">
+              {attachMenuOpen ? (
+                <>
                   <button
                     type="button"
-                    onClick={toggleVoiceInput}
-                    disabled={busy || uploadingArtwork}
-                    aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-                    className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-white disabled:opacity-40 ${listening ? 'border-[#1c1b1b] bg-[#1c1b1b]' : 'border-[#5c0000] bg-[#5c0000]'}`}
-                  >
-                    {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  </button>
-                  <div
-                    aria-live="polite"
-                    className="flex h-10 min-w-0 flex-1 items-center rounded-full border border-[#e3ded7] bg-white py-1 pr-1 pl-3.5 text-[12px] text-[#1c1b1b]"
-                  >
-                    <span className={`min-w-0 flex-1 truncate ${input ? '' : 'text-[#8a8580]'}`}>
-                      {input || (listening ? 'Listening…' : 'Tap the microphone to describe your design')}
-                    </span>
+                    aria-label="Close attachment options"
+                    onClick={() => setAttachMenuOpen(false)}
+                    className="fixed inset-0 z-[90] cursor-default bg-transparent"
+                  />
+                  <div className="absolute bottom-11 left-0 z-[95] w-44 overflow-hidden rounded-xl border border-[#e3ded7] bg-white/95 shadow-lg backdrop-blur">
+                    {placement === 'mobile' ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { setAttachMenuOpen(false); libraryInputRef.current?.click(); }}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[#1c1b1b] hover:bg-[#faf8f5]"
+                          style={{ fontSize: 12 }}
+                        >
+                          <ImageIcon className="h-4 w-4 text-[#5c0000]" />
+                          Photo Library
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setAttachMenuOpen(false); cameraInputRef.current?.click(); }}
+                          className="flex w-full items-center gap-2.5 border-t border-[#f0ece6] px-3.5 py-2.5 text-left text-[#1c1b1b] hover:bg-[#faf8f5]"
+                          style={{ fontSize: 12 }}
+                        >
+                          <CameraIcon className="h-4 w-4 text-[#5c0000]" />
+                          Camera
+                        </button>
+                      </>
+                    ) : null}
                     <button
-                      type="submit"
-                      disabled={busy || uploadingArtwork || cleanupDirty || (!input.trim() && !attachedArtwork)}
-                      aria-label="Send"
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
+                      type="button"
+                      onClick={() => { setAttachMenuOpen(false); artworkInputRef.current?.click(); }}
+                      className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[#1c1b1b] hover:bg-[#faf8f5] ${placement === 'mobile' ? 'border-t border-[#f0ece6]' : ''}`}
+                      style={{ fontSize: 12 }}
                     >
-                      <Send className="h-3.5 w-3.5" />
+                      <FileIcon className="h-4 w-4 text-[#5c0000]" />
+                      {placement === 'mobile' ? 'File' : 'Attach a file'}
                     </button>
                   </div>
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    aria-label="Attach artwork"
-                    disabled={busy || uploadingArtwork}
-                    onClick={() => artworkInputRef.current?.click()}
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e3ded7] text-[#5c0000] hover:bg-[#faf8f5]"
-                  >
-                    {uploadingArtwork ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ImagePlus className="h-4 w-4" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setKeyboardVisible(true)}
-                    aria-label="Open keyboard input"
-                    className="inline-flex h-10 items-center gap-2 rounded-full border border-[#e3ded7] px-3 text-[10px] font-semibold text-[#5c0000] hover:bg-[#faf8f5]"
-                  >
-                    <Keyboard className="h-4 w-4" />
-                    Keyboard
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label="Attach artwork"
-                  disabled={busy || uploadingArtwork}
-                  onClick={() => artworkInputRef.current?.click()}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e3ded7] text-[#5c0000] hover:bg-[#faf8f5] disabled:opacity-40"
-                >
-                  {uploadingArtwork ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ImagePlus className="h-4 w-4" />
-                  )}
-                </button>
-                <input
-                  ref={promptInputRef}
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  placeholder="Describe a design or attach artwork"
-                  className="h-10 min-w-0 flex-1 rounded-full border border-[#e3ded7] bg-white px-3.5 text-[13px] outline-none focus:border-[#1c1b1b]"
-                />
+                </>
+              ) : null}
+              <button
+                type="button"
+                aria-label="Add an attachment"
+                disabled={busy || uploadingArtwork}
+                onClick={() => setAttachMenuOpen((current) => !current)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#e3ded7] text-[#5c0000] hover:bg-[#faf8f5] disabled:opacity-40"
+              >
+                {uploadingArtwork ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </button>
+              <input
+                ref={promptInputRef}
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder={listening ? 'Listening…' : voiceFirst ? 'Describe your design' : 'Describe a design'}
+                className="h-9 min-w-0 flex-1 rounded-full border border-[#e3ded7] bg-white px-3.5 outline-none focus:border-[#1c1b1b]"
+                style={{ fontSize: 13 }}
+              />
+              {input.trim() || attachedArtwork ? (
                 <button
                   type="submit"
-                  disabled={busy || uploadingArtwork || cleanupDirty || (!input.trim() && !attachedArtwork)}
+                  disabled={busy || uploadingArtwork || cleanupDirty}
                   aria-label="Send"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5c0000] text-white disabled:opacity-40"
                 >
                   <Send className="h-4 w-4" />
                 </button>
-              </div>
-            )}
-            {voiceFirst && voiceError ? (
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleVoiceInput}
+                  disabled={busy || uploadingArtwork}
+                  onMouseDown={(event) => event.preventDefault()}
+                  aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+                  className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40 ${listening ? 'bg-[#1c1b1b]' : 'bg-[#5c0000]'}`}
+                >
+                  {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
+            {voiceError ? (
               <p className="mt-2 px-1 text-[10px] text-[#8b1e1e]">{voiceError}</p>
             ) : null}
           </form>
