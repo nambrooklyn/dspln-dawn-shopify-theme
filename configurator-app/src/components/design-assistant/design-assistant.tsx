@@ -1485,28 +1485,43 @@ export function DesignAssistant({
             </div>
           ) : null}
           {placement === 'mobile' ? (
-            <div className="flex h-6 shrink-0 items-center justify-center bg-[#faf8f5]">
-              <span className="h-1 w-10 rounded-full bg-[#c9c3bc]" />
-            </div>
-          ) : null}
-          <div className="flex items-center justify-between border-b border-[#eee9e2] bg-[#faf8f5] px-4 py-3">
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-[#1c1b1b] uppercase">
+            /* Mobile: ONE slim row — handle pill centered, title left, close
+               right. The old handle strip + two-line header ate ~84px of a
+               phone screen; every pixel saved here is chat area. */
+            <div className="relative flex h-7 shrink-0 items-center justify-between border-b border-[#eee9e2] bg-[#faf8f5] px-3">
+              <p className="text-[9px] font-semibold tracking-[0.14em] text-[#1c1b1b] uppercase">
                 Design Assistant
               </p>
-              <p className="text-[10px] text-[#8a8580]">
-                Changes appear live on your gi
-              </p>
+              <span className="pointer-events-none absolute left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-[#c9c3bc]" />
+              <button
+                type="button"
+                aria-label="Close assistant"
+                onClick={() => setOpen(false)}
+                className="rounded-full p-1 text-[#8a8580] hover:bg-[#f0ece6]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <button
-              type="button"
-              aria-label="Close assistant"
-              onClick={() => setOpen(false)}
-              className="rounded-full p-1.5 text-[#8a8580] hover:bg-[#f0ece6]"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center justify-between border-b border-[#eee9e2] bg-[#faf8f5] px-4 py-3">
+              <div>
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-[#1c1b1b] uppercase">
+                  Design Assistant
+                </p>
+                <p className="text-[10px] text-[#8a8580]">
+                  Changes appear live on your gi
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close assistant"
+                onClick={() => setOpen(false)}
+                className="rounded-full p-1.5 text-[#8a8580] hover:bg-[#f0ece6]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
 
           <div ref={scrollRef} className="flex-1 space-y-2.5 overflow-y-auto px-3.5 py-3">
             {bubbles.map((bubble, index) => (
