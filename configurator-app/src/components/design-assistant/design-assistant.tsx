@@ -1085,16 +1085,16 @@ export function DesignAssistant({
             /* Mobile: ONE slim row — handle pill centered, title left, close
                right. The old handle strip + two-line header ate ~84px of a
                phone screen; every pixel saved here is chat area. */
-            <div className="relative flex h-7 shrink-0 items-center justify-between border-b border-[#eee9e2] bg-[#faf8f5] px-3">
-              <p className="text-[9px] font-semibold tracking-[0.14em] text-[#1c1b1b] uppercase">
+            <div className="relative flex h-[34px] shrink-0 items-center justify-between bg-[#5c0000] px-3">
+              <p className="text-[9px] font-semibold tracking-[0.14em] text-white uppercase">
                 Design Assistant
               </p>
-              <span className="pointer-events-none absolute left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-[#c9c3bc]" />
+              <span className="pointer-events-none absolute left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-white/40" />
               <button
                 type="button"
                 aria-label="Close assistant"
                 onClick={() => setOpen(false)}
-                className="rounded-full p-1 text-[#8a8580] hover:bg-[#f0ece6]"
+                className="rounded-full p-1 text-white/80 hover:bg-white/15"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
