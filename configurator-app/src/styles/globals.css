@@ -212,3 +212,28 @@ textarea {
     letter-spacing: 0.12em;
   }
 }
+
+/*
+ * iOS Safari magnifies the page whenever a focused form control's font-size
+ * is below 16px, and it never zooms back out on blur — so one tap on the
+ * custom-measurements box left the whole configurator stuck zoomed in. The
+ * 16px threshold is the only trigger, so raising these controls to 16px on
+ * touch devices removes the behavior at the source; pointers that never
+ * auto-zoom keep the compact sizes.
+ *
+ * The alternative — maximum-scale=1 on the viewport — would also stop it,
+ * but by taking pinch-zoom away from everyone (WCAG 1.4.4), so it is not
+ * used here.
+ *
+ * !important because these controls set their size inline or through
+ * Tailwind utilities. Only typeable controls are listed: range, color,
+ * checkbox, radio and file inputs never trigger the zoom, and resizing them
+ * would move layout for no benefit.
+ */
+@media (pointer: coarse) {
+  input:not([type='range']):not([type='color']):not([type='checkbox']):not([type='radio']):not([type='file']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
