@@ -1,6 +1,6 @@
 import { getAuth } from '../lib/auth.mjs';
 import {
-  academyStore, clean, cleanBrandColors, slugify, summarizeAcademy, writeProfile,
+  CHANNELS, academyStore, clean, cleanBrandColors, cleanShopDomain, slugify, summarizeAcademy, writeProfile,
 } from '../lib/academy.mjs';
 
 // /api/academy — the signed-in member's academy.
@@ -8,10 +8,11 @@ import {
 //   GET    -> { academy } (null when they have none)
 //   POST   -> create it: { name, logo?, brandColors? }. The creator becomes
 //             its owner and the session switches into it.
-//   PATCH  -> owner/admin edits name, logo, brand colors.
+//   PATCH  -> owner/admin edits name, logo, brand colors, and answers
+//             "Where will you sell?" ({ channel, shopDomain }).
 //
-// Plan, card and store connection come in later slices; this is only the
-// "Create your academy" step from the Phase 1 plan.
+// The plan and card go through Better Auth's Stripe plugin (/api/auth/
+// subscription/*), not here; the summary just reports what it finds there.
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -123,6 +124,21 @@ export default async (request, context) => {
     if (data.name !== undefined) patch.name = data.name;
     if (data.logo !== undefined) patch.logo = data.logo;
     if (body.brandColors !== undefined) patch.brandColors = cleanBrandColors(body.brandColors);
+
+    // "Where will you sell?" — onboarding step 3. Skippable, and re-answerable.
+    if (body.channel !== undefined) {
+      const channel = body.channel === null ? null : clean(body.channel, 40);
+      if (channel !== null && !CHANNELS.includes(channel)) return json({ error: 'Pick a store type.' }, 400);
+      patch.channel = channel;
+      if (channel === 'hosted-site') patch.hostedSiteInterest = true;
+      patch.channelChosenAt = new Date().toISOString();
+    }
+    if (body.shopDomain !== undefined) {
+      const raw = clean(body.shopDomain, 200);
+      const shopDomain = raw ? cleanShopDomain(raw) : '';
+      if (raw && !shopDomain) return json({ error: 'That does not look like a myshopify.com address.' }, 400);
+      patch.shopDomain = shopDomain || null;
+    }
     if (Object.keys(patch).length) await writeProfile(store, current.id, patch);
 
     const academy = await summarizeAcademy({ auth, headers, session, store });

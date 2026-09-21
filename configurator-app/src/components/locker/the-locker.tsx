@@ -12,9 +12,16 @@ import { Check, House, ImagePlus, Receipt, Scissors, Truck, X } from 'lucide-rea
 import { toast } from 'sonner';
 
 import {
+  ACADEMY_PLANS,
   createAcademy,
+  openBillingPortal,
+  planById,
   resetAcademyMode,
+  startPlanCheckout,
+  updateAcademy,
   type AcademyBrandColors,
+  type AcademyChannel,
+  type AcademyPlanId,
   type AcademySummary,
 } from '../../lib/academy-mode';
 import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
@@ -1641,6 +1648,42 @@ export function TheLocker() {
     if (customer) void indexLockerCustomer(customer, undefined, standingRef.current);
   }, [loadLocker]);
 
+  // Back from Stripe Checkout. The plugin's /subscription/success hop has
+  // already written the subscription row, so a fresh session read shows the
+  // plan; then the next onboarding step is "Where will you sell?".
+  const checkoutOutcome = useMemo(() => {
+    try {
+      const url = new URL(window.location.href);
+      const outcome = url.searchParams.get('checkout');
+      if (outcome) {
+        url.searchParams.delete('checkout');
+        window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+      }
+      return outcome;
+    } catch {
+      return null;
+    }
+  }, []);
+  const checkoutHandled = useRef(false);
+  useEffect(() => {
+    if (!checkoutOutcome || checkoutHandled.current || !sessionChecked) return;
+    checkoutHandled.current = true;
+    if (checkoutOutcome === 'success') {
+      resetAcademyMode();
+      void loadSession().then(() => {
+        toast.success('Your plan is active and your card is on file');
+        setPage('store');
+      });
+    } else if (checkoutOutcome === 'cancelled') {
+      toast('No charge was made. Pick a plan whenever you are ready.');
+    }
+  }, [checkoutOutcome, sessionChecked, loadSession]);
+
+  const academyUpdated = (next: AcademySummary) => {
+    setAcademy(next);
+    resetAcademyMode();
+  };
+
   // Retail pages only: a member who leaves their academy (or opened a page
   // link they no longer have) lands on Designs instead of a blank tab.
   useEffect(() => {
@@ -1758,7 +1801,8 @@ export function TheLocker() {
   const academyCreated = (created: AcademySummary) => {
     setAcademy(created);
     resetAcademyMode();
-    setPage('store');
+    // Onboarding order: academy → plan and card → where will you sell.
+    setPage(created.billingAvailable ? 'billing' : 'store');
     if (customer) void indexLockerCustomer(customer, undefined, { ...standingRef.current, classification: 'academy_owner' });
   };
 
@@ -2355,7 +2399,12 @@ export function TheLocker() {
           ) : null}
 
           {!loading && academy && ACADEMY_PAGES.includes(page) ? (
-            <AcademyPage page={page} academy={academy} />
+            <AcademyPage
+              page={page}
+              academy={academy}
+              onUpdated={academyUpdated}
+              onGo={(next) => { setPage(next); setSelectedDesign(null); }}
+            />
           ) : null}
 
           {!loading && page === 'settings' ? (
@@ -2522,7 +2571,7 @@ function LockerSettings({
             </div>
             <BrandColorSwatches colors={academy.brandColors} />
             <p className="mt-5 text-xs text-[#999]">
-              Plan, card and store connection are coming to the Billing and Store tabs.
+              Your plan and card are in the Billing tab; where you sell is in the Store tab.
             </p>
           </div>
         ) : (
@@ -2762,27 +2811,46 @@ function CreateAcademyCard({ onCreated }: { onCreated: (academy: AcademySummary)
 }
 
 /**
- * The Academy tabs. Placeholders for now: each names what the tab will hold
- * so the shape of the product is visible before the plumbing exists.
+ * The Academy tabs. Billing and Store are real (plan + card, then "Where
+ * will you sell?"); Products and Team still describe what they will hold.
  */
-function AcademyPage({ page, academy }: { page: LockerPage; academy: AcademySummary }) {
+function AcademyPage({
+  page,
+  academy,
+  onUpdated,
+  onGo,
+}: {
+  page: LockerPage;
+  academy: AcademySummary;
+  onUpdated: (academy: AcademySummary) => void;
+  onGo: (page: LockerPage) => void;
+}) {
   const card = 'border border-[#e6e4df] bg-white p-6 sm:p-8';
   const heading = 'text-[11px] uppercase tracking-[0.18em] text-[#8a8580]';
+
+  if (page === 'billing') {
+    return (
+      <section className="max-w-4xl space-y-6">
+        <AcademySetupSteps academy={academy} current="billing" onGo={onGo} />
+        <AcademyBilling academy={academy} />
+      </section>
+    );
+  }
+
+  if (page === 'store') {
+    return (
+      <section className="max-w-4xl space-y-6">
+        <AcademySetupSteps academy={academy} current="store" onGo={onGo} />
+        <AcademyStore academy={academy} onUpdated={onUpdated} onGo={onGo} />
+      </section>
+    );
+  }
+
   const copy: Partial<Record<LockerPage, { title: string; body: string; soon: string[] }>> = {
-    store: {
-      title: 'Where will you sell?',
-      body: 'Connect the store your students buy from. Publish a design and it appears there; when they order, DSPLN makes it and ships it, and your store sends the tracking email.',
-      soon: ['Connect my Shopify store', 'DSPLN-hosted academy site (coming soon)'],
-    },
     products: {
       title: 'Published products',
       body: 'Every design you publish, where it is live, and its status. Publish from any configurator with the Publish Product button.',
       soon: ['Published products list', 'Re-publish after a design change', 'Pricing with your margin'],
-    },
-    billing: {
-      title: 'Plan and card',
-      body: 'Your plan and the card on file. The same card pays the monthly plan and the production cost of each order as it comes in.',
-      soon: ['Starter “Logo It” $49 / mo', 'Custom “Customize It” $89 / mo', 'Private Label “Brand It” $199 / mo'],
     },
     team: {
       title: 'Team',
@@ -2809,5 +2877,339 @@ function AcademyPage({ page, academy }: { page: LockerPage; academy: AcademySumm
         <p className={`${label} mt-6 text-[#999]`}>Coming in the next update</p>
       </div>
     </section>
+  );
+}
+
+/**
+ * Onboarding progress: academy → plan and card → where will you sell. Shown
+ * on the Billing and Store tabs until all three are done, so a new academy
+ * always knows what is left.
+ */
+function AcademySetupSteps({
+  academy,
+  current,
+  onGo,
+}: {
+  academy: AcademySummary;
+  current: 'billing' | 'store';
+  onGo: (page: LockerPage) => void;
+}) {
+  const hasPlan = Boolean(academy.subscription);
+  const hasStore = Boolean(academy.channel);
+  if (hasPlan && hasStore) return null;
+  const steps: Array<{ id: 'academy' | 'billing' | 'store'; text: string; done: boolean }> = [
+    { id: 'academy', text: 'Create your academy', done: true },
+    { id: 'billing', text: 'Pick a plan, save a card', done: hasPlan },
+    { id: 'store', text: 'Where will you sell?', done: hasStore },
+  ];
+  return (
+    <ol className="flex flex-wrap gap-x-6 gap-y-2 border-b border-[#ddd] pb-4">
+      {steps.map((step, index) => {
+        const active = step.id === current;
+        const clickable = step.id === 'billing' || step.id === 'store';
+        return (
+          <li key={step.id} className="flex items-center gap-2">
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+                step.done ? 'bg-[#1c1b1b] text-white' : active ? 'border border-[#1c1b1b]' : 'border border-[#c9c5bd] text-[#999]'
+              }`}
+              aria-hidden="true"
+            >
+              {step.done ? <Check className="h-3 w-3" /> : index + 1}
+            </span>
+            {clickable ? (
+              <button
+                type="button"
+                onClick={() => onGo(step.id as LockerPage)}
+                className={`${label} ${active ? 'text-[#1c1b1b]' : 'text-[#8a8580] hover:text-[#1c1b1b]'}`}
+              >
+                {step.text}
+              </button>
+            ) : (
+              <span className={`${label} text-[#8a8580]`}>{step.text}</span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/**
+ * Plan + card. Picking a plan opens Stripe Checkout; the card it collects
+ * becomes the academy's card on file (the server promotes it to the
+ * customer's default payment method), which also pays for production orders.
+ */
+function AcademyBilling({ academy }: { academy: AcademySummary }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const card = 'border border-[#e6e4df] bg-white p-6 sm:p-8';
+  const heading = 'text-[11px] uppercase tracking-[0.18em] text-[#8a8580]';
+  const canManage = ['owner', 'admin'].includes(academy.role);
+  const current = academy.subscription;
+  const currentPlan = planById(current?.plan);
+
+  const choose = async (plan: AcademyPlanId) => {
+    setBusy(plan);
+    try {
+      const url = await startPlanCheckout(academy.id, plan);
+      if (url) {
+        window.location.assign(url);
+        return;
+      }
+      // An existing subscription was changed in place.
+      resetAcademyMode();
+      window.location.assign(new URL('/locker?page=billing&checkout=success', window.location.origin).toString());
+    } catch (cause) {
+      toast.error((cause as Error).message);
+      setBusy(null);
+    }
+  };
+
+  const portal = async () => {
+    setBusy('portal');
+    try {
+      window.location.assign(await openBillingPortal(academy.id));
+    } catch (cause) {
+      toast.error((cause as Error).message);
+      setBusy(null);
+    }
+  };
+
+  if (!academy.billingAvailable) {
+    return (
+      <div className={card}>
+        <h2 className={heading}>Plan and card</h2>
+        <p className="mt-4 text-sm leading-relaxed text-[#666]">
+          Billing is not switched on for this deploy yet. Plans start at $49 a month; you can keep
+          designing in the meantime.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {current ? (
+        <div className={card}>
+          <h2 className={heading}>Your plan</h2>
+          <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-lg uppercase tracking-[0.12em]">
+                {currentPlan ? `${currentPlan.name} · ${currentPlan.tagline}` : current.plan}
+              </p>
+              <p className="mt-2 text-sm text-[#666]">
+                {currentPlan ? `${currentPlan.price} a month` : ''}
+                {current.status === 'trialing' && current.trialEnd ? ` · trial ends ${formatDate(current.trialEnd)}` : ''}
+                {current.cancelAtPeriodEnd && current.periodEnd
+                  ? ` · ends ${formatDate(current.periodEnd)}`
+                  : current.periodEnd
+                    ? ` · renews ${formatDate(current.periodEnd)}`
+                    : ''}
+              </p>
+              <p className="mt-2 text-xs text-[#999]">
+                The card on file pays this plan and the production cost of each order.
+              </p>
+            </div>
+            {canManage ? (
+              <button
+                type="button"
+                onClick={() => void portal()}
+                disabled={busy !== null}
+                className="border border-[#1c1b1b] px-7 py-3.5 text-[11px] uppercase tracking-[0.16em] hover:bg-[#faf9f7] disabled:opacity-50"
+              >
+                {busy === 'portal' ? 'Opening' : 'Manage card and invoices'}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      <div>
+        {!current ? (
+          <p className="mb-5 text-sm leading-relaxed text-[#666]">
+            Pick a plan and save a card. The same card pays the monthly plan and, when a student
+            orders, the production cost of that order. You can change or cancel any time.
+          </p>
+        ) : (
+          <p className="mb-5 text-sm text-[#666]">Change plan</p>
+        )}
+        <div className="grid gap-4 md:grid-cols-3">
+          {ACADEMY_PLANS.map((plan) => {
+            const isCurrent = current?.plan === plan.id;
+            return (
+              <article
+                key={plan.id}
+                className={`flex flex-col border p-6 ${isCurrent ? 'border-[#1c1b1b]' : 'border-[#e6e4df]'} bg-white`}
+              >
+                <p className={heading}>{plan.tagline}</p>
+                <h3 className="mt-2 text-lg uppercase tracking-[0.12em]">{plan.name}</h3>
+                <p className="mt-3 text-2xl">
+                  {plan.price}
+                  <span className="text-sm text-[#999]"> / month</span>
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-[#666]">{plan.blurb}</p>
+                <ul className="mt-4 flex-1 space-y-2">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-[#444]">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#1c1b1b]" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                {canManage ? (
+                  <button
+                    type="button"
+                    onClick={() => void choose(plan.id)}
+                    disabled={busy !== null || isCurrent}
+                    className={`mt-6 px-6 py-4 ${label} ${
+                      isCurrent
+                        ? 'border border-[#1c1b1b] text-[#1c1b1b]'
+                        : 'bg-[#1c1b1b] text-white'
+                    } disabled:opacity-60`}
+                  >
+                    {isCurrent ? 'Current plan' : busy === plan.id ? 'Opening checkout' : current ? 'Switch to this plan' : 'Choose'}
+                  </button>
+                ) : (
+                  <p className="mt-6 text-xs text-[#999]">Only the academy owner can change the plan.</p>
+                )}
+              </article>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-xs text-[#999]">
+          Checkout is handled by Stripe. DSPLN never sees your card number.
+        </p>
+      </div>
+    </>
+  );
+}
+
+/**
+ * "Where will you sell?" — onboarding step 3. Every channel is listed from
+ * day one: Shopify is live (the OAuth connect itself lands in Phase 2), the
+ * DSPLN-hosted site records interest so demand is known before it is built.
+ * Skippable; a connected store becomes required at Publish Product.
+ */
+function AcademyStore({
+  academy,
+  onUpdated,
+  onGo,
+}: {
+  academy: AcademySummary;
+  onUpdated: (academy: AcademySummary) => void;
+  onGo: (page: LockerPage) => void;
+}) {
+  const [choice, setChoice] = useState<AcademyChannel | null>(academy.channel);
+  const [shopDomain, setShopDomain] = useState(academy.shopDomain ?? '');
+  const [saving, setSaving] = useState(false);
+  const card = 'border border-[#e6e4df] bg-white p-6 sm:p-8';
+  const heading = 'text-[11px] uppercase tracking-[0.18em] text-[#8a8580]';
+  const field = 'w-full border border-[#d8d5cf] px-4 py-3 text-sm outline-none focus:border-[#1c1b1b]';
+  const canManage = ['owner', 'admin'].includes(academy.role);
+
+  const save = async () => {
+    if (!choice) return;
+    setSaving(true);
+    try {
+      const next = await updateAcademy({
+        channel: choice,
+        shopDomain: choice === 'shopify' ? shopDomain : null,
+      });
+      if (next) onUpdated(next);
+      toast.success(
+        choice === 'shopify'
+          ? 'Saved. Connecting the store is the next update — you can design now.'
+          : 'You are on the list for a DSPLN-hosted site. You can design now.',
+      );
+      onGo('designs');
+    } catch (cause) {
+      toast.error((cause as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const option = (id: AcademyChannel, title: string, body: string, note?: string) => (
+    <label
+      className={`flex cursor-pointer items-start gap-4 border p-5 ${
+        choice === id ? 'border-[#1c1b1b] bg-[#faf9f7]' : 'border-[#e6e4df] bg-white'
+      }`}
+    >
+      <input
+        type="radio"
+        name="channel"
+        className="mt-1 h-4 w-4 accent-[#1c1b1b]"
+        checked={choice === id}
+        disabled={!canManage}
+        onChange={() => setChoice(id)}
+      />
+      <span className="min-w-0">
+        <span className="block text-sm uppercase tracking-[0.08em]">{title}</span>
+        <span className="mt-1 block text-sm leading-relaxed text-[#666]">{body}</span>
+        {note ? <span className="mt-1 block text-xs text-[#999]">{note}</span> : null}
+      </span>
+    </label>
+  );
+
+  return (
+    <div className={card}>
+      <h2 className={heading}>Where will you sell?</h2>
+      <p className="mt-4 text-sm leading-relaxed text-[#666]">
+        Publish a design and it appears in your store. When a student orders, DSPLN makes it and
+        ships it, and your store sends them the tracking email.
+      </p>
+      <div className="mt-6 space-y-3">
+        {option(
+          'shopify',
+          'Connect my Shopify store',
+          'Products publish straight into your Shopify catalog; orders flow back to DSPLN automatically.',
+          'Store connection is coming in the next update. Tell us the store now and it will be ready to connect.',
+        )}
+        {choice === 'shopify' ? (
+          <label className="block pl-2 sm:pl-12">
+            <span className="mb-2 block text-xs text-[#666]">Your myshopify.com address</span>
+            <input
+              className={field}
+              value={shopDomain}
+              disabled={!canManage}
+              placeholder="your-academy.myshopify.com"
+              onChange={(e) => setShopDomain(e.target.value)}
+            />
+          </label>
+        ) : null}
+        {option(
+          'hosted-site',
+          'DSPLN-hosted academy site',
+          'A simple store DSPLN runs for you, in your colors, with your products — no Shopify needed.',
+          'Coming soon. Choosing this puts you on the list and we will tell you when it is ready.',
+        )}
+      </div>
+      {academy.channel ? (
+        <p className="mt-5 text-xs text-[#999]">
+          Currently: {academy.channel === 'shopify' ? `Shopify${academy.shopDomain ? ` (${academy.shopDomain})` : ''}` : 'DSPLN-hosted site (waiting list)'}
+        </p>
+      ) : null}
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        {canManage ? (
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={saving || !choice}
+            className={`bg-[#1c1b1b] px-9 py-4 text-white ${label} disabled:opacity-50`}
+          >
+            {saving ? 'Saving' : 'Save and start designing'}
+          </button>
+        ) : null}
+        {!academy.channel ? (
+          <button
+            type="button"
+            onClick={() => onGo('designs')}
+            className="text-[11px] uppercase tracking-[0.16em] text-[#8a8580] hover:text-[#1c1b1b]"
+          >
+            I’ll connect later
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
