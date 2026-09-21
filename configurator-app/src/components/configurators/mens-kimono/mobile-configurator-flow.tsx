@@ -40,6 +40,7 @@ import {
   BASE_SIZES as BELT_SIZE_OPTIONS,
   CUSTOM_MEASUREMENTS,
 } from './part-sections/size-options';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 const KIMONO_LOGO_PRICE_LABEL: Record<
   (typeof KIMONO_LOGO_SLOTS)[number],
@@ -581,7 +582,7 @@ export const MobileConfiguratorFlow = memo(
               disabled={isAddingToCart}
               className="bg-foreground text-background h-[2.625rem] w-full rounded-lg text-sm font-semibold tracking-[0.12em] uppercase disabled:opacity-60"
             >
-              {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
+              {isAddingToCart ? cartActionLoadingLabel : <CartActionLabel label={cartActionLabel} />}
             </button>
           </div>
         </div>

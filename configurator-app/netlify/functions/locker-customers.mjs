@@ -8,6 +8,25 @@ const STORE_NAME = 'dspln-locker-customers';
 // DSPLN account's sizing profile fail with "Invalid customer identity".
 const OWNER_PATTERN = /^(shopify:[a-z0-9.-]+:\d+|dspln:[A-Za-z0-9_-]+)$/;
 
+// Who this record is, commercially. `retail` buys from dspln.com;
+// `academy_owner` runs an academy and publishes products; `academy_customer`
+// bought from an academy's store — DSPLN does their support but never
+// markets to them, so their consent flag starts off and stays off unless
+// they opt in themselves.
+const CLASSIFICATIONS = ['retail', 'academy_owner', 'academy_customer'];
+const DEFAULT_CLASSIFICATION = 'retail';
+
+function classificationOf(value, fallback = DEFAULT_CLASSIFICATION) {
+  return CLASSIFICATIONS.includes(value) ? value : fallback;
+}
+
+/** Marketing consent is opt-out for members and opt-in for academy customers. */
+function marketingConsentOf(value, classification, fallback) {
+  if (typeof value === 'boolean') return value;
+  if (typeof fallback === 'boolean') return fallback;
+  return classification !== 'academy_customer';
+}
+
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -86,6 +105,8 @@ async function importShopifyCustomers(store, context) {
           firstName: clean(node.firstName, 100),
           lastName: clean(node.lastName, 100),
           orders: current.orders ?? [],
+          classification: classificationOf(current.classification),
+          marketingConsent: marketingConsentOf(undefined, classificationOf(current.classification), current.marketingConsent),
           createdAt: current.createdAt ?? new Date().toISOString(),
           shopifyUpdatedAt: node.updatedAt,
           updatedAt: current.updatedAt ?? node.updatedAt,
@@ -151,9 +172,14 @@ export default async (request, context) => {
 
     const current = (await store.get(customerKey(ownerKey), { type: 'json' })) ?? {};
     const now = new Date().toISOString();
+    // A classification only moves forward on purpose: a record can be told
+    // it is an academy owner, but an unset field never demotes one to retail.
+    const classification = classificationOf(body.classification, classificationOf(current.classification));
     const customer = {
       ...current,
       ownerKey,
+      classification,
+      marketingConsent: marketingConsentOf(body.marketingConsent, classification, current.marketingConsent),
       shopDomain: clean(body.shopDomain, 180),
       customerId: clean(body.customerId, 80),
       email: clean(body.email).toLowerCase(),

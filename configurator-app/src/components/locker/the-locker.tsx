@@ -11,11 +11,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, House, ImagePlus, Receipt, Scissors, Truck, X } from 'lucide-react';
 import { toast } from 'sonner';
 
+import {
+  createAcademy,
+  resetAcademyMode,
+  type AcademyBrandColors,
+  type AcademySummary,
+} from '../../lib/academy-mode';
 import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
 import { GI_PRODUCT_CONFIGS } from '../configurators/shared/gi-product-config';
 import { uploadArtworkImage } from '../configurators/shared/preview-upload';
 
-type LockerPage = 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders' | 'settings';
+type LockerPage =
+  | 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders' | 'settings'
+  // Academy mode only — see AcademyPage.
+  | 'store' | 'products' | 'billing' | 'team';
+
+const LOCKER_PAGES: LockerPage[] = [
+  'design-tool', 'designs', 'uploads', 'fit', 'orders', 'settings',
+  'store', 'products', 'billing', 'team',
+];
+const ACADEMY_PAGES: LockerPage[] = ['store', 'products', 'billing', 'team'];
 
 interface LockerSession {
   signedIn: boolean;
@@ -24,6 +39,8 @@ interface LockerSession {
   shopifyCustomerId?: string | null;
   shopDomain?: string;
   linked?: boolean;
+  /** The organization this member acts for; null puts the Locker in retail mode. */
+  academy?: AcademySummary | null;
   /** Social buttons the server actually has credentials for. */
   socialProviders?: string[];
 }
@@ -1392,7 +1409,18 @@ function StatusBadge({ value }: { value: string }) {
   );
 }
 
-async function indexLockerCustomer(customer: LockerCustomer, orders?: LockerOrder[]) {
+type CustomerClassification = 'retail' | 'academy_owner' | 'academy_customer';
+
+interface CustomerStanding {
+  classification?: CustomerClassification;
+  marketingConsent?: boolean;
+}
+
+async function indexLockerCustomer(
+  customer: LockerCustomer,
+  orders?: LockerOrder[],
+  standing: CustomerStanding = {},
+) {
   await fetch('/api/locker-customers', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1404,6 +1432,8 @@ async function indexLockerCustomer(customer: LockerCustomer, orders?: LockerOrde
       firstName: customer.firstName,
       lastName: customer.lastName,
       ...(orders ? { orders } : {}),
+      ...(standing.classification ? { classification: standing.classification } : {}),
+      ...(standing.marketingConsent !== undefined ? { marketingConsent: standing.marketingConsent } : {}),
     }),
   }).catch(() => undefined);
 }
@@ -1443,6 +1473,9 @@ export function TheLocker() {
   }, [urlCustomer]);
   const [sessionCustomer, setSessionCustomer] = useState<LockerCustomer | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
+  // Academy mode. Set alongside the customer from the same session payload so
+  // the two never disagree about whose Locker this is.
+  const [academy, setAcademy] = useState<AcademySummary | null>(null);
 
   const loadSession = useCallback(async () => {
     try {
@@ -1459,11 +1492,14 @@ export function TheLocker() {
           ownerKeyOverride: session.ownerKey,
           dsplnAccount: true,
         });
+        setAcademy(session.academy ?? null);
       } else {
         setSessionCustomer(null);
+        setAcademy(null);
       }
     } catch {
       setSessionCustomer(null);
+      setAcademy(null);
     } finally {
       setSessionChecked(true);
     }
@@ -1501,9 +1537,7 @@ export function TheLocker() {
   const [page, setPage] = useState<LockerPage>(() => {
     try {
       const wanted = new URLSearchParams(window.location.search).get('page');
-      if (wanted === 'design-tool' || wanted === 'designs' || wanted === 'uploads' || wanted === 'fit' || wanted === 'orders' || wanted === 'settings') {
-        return wanted;
-      }
+      if (LOCKER_PAGES.includes(wanted as LockerPage)) return wanted as LockerPage;
     } catch {
       // fall through
     }
@@ -1516,6 +1550,9 @@ export function TheLocker() {
   const [selectedDesign, setSelectedDesign] = useState<LockerDesign | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<LockerOrder | null>(null);
   const [preferences, setPreferences] = useState<LockerPreferences>(defaultPreferences);
+  // Until the saved preferences arrive, `preferences` is only the default —
+  // sending that as consent would re-subscribe everyone who opted out.
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
   // Paid out once the account exists — see SIGNUP_OFFER_CODE.
   const [showOffer, setShowOffer] = useState(false);
@@ -1561,7 +1598,10 @@ export function TheLocker() {
       const archived = results[3].value;
       setOrders((current) => mergeOrders(archived, current));
     }
-    if (results[4].status === 'fulfilled') setPreferences(results[4].value);
+    if (results[4].status === 'fulfilled') {
+      setPreferences(results[4].value);
+      setPreferencesLoaded(true);
+    }
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') {
       setError(failure.reason instanceof Error ? failure.reason.message : 'Could not load the Locker.');
@@ -1583,10 +1623,29 @@ export function TheLocker() {
     if (!devStore && (page === 'design-tool' || page === 'fit')) setPage('designs');
   }, [page, customer]);
 
+  // What the customer record says about this member. Academy owners are
+  // classified as such the moment they open the Locker; a retail member's
+  // consent follows the marketing toggle in Settings.
+  const standing = useMemo<CustomerStanding>(
+    () => ({
+      classification: academy ? 'academy_owner' : 'retail',
+      ...(preferencesLoaded ? { marketingConsent: preferences.marketingEmail } : {}),
+    }),
+    [academy, preferencesLoaded, preferences.marketingEmail],
+  );
+  const standingRef = useRef(standing);
+  standingRef.current = standing;
+
   useEffect(() => {
     void loadLocker();
-    if (customer) void indexLockerCustomer(customer);
+    if (customer) void indexLockerCustomer(customer, undefined, standingRef.current);
   }, [loadLocker]);
+
+  // Retail pages only: a member who leaves their academy (or opened a page
+  // link they no longer have) lands on Designs instead of a blank tab.
+  useEffect(() => {
+    if (sessionChecked && !academy && ACADEMY_PAGES.includes(page)) setPage('designs');
+  }, [sessionChecked, academy, page]);
 
   useEffect(() => {
     const receiveStorefrontContext = (event: MessageEvent) => {
@@ -1599,7 +1658,7 @@ export function TheLocker() {
       // posted context covers history from before archiving. Merge, don't
       // replace — whichever row has the real contents wins.
       setOrders((current) => mergeOrders(current, storefrontOrders));
-      void indexLockerCustomer(customer, storefrontOrders);
+      void indexLockerCustomer(customer, storefrontOrders, standingRef.current);
     };
     window.addEventListener('message', receiveStorefrontContext);
     window.parent?.postMessage({ type: 'dspln:locker:ready' }, customer?.storefrontOrigin ?? '*');
@@ -1619,7 +1678,14 @@ export function TheLocker() {
       });
       if (!response.ok) throw new Error('Could not save your notification settings.');
       const payload = await response.json();
-      setPreferences(payload?.data?.preferences ?? next);
+      const saved: LockerPreferences = payload?.data?.preferences ?? next;
+      setPreferences(saved);
+      // The customer record carries consent too, so marketing never has to
+      // join two stores to know who said yes.
+      void indexLockerCustomer(customer, undefined, {
+        ...standingRef.current,
+        marketingConsent: saved.marketingEmail,
+      });
       toast.success('Notification settings saved');
     } catch (cause) {
       setPreferences(previous);
@@ -1676,8 +1742,25 @@ export function TheLocker() {
     { id: 'uploads', text: 'Uploads' },
     ...(showFit ? [{ id: 'fit' as const, text: 'Sizing / Fit', short: 'Fit' }] : []),
     { id: 'orders', text: 'Orders' },
+    // Academy mode grows the Locker rather than replacing it: same designs,
+    // uploads and orders, plus the store the academy sells through.
+    ...(academy
+      ? [
+          { id: 'store' as const, text: 'Store' },
+          { id: 'products' as const, text: 'Products' },
+          { id: 'billing' as const, text: 'Billing' },
+          { id: 'team' as const, text: 'Team' },
+        ]
+      : []),
     { id: 'settings', text: 'Settings' },
   ];
+
+  const academyCreated = (created: AcademySummary) => {
+    setAcademy(created);
+    resetAcademyMode();
+    setPage('store');
+    if (customer) void indexLockerCustomer(customer, undefined, { ...standingRef.current, classification: 'academy_owner' });
+  };
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
@@ -1744,7 +1827,18 @@ export function TheLocker() {
             <p className="mt-1 truncate text-[11px] text-[#666] lg:break-all lg:text-[13px]">{customer.email}</p>
           </div>
           <div className="shrink-0 border-l border-[#d8d8d8] pl-4 lg:mt-7 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-6">
-            <p className={`${label} mb-2`}>Member of DSPLN</p>
+            {academy ? (
+              <div className="mb-3 flex items-center gap-3 lg:justify-center">
+                {academy.logo ? (
+                  <img src={academy.logo} alt="" className="h-8 w-8 shrink-0 rounded-sm object-contain" />
+                ) : null}
+                <div className="min-w-0 text-left lg:text-center">
+                  <p className={`${label} text-[#777]`}>Academy</p>
+                  <p className="truncate text-[12px] uppercase tracking-[0.08em] lg:text-[13px]">{academy.name}</p>
+                </div>
+              </div>
+            ) : null}
+            <p className={`${label} mb-2`}>{academy ? `Academy ${academy.role}` : 'Member of DSPLN'}</p>
             <p className="text-[11px] leading-relaxed text-[#666] lg:text-[13px]">
               {designs.length} design{designs.length === 1 ? '' : 's'} · {uploads.length} upload
               {uploads.length === 1 ? '' : 's'} · {orders.length} order
@@ -2260,9 +2354,15 @@ export function TheLocker() {
             </section>
           ) : null}
 
+          {!loading && academy && ACADEMY_PAGES.includes(page) ? (
+            <AcademyPage page={page} academy={academy} />
+          ) : null}
+
           {!loading && page === 'settings' ? (
             <LockerSettings
               customer={customer}
+              academy={academy}
+              onAcademyCreated={academyCreated}
               preferences={preferences}
               savingPreferences={savingPreferences}
               onSavePreferences={savePreferences}
@@ -2285,6 +2385,8 @@ export function TheLocker() {
  */
 function LockerSettings({
   customer,
+  academy,
+  onAcademyCreated,
   preferences,
   savingPreferences,
   onSavePreferences,
@@ -2292,6 +2394,8 @@ function LockerSettings({
   onSignOut,
 }: {
   customer: LockerCustomer;
+  academy: AcademySummary | null;
+  onAcademyCreated: (academy: AcademySummary) => void;
   preferences: LockerPreferences;
   savingPreferences: boolean;
   onSavePreferences: (next: LockerPreferences) => void;
@@ -2401,6 +2505,31 @@ function LockerSettings({
         </div>
       </div>
 
+      {dsplnAccount ? (
+        academy ? (
+          <div className={card}>
+            <h2 className={heading}>Your academy</h2>
+            <div className="mt-5 flex items-center gap-4">
+              {academy.logo ? (
+                <img src={academy.logo} alt="" className="h-14 w-14 shrink-0 border border-[#e6e4df] object-contain p-1" />
+              ) : null}
+              <div className="min-w-0">
+                <p className="text-sm uppercase tracking-[0.08em]">{academy.name}</p>
+                <p className="mt-1 text-xs text-[#999]">
+                  You are the {academy.role} · {academy.memberCount} member{academy.memberCount === 1 ? '' : 's'}
+                </p>
+              </div>
+            </div>
+            <BrandColorSwatches colors={academy.brandColors} />
+            <p className="mt-5 text-xs text-[#999]">
+              Plan, card and store connection are coming to the Billing and Store tabs.
+            </p>
+          </div>
+        ) : (
+          <CreateAcademyCard onCreated={onAcademyCreated} />
+        )
+      ) : null}
+
       {onOpenFit ? (
         <div className={card}>
           <h2 className={heading}>Sizing and fit</h2>
@@ -2465,6 +2594,220 @@ function LockerSettings({
           </button>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Academy mode                                                            */
+/* ---------------------------------------------------------------------- */
+
+const BRAND_COLOR_KEYS: Array<{ key: keyof AcademyBrandColors; text: string }> = [
+  { key: 'primary', text: 'Primary' },
+  { key: 'secondary', text: 'Secondary' },
+  { key: 'accent', text: 'Accent' },
+];
+
+function BrandColorSwatches({ colors }: { colors: AcademyBrandColors }) {
+  const set = BRAND_COLOR_KEYS.filter(({ key }) => colors[key]);
+  if (!set.length) return null;
+  return (
+    <div className="mt-5 flex flex-wrap gap-4">
+      {set.map(({ key, text }) => (
+        <div key={key} className="flex items-center gap-2">
+          <span
+            className="h-6 w-6 shrink-0 rounded-full border border-[#e6e4df]"
+            style={{ backgroundColor: colors[key] }}
+            aria-hidden="true"
+          />
+          <span className="text-xs text-[#666]">
+            {text} <span className="text-[#999]">{colors[key]}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * "Create your academy": name, logo, brand colors. The member becomes the
+ * organization's owner and the Locker switches into Academy mode. Plan and
+ * card come next (Phase 1, second slice) — this deliberately asks for nothing
+ * that needs Stripe.
+ */
+function CreateAcademyCard({ onCreated }: { onCreated: (academy: AcademySummary) => void }) {
+  const [name, setName] = useState('');
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const [logoName, setLogoName] = useState('');
+  const [colors, setColors] = useState<AcademyBrandColors>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const card = 'border border-[#e6e4df] bg-white p-6 sm:p-8';
+  const heading = 'text-[11px] uppercase tracking-[0.18em] text-[#8a8580]';
+  const field = 'w-full border border-[#d8d5cf] px-4 py-3 text-sm outline-none focus:border-[#1c1b1b]';
+
+  const pickLogo = (file: File | undefined) => {
+    setError('');
+    if (!file) { setLogoDataUrl(null); setLogoName(''); return; }
+    if (!file.type.startsWith('image/')) { setError('The logo must be an image.'); return; }
+    if (file.size > 4 * 1024 * 1024) { setError('Keep the logo under 4 MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setLogoDataUrl(String(reader.result)); setLogoName(file.name); };
+    reader.onerror = () => setError('Could not read the logo.');
+    reader.readAsDataURL(file);
+  };
+
+  const submit = async () => {
+    if (name.trim().length < 2) { setError('Give your academy a name.'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      let logo: string | undefined;
+      if (logoDataUrl) {
+        const hosted = await uploadArtworkImage(logoDataUrl);
+        if (!hosted) throw new Error('Logo upload failed. Try again or continue without one.');
+        logo = hosted;
+      }
+      const created = await createAcademy({ name: name.trim(), logo, brandColors: colors });
+      if (!created) throw new Error('Could not create your academy.');
+      toast.success(`${created.name} is set up`);
+      onCreated(created);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={card}>
+      <h2 className={heading}>Create your academy</h2>
+      <p className="mt-4 text-sm leading-relaxed text-[#666]">
+        Design gear in the same tools, publish it to your own store, and DSPLN makes and ships
+        every order. Start with the basics — plan and card come after.
+      </p>
+      <div className="mt-5 space-y-4">
+        <label className="block">
+          <span className="mb-2 block text-xs text-[#666]">Academy name</span>
+          <input
+            className={field}
+            value={name}
+            maxLength={120}
+            placeholder="e.g. Brooklyn Jiu-Jitsu Academy"
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <div>
+          <span className="mb-2 block text-xs text-[#666]">Logo</span>
+          <div className="flex items-center gap-4">
+            {logoDataUrl ? (
+              <img src={logoDataUrl} alt="" className="h-14 w-14 shrink-0 border border-[#e6e4df] object-contain p-1" />
+            ) : (
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center border border-dashed border-[#d8d5cf] text-[#bbb]">
+                <ImagePlus className="h-5 w-5" />
+              </span>
+            )}
+            <label className="cursor-pointer border border-[#1c1b1b] px-5 py-3 text-[11px] uppercase tracking-[0.16em] hover:bg-[#faf9f7]">
+              {logoDataUrl ? 'Change logo' : 'Upload logo'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                className="sr-only"
+                onChange={(e) => pickLogo(e.target.files?.[0])}
+              />
+            </label>
+            {logoName ? <span className="truncate text-xs text-[#999]">{logoName}</span> : null}
+          </div>
+        </div>
+        <div>
+          <span className="mb-2 block text-xs text-[#666]">Brand colors</span>
+          <div className="flex flex-wrap gap-4">
+            {BRAND_COLOR_KEYS.map(({ key, text }) => (
+              <label key={key} className="flex items-center gap-2 text-xs text-[#666]">
+                <input
+                  type="color"
+                  value={colors[key] ?? '#1c1b1b'}
+                  onChange={(e) => setColors((current) => ({ ...current, [key]: e.target.value }))}
+                  className="h-8 w-8 cursor-pointer border border-[#d8d5cf] bg-white p-0"
+                  aria-label={`${text} brand color`}
+                />
+                {text}
+                {colors[key] ? (
+                  <button
+                    type="button"
+                    onClick={() => setColors((current) => { const next = { ...current }; delete next[key]; return next; })}
+                    className="text-[#999] hover:text-[#1c1b1b]"
+                    aria-label={`Clear ${text.toLowerCase()} color`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                ) : null}
+              </label>
+            ))}
+          </div>
+        </div>
+        {error ? <p className="text-sm text-[#842323]">{error}</p> : null}
+        <button
+          type="button"
+          onClick={() => void submit()}
+          disabled={saving || name.trim().length < 2}
+          className={`bg-[#1c1b1b] px-9 py-4 text-white ${label} disabled:opacity-50`}
+        >
+          {saving ? 'Creating' : 'Create academy'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The Academy tabs. Placeholders for now: each names what the tab will hold
+ * so the shape of the product is visible before the plumbing exists.
+ */
+function AcademyPage({ page, academy }: { page: LockerPage; academy: AcademySummary }) {
+  const card = 'border border-[#e6e4df] bg-white p-6 sm:p-8';
+  const heading = 'text-[11px] uppercase tracking-[0.18em] text-[#8a8580]';
+  const copy: Partial<Record<LockerPage, { title: string; body: string; soon: string[] }>> = {
+    store: {
+      title: 'Where will you sell?',
+      body: 'Connect the store your students buy from. Publish a design and it appears there; when they order, DSPLN makes it and ships it, and your store sends the tracking email.',
+      soon: ['Connect my Shopify store', 'DSPLN-hosted academy site (coming soon)'],
+    },
+    products: {
+      title: 'Published products',
+      body: 'Every design you publish, where it is live, and its status. Publish from any configurator with the Publish Product button.',
+      soon: ['Published products list', 'Re-publish after a design change', 'Pricing with your margin'],
+    },
+    billing: {
+      title: 'Plan and card',
+      body: 'Your plan and the card on file. The same card pays the monthly plan and the production cost of each order as it comes in.',
+      soon: ['Starter “Logo It” $49 / mo', 'Custom “Customize It” $89 / mo', 'Private Label “Brand It” $199 / mo'],
+    },
+    team: {
+      title: 'Team',
+      body: 'Who can design, publish and manage orders for the academy. Invite by email; they sign in with their own DSPLN account.',
+      soon: ['Invite a member', 'Roles: owner, admin, member'],
+    },
+  };
+  const entry = copy[page];
+  if (!entry) return null;
+  return (
+    <section className="max-w-3xl space-y-6">
+      <div className={card}>
+        <h2 className={heading}>{academy.name}</h2>
+        <h3 className="mt-3 text-lg uppercase tracking-[0.12em]">{entry.title}</h3>
+        <p className="mt-4 text-sm leading-relaxed text-[#666]">{entry.body}</p>
+        <ul className="mt-5 space-y-2">
+          {entry.soon.map((item) => (
+            <li key={item} className="flex items-center gap-3 text-sm text-[#444]">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c9c5bd]" aria-hidden="true" />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <p className={`${label} mt-6 text-[#999]`}>Coming in the next update</p>
+      </div>
     </section>
   );
 }

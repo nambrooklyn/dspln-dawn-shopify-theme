@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { ArrowLeft, Download, Loader2, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 interface ConfiguratorTopbarProps {
   productName: string;
@@ -62,7 +63,7 @@ export const ConfiguratorTopbar = memo(
             ) : (
               <ShoppingCart className="h-4 w-4" />
             )}
-            {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+            {isAddingToCart ? 'Adding...' : <CartActionLabel label="Add to Cart" />}
           </Button>
         </div>
       </div>
