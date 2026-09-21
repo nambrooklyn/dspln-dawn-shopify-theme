@@ -17,6 +17,7 @@ import {
   GiV2LogoPanel,
   GiV2OptionsPill,
 } from './v2-panels';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 /**
  * Minimal Vectary-style shell for the gi: full-bleed scene, pulsing hotspots,
@@ -321,7 +322,7 @@ export const GiV2Shell = memo(
             disabled={isAddingToCart}
             className="flex h-11 items-center gap-2.5 rounded-full bg-black px-6 text-[11px] font-semibold uppercase tracking-[0.12em] whitespace-nowrap text-white shadow-[0_6px_24px_rgba(0,0,0,0.25)] transition hover:scale-[1.03] disabled:opacity-60"
           >
-            {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
+            {isAddingToCart ? cartActionLoadingLabel : <CartActionLabel label={cartActionLabel} />}
             <span className="text-white/60">·</span>
             <span>${total}</span>
           </button>

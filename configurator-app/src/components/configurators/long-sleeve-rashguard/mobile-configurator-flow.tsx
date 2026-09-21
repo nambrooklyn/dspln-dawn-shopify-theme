@@ -6,6 +6,7 @@ import {
   RashguardArtworkSections,
   RashguardGarmentSections,
 } from './rashguard-sections';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 const PANELS = [
   { key: 'garment', label: 'Garment' },
@@ -82,7 +83,7 @@ export const RashguardMobileConfiguratorFlow = memo(
             ) : (
               <ShoppingCart className="h-4 w-4" />
             )}
-            {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
+            {isAddingToCart ? cartActionLoadingLabel : <CartActionLabel label={cartActionLabel} />}
           </button>
         </div>
       </div>

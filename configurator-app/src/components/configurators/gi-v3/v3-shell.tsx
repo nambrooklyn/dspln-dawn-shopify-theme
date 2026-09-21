@@ -26,6 +26,7 @@ import {
   QuietHotspotsLayer,
   type QuietMarker,
 } from './quiet-hotspots';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 /**
  * V3 shell — two-level hotspots. A fresh scene shows NOTHING; the first tap
@@ -295,7 +296,7 @@ export const GiV3Shell = memo(
             disabled={isAddingToCart}
             className="flex h-11 items-center gap-2.5 rounded-full bg-black px-6 text-[11px] font-semibold uppercase tracking-[0.12em] whitespace-nowrap text-white shadow-[0_6px_24px_rgba(0,0,0,0.25)] transition hover:scale-[1.03] disabled:opacity-60"
           >
-            {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
+            {isAddingToCart ? cartActionLoadingLabel : <CartActionLabel label={cartActionLabel} />}
             <span className="text-white/60">·</span>
             <span>${total}</span>
           </button>
