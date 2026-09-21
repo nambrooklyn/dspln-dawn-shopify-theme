@@ -13,6 +13,7 @@
     "test:ownership": "node netlify/lib/design-ownership.test.mjs && node netlify/lib/order-archive.test.mjs && node netlify/lib/order-events.test.mjs"
   },
   "dependencies": {
+    "@better-auth/stripe": "^1.7.2",
     "@netlify/blobs": "^10.7.8",
     "@netlify/functions": "^5.2.2",
     "@react-three/drei": "^10.7.7",
@@ -31,6 +32,7 @@
     "react-dom": "^19.2.3",
     "react-dropzone": "^15.0.0",
     "sonner": "^2.0.7",
+    "stripe": "^22.6.2",
     "tailwindcss": "^4.1.18",
     "three": "^0.184.0",
     "vite": "^7.3.0",

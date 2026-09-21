@@ -16,6 +16,26 @@ export interface AcademyBrandColors {
   accent?: string;
 }
 
+export type AcademyPlanId = 'academy/starter' | 'academy/custom' | 'academy/private-label';
+
+export interface AcademyEntitlements {
+  logoOnlyProducts: boolean;
+  customConfigurator: boolean;
+  privateLabelBranding: boolean;
+  shopifyPublishing: boolean;
+}
+
+export interface AcademySubscription {
+  plan: string;
+  status: string;
+  periodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  trialEnd: string | null;
+  stripeSubscriptionId: string | null;
+}
+
+export type AcademyChannel = 'shopify' | 'hosted-site';
+
 export interface AcademySummary {
   id: string;
   name: string;
@@ -24,8 +44,15 @@ export interface AcademySummary {
   brandColors: AcademyBrandColors;
   role: string;
   memberCount: number;
-  /** Not set until the plan picker lands (Phase 1, next slice). */
+  /** The plan id (see ACADEMY_PLANS) once a subscription is active. */
   plan: string | null;
+  subscription: AcademySubscription | null;
+  entitlements: AcademyEntitlements | null;
+  /** False on a deploy without Stripe keys — the Billing tab says so. */
+  billingAvailable: boolean;
+  channel: AcademyChannel | null;
+  shopDomain: string | null;
+  hostedSiteInterest: boolean;
   createdAt?: string | null;
 }
 
@@ -34,6 +61,51 @@ export interface CreateAcademyInput {
   logo?: string;
   brandColors?: AcademyBrandColors;
 }
+
+export interface UpdateAcademyInput extends Partial<CreateAcademyInput> {
+  channel?: AcademyChannel | null;
+  shopDomain?: string | null;
+}
+
+/**
+ * The plans as the Billing tab draws them. Ids match the server's
+ * academy-plans.mjs; prices are display copy — Stripe holds the real ones.
+ */
+export const ACADEMY_PLANS: Array<{
+  id: AcademyPlanId;
+  name: string;
+  tagline: string;
+  price: string;
+  blurb: string;
+  features: string[];
+}> = [
+  {
+    id: 'academy/starter',
+    name: 'Starter',
+    tagline: 'Logo It',
+    price: '$49',
+    blurb: 'Your logo on DSPLN’s proven designs.',
+    features: ['Logo placement on every product', 'Publish to your Shopify store', 'DSPLN makes, ships and handles support'],
+  },
+  {
+    id: 'academy/custom',
+    name: 'Custom',
+    tagline: 'Customize It',
+    price: '$89',
+    blurb: 'The full 3D configurator, every part yours.',
+    features: ['Everything in Starter', 'Full colorways, panels and artwork', 'Unlimited saved designs'],
+  },
+  {
+    id: 'academy/private-label',
+    name: 'Private Label',
+    tagline: 'Brand It',
+    price: '$199',
+    blurb: 'Your brand on the label, the tag and the bag.',
+    features: ['Everything in Custom', 'Private-label branding on the garment', 'Priority production slots'],
+  },
+];
+
+export const planById = (id: string | null | undefined) => ACADEMY_PLANS.find((plan) => plan.id === id) ?? null;
 
 async function academyRequest(
   method: 'GET' | 'POST' | 'PATCH',
@@ -54,7 +126,61 @@ async function academyRequest(
 
 export const fetchAcademy = () => academyRequest('GET');
 export const createAcademy = (input: CreateAcademyInput) => academyRequest('POST', { ...input });
-export const updateAcademy = (input: Partial<CreateAcademyInput>) => academyRequest('PATCH', { ...input });
+export const updateAcademy = (input: UpdateAcademyInput) => academyRequest('PATCH', { ...input });
+
+/* ---------------------------------------------------------------------- */
+/* Billing — Better Auth's Stripe plugin, subscription owned by the academy */
+/* ---------------------------------------------------------------------- */
+
+async function subscriptionRequest<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(new URL(`/api/auth/subscription/${path}`, window.location.origin), {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error?.message || 'That did not work. Try again.');
+  }
+  return payload as T;
+}
+
+/** Where Stripe sends the academy back to. Always the Locker's Billing tab. */
+function billingReturnUrl(extra: Record<string, string> = {}): string {
+  const url = new URL('/locker', window.location.origin);
+  url.searchParams.set('page', 'billing');
+  for (const [key, value] of Object.entries(extra)) url.searchParams.set(key, value);
+  return url.toString();
+}
+
+/**
+ * Start Stripe Checkout for a plan. Resolves to the Checkout URL; the caller
+ * navigates. A plan change on an existing subscription is applied in place
+ * and resolves to null (nothing to navigate to).
+ */
+export async function startPlanCheckout(academyId: string, plan: AcademyPlanId): Promise<string | null> {
+  const result = await subscriptionRequest<{ url?: string | null; redirect?: boolean }>('upgrade', {
+    plan,
+    customerType: 'organization',
+    referenceId: academyId,
+    successUrl: billingReturnUrl({ checkout: 'success' }),
+    cancelUrl: billingReturnUrl({ checkout: 'cancelled' }),
+    returnUrl: billingReturnUrl(),
+    disableRedirect: true,
+  });
+  return result.url ?? null;
+}
+
+/** Stripe's hosted portal: change card, download invoices, cancel. */
+export async function openBillingPortal(academyId: string): Promise<string> {
+  const result = await subscriptionRequest<{ url: string }>('billing-portal', {
+    customerType: 'organization',
+    referenceId: academyId,
+    returnUrl: billingReturnUrl(),
+  });
+  return result.url;
+}
 
 /**
  * One session lookup per page load, shared by every configurator component
