@@ -28,7 +28,7 @@ import { ArtworkStudioPage } from '../artwork-studio/artwork-studio-page';
 import { GI_PRODUCT_CONFIGS } from '../configurators/shared/gi-product-config';
 import { uploadArtworkImage } from '../configurators/shared/preview-upload';
 
-type LockerPage =
+export type LockerPage =
   | 'design-tool' | 'designs' | 'uploads' | 'fit' | 'orders' | 'settings'
   // Academy mode only — see AcademyPage.
   | 'store' | 'products' | 'billing' | 'team';
@@ -39,7 +39,7 @@ const LOCKER_PAGES: LockerPage[] = [
 ];
 const ACADEMY_PAGES: LockerPage[] = ['store', 'products', 'billing', 'team'];
 
-interface LockerSession {
+export interface LockerSession {
   signedIn: boolean;
   user?: { id: string; email: string; name: string; emailVerified: boolean };
   ownerKey?: string;
@@ -352,7 +352,7 @@ async function authRequest(path: string, body: Record<string, unknown>) {
   return payload;
 }
 
-async function fetchLockerSession(): Promise<LockerSession> {
+export async function fetchLockerSession(): Promise<LockerSession> {
   const response = await fetch(new URL('/api/locker-session', window.location.origin), {
     credentials: 'include',
   });
@@ -438,10 +438,26 @@ function OfferBanner({ onDismiss }: { onDismiss: () => void }) {
 }
 
 /** DSPLN's own sign-in — the only way into the Locker. */
-function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
+export function LockerSignIn({
+  onSignedIn,
+  initialMode,
+  title = 'The Locker',
+  intro,
+  bare = false,
+}: {
+  onSignedIn: () => void;
+  /** Open on account creation; otherwise ?auth=sign-up decides. */
+  initialMode?: AuthMode;
+  title?: string;
+  /** Replaces the mode-specific blurb under the title. */
+  intro?: string;
+  /** Render only the form panel — the caller draws the page and header. */
+  bare?: boolean;
+}) {
   // ?auth=sign-up opens straight on account creation — the storefront's
   // "sign up" entry points land people here to join, not to sign in.
   const [mode, setMode] = useState<AuthMode>(() => {
+    if (initialMode) return initialMode;
     try {
       return new URLSearchParams(window.location.search).get('auth') === 'sign-up'
         ? 'sign-up'
@@ -513,17 +529,17 @@ function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
   const field =
     'w-full border border-[#d8d5cf] px-4 py-3 text-sm outline-none focus:border-[#1c1b1b]';
 
-  return (
-    <main className="min-h-screen bg-white font-sans text-[#1c1b1b]">
-      <LockerHeader />
-      <div className="mx-auto flex max-w-md flex-col px-6 py-16">
-        <h1 className="text-2xl uppercase tracking-[0.2em]">The Locker</h1>
+  const panel = (
+      <div className={bare ? 'flex max-w-md flex-col' : 'mx-auto flex max-w-md flex-col px-6 py-16'}>
+        <h1 className="text-2xl uppercase tracking-[0.2em]">{title}</h1>
         <p className="mt-3 text-sm leading-relaxed text-[#666]">
-          {mode === 'sign-up'
-            ? 'Create an account and your designs, uploads and orders live in one place.'
-            : mode === 'forgot'
-              ? 'We will email you a link to choose a new password.'
-              : 'Sign in to your designs, uploads and orders.'}
+          {intro && mode !== 'forgot'
+            ? intro
+            : mode === 'sign-up'
+              ? 'Create an account and your designs, uploads and orders live in one place.'
+              : mode === 'forgot'
+                ? 'We will email you a link to choose a new password.'
+                : 'Sign in to your designs, uploads and orders.'}
         </p>
 
         <form onSubmit={submit} className="mt-8 flex flex-col gap-3">
@@ -598,6 +614,13 @@ function LockerSignIn({ onSignedIn }: { onSignedIn: () => void }) {
           </p>
         </div>
       </div>
+  );
+
+  if (bare) return panel;
+  return (
+    <main className="min-h-screen bg-white font-sans text-[#1c1b1b]">
+      <LockerHeader />
+      {panel}
     </main>
   );
 }
@@ -623,7 +646,7 @@ let storeHeaderCache: StoreHeaderPayload | null = null;
  * go to the document head: @font-face does not register inside shadow DOM,
  * and :root variables inherit across the boundary.
  */
-function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => void }) {
+export function LockerHeader({ email, onSignOut }: { email?: string; onSignOut?: () => void }) {
   const [payload, setPayload] = useState<StoreHeaderPayload | null>(storeHeaderCache);
   const hostRef = useRef<HTMLDivElement | null>(null);
 
@@ -1798,13 +1821,6 @@ export function TheLocker() {
     { id: 'settings', text: 'Settings' },
   ];
 
-  const academyCreated = (created: AcademySummary) => {
-    setAcademy(created);
-    resetAcademyMode();
-    // Onboarding order: academy → plan and card → where will you sell.
-    setPage(created.billingAvailable ? 'billing' : 'store');
-    if (customer) void indexLockerCustomer(customer, undefined, { ...standingRef.current, classification: 'academy_owner' });
-  };
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white font-sans text-[#1c1b1b]">
@@ -2411,7 +2427,6 @@ export function TheLocker() {
             <LockerSettings
               customer={customer}
               academy={academy}
-              onAcademyCreated={academyCreated}
               preferences={preferences}
               savingPreferences={savingPreferences}
               onSavePreferences={savePreferences}
@@ -2435,7 +2450,6 @@ export function TheLocker() {
 function LockerSettings({
   customer,
   academy,
-  onAcademyCreated,
   preferences,
   savingPreferences,
   onSavePreferences,
@@ -2444,7 +2458,6 @@ function LockerSettings({
 }: {
   customer: LockerCustomer;
   academy: AcademySummary | null;
-  onAcademyCreated: (academy: AcademySummary) => void;
   preferences: LockerPreferences;
   savingPreferences: boolean;
   onSavePreferences: (next: LockerPreferences) => void;
@@ -2554,8 +2567,7 @@ function LockerSettings({
         </div>
       </div>
 
-      {dsplnAccount ? (
-        academy ? (
+      {dsplnAccount && academy ? (
           <div className={card}>
             <h2 className={heading}>Your academy</h2>
             <div className="mt-5 flex items-center gap-4">
@@ -2574,9 +2586,6 @@ function LockerSettings({
               Your plan and card are in the Billing tab; where you sell is in the Store tab.
             </p>
           </div>
-        ) : (
-          <CreateAcademyCard onCreated={onAcademyCreated} />
-        )
       ) : null}
 
       {onOpenFit ? (
@@ -2684,7 +2693,7 @@ function BrandColorSwatches({ colors }: { colors: AcademyBrandColors }) {
  * card come next (Phase 1, second slice) — this deliberately asks for nothing
  * that needs Stripe.
  */
-function CreateAcademyCard({ onCreated }: { onCreated: (academy: AcademySummary) => void }) {
+export function CreateAcademyCard({ onCreated }: { onCreated: (academy: AcademySummary) => void }) {
   const [name, setName] = useState('');
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   const [logoName, setLogoName] = useState('');
@@ -3090,7 +3099,7 @@ function AcademyBilling({ academy }: { academy: AcademySummary }) {
  * DSPLN-hosted site records interest so demand is known before it is built.
  * Skippable; a connected store becomes required at Publish Product.
  */
-function AcademyStore({
+export function AcademyStore({
   academy,
   onUpdated,
   onGo,

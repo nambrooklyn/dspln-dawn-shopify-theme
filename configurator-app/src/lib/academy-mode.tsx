@@ -146,10 +146,9 @@ async function subscriptionRequest<T>(path: string, body: Record<string, unknown
   return payload as T;
 }
 
-/** Where Stripe sends the academy back to. Always the Locker's Billing tab. */
-function billingReturnUrl(extra: Record<string, string> = {}): string {
-  const url = new URL('/locker', window.location.origin);
-  url.searchParams.set('page', 'billing');
+/** Where Stripe sends the academy back to: the Billing tab, or the sign-up page mid-flow. */
+function billingReturnUrl(extra: Record<string, string> = {}, returnTo = '/locker?page=billing'): string {
+  const url = new URL(returnTo, window.location.origin);
   for (const [key, value] of Object.entries(extra)) url.searchParams.set(key, value);
   return url.toString();
 }
@@ -159,14 +158,18 @@ function billingReturnUrl(extra: Record<string, string> = {}): string {
  * navigates. A plan change on an existing subscription is applied in place
  * and resolves to null (nothing to navigate to).
  */
-export async function startPlanCheckout(academyId: string, plan: AcademyPlanId): Promise<string | null> {
+export async function startPlanCheckout(
+  academyId: string,
+  plan: AcademyPlanId,
+  returnTo?: string,
+): Promise<string | null> {
   const result = await subscriptionRequest<{ url?: string | null; redirect?: boolean }>('upgrade', {
     plan,
     customerType: 'organization',
     referenceId: academyId,
-    successUrl: billingReturnUrl({ checkout: 'success' }),
-    cancelUrl: billingReturnUrl({ checkout: 'cancelled' }),
-    returnUrl: billingReturnUrl(),
+    successUrl: billingReturnUrl({ checkout: 'success' }, returnTo),
+    cancelUrl: billingReturnUrl({ checkout: 'cancelled' }, returnTo),
+    returnUrl: billingReturnUrl({}, returnTo),
     disableRedirect: true,
   });
   return result.url ?? null;
