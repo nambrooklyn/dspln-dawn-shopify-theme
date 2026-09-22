@@ -16,7 +16,7 @@
  * store → connect-store; else complete. The Locker only appears at the end.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle, Loader2, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
@@ -62,10 +62,18 @@ function pageFor(pathname: string): Page {
   return hit?.[0] ?? 'landing';
 }
 
-/** Where a signed-in academy belongs, by what it has done so far. */
+/**
+ * Where a signed-in academy belongs, by what it has done so far.
+ *
+ * The plan always comes before the store: an academy pays, and only then
+ * connects the store it will sell through. Nothing skips the plan step, not
+ * even a deploy without Stripe keys — that deploy shows the plans and lets
+ * the academy continue without a card, so the order of the funnel is the
+ * same everywhere and the store step is never reached un-subscribed.
+ */
 function onboardingTarget(academy: AcademySummary | null): Page {
   if (!academy) return 'create';
-  if (!academy.subscription && academy.billingAvailable) return 'choosePlan';
+  if (!academy.subscription) return 'choosePlan';
   if (!academy.channel) return 'connectStore';
   return 'complete';
 }
@@ -171,6 +179,11 @@ export function AcademyApp() {
         initial={plan}
         onPick={choosePlan}
         onSkipBilling={() => navigate('connectStore')}
+        // Picked a tier on the one-pager, so go straight to payment rather
+        // than asking for the same choice twice. Coming back from a
+        // cancelled checkout stops that, or they would bounce to Stripe
+        // again the moment they landed.
+        autoCheckout={Boolean(plan) && checkoutOutcome !== 'cancelled'}
       />
     );
   }
@@ -328,11 +341,13 @@ function ChoosePlanPage({
   initial,
   onPick,
   onSkipBilling,
+  autoCheckout = false,
 }: {
   academy: AcademySummary;
   initial: AcademyPlanId | null;
   onPick: (plan: AcademyPlanId) => void;
   onSkipBilling: () => void;
+  autoCheckout?: boolean;
 }) {
   const [selectedPlanId, setSelectedPlanId] = useState<AcademyPlanId>(initial ?? 'academy/custom');
   const [pending, setPending] = useState(false);
@@ -342,10 +357,10 @@ function ChoosePlanPage({
     onPick(planId);
   }, [onPick]);
 
-  const handlePayment = useCallback(async () => {
+  const handlePayment = useCallback(async (planId: AcademyPlanId = selectedPlanId) => {
     setPending(true);
     try {
-      const url = await startPlanCheckout(academy.id, selectedPlanId, P.connectStore, P.choosePlan);
+      const url = await startPlanCheckout(academy.id, planId, P.connectStore, P.choosePlan);
       if (url) { window.location.assign(url); return; }
       window.location.assign(`${P.connectStore}?checkout=success`);
     } catch (cause) {
@@ -353,6 +368,16 @@ function ChoosePlanPage({
       setPending(false);
     }
   }, [academy.id, selectedPlanId]);
+
+  // Straight to Stripe for a tier already chosen on the one-pager. Runs once:
+  // a failure leaves the plans on screen to choose from by hand.
+  const started = useRef(false);
+  useEffect(() => {
+    if (!autoCheckout || started.current) return;
+    if (!initial || !academy.billingAvailable) return;
+    started.current = true;
+    void handlePayment(initial);
+  }, [autoCheckout, initial, academy.billingAvailable, handlePayment]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -395,14 +420,17 @@ function ChoosePlanPage({
                   disabled={pending}
                 >
                   {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Proceed to Payment
+                  {pending ? 'Taking you to secure checkout' : 'Proceed to Payment'}
                 </Button>
               ) : (
                 <>
                   <Button className="px-10 py-3 font-semibold shadow-lg" size="lg" onClick={onSkipBilling}>
                     Continue with {selected?.name ?? 'this plan'}
                   </Button>
-                  <p className="text-muted-foreground text-xs">Billing is not switched on for this deploy, so no card is taken here.</p>
+                  <p className="text-muted-foreground text-xs">
+                    Billing is not switched on for this deploy, so no card is taken here. On
+                    production this step is Stripe Checkout, and the store comes after it.
+                  </p>
                 </>
               )}
               <p className="text-muted-foreground text-xs">
