@@ -162,14 +162,15 @@ export async function startPlanCheckout(
   academyId: string,
   plan: AcademyPlanId,
   returnTo?: string,
+  cancelTo: string | undefined = returnTo,
 ): Promise<string | null> {
   const result = await subscriptionRequest<{ url?: string | null; redirect?: boolean }>('upgrade', {
     plan,
     customerType: 'organization',
     referenceId: academyId,
     successUrl: billingReturnUrl({ checkout: 'success' }, returnTo),
-    cancelUrl: billingReturnUrl({ checkout: 'cancelled' }, returnTo),
-    returnUrl: billingReturnUrl({}, returnTo),
+    cancelUrl: billingReturnUrl({ checkout: 'cancelled' }, cancelTo),
+    returnUrl: billingReturnUrl({}, cancelTo),
     disableRedirect: true,
   });
   return result.url ?? null;
