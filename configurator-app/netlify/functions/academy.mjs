@@ -31,7 +31,7 @@ async function readBody(request) {
   }
 }
 
-export default async (request, context) => {
+export default async (request) => {
   let auth;
   try {
     auth = getAuth();
@@ -44,7 +44,7 @@ export default async (request, context) => {
   const session = await auth.api.getSession({ headers }).catch(() => null);
   if (!session?.user) return json({ error: 'Sign in to continue.' }, 401);
 
-  const store = academyStore(context);
+  const store = academyStore();
 
   if (request.method === 'GET') {
     const academy = await summarizeAcademy({ auth, headers, session, store });

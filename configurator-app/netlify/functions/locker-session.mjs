@@ -148,9 +148,7 @@ export const handler = async (event) => {
   // an academy lookup that fails leaves them in retail mode, never signed out.
   let academy = null;
   try {
-    // v1 functions do not get the deploy context object; the env var is the
-    // same signal the v2 functions read from `context.deploy.context`.
-    const store = academyStore({ deploy: { context: process.env.CONTEXT } });
+    const store = academyStore();
     academy = await summarizeAcademy({ auth, headers, session, store });
   } catch (error) {
     console.error('[locker-session] could not resolve the academy', error);

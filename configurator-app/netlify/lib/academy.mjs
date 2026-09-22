@@ -54,9 +54,20 @@ export function cleanBrandColors(input) {
   return colors;
 }
 
-export function academyStore(context) {
-  const production = context?.deploy?.context === 'production';
-  return getStore({ name: production ? STORE_NAME : `${STORE_NAME}-dev`, consistency: 'strong' });
+/**
+ * One store for every deploy context, on purpose.
+ *
+ * Academies live in the `platform` schema of a single Postgres database that
+ * production and branch deploys already share, so an academy created on the
+ * dev deploy is the same row as on production. Splitting only its profile
+ * (brand colors, channel, shop domain) by context left the two halves of the
+ * same academy in different places — and worse, the v1 and v2 functions
+ * disagreed about which context they were in, so the Locker's session read an
+ * empty profile for an academy the API had just written to. One name keeps
+ * the profile with the row it belongs to and keeps every reader in agreement.
+ */
+export function academyStore() {
+  return getStore({ name: STORE_NAME, consistency: 'strong' });
 }
 
 const profileKey = (organizationId) => `academies/${encodeURIComponent(organizationId)}.json`;
