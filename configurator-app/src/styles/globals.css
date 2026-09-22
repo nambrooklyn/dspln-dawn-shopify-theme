@@ -20,6 +20,21 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* DSPLN brand palette from the B2B app (b2b-platform packages/ui) — the
+     academy sign-up pages are ported from there and use these by name. */
+  --color-primary-dark: #450000;
+  --color-dark: #1c1b1b;
+  --color-dark-foreground: #ffffff;
+  --color-light: #fafafa;
+  --color-light-foreground: #1c1b1b;
+  --color-maroon: #5c0000;
+  --color-brown: #63513f;
+  --color-success: #28a745;
+  --color-warning: #f5a623;
+  --color-error: #dc3545;
+  --font-inter: 'Inter', sans-serif;
+  --font-albert: 'Albert Sans', sans-serif;
 }
 
 :root {

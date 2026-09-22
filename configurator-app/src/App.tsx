@@ -4,7 +4,7 @@ import { GiConfigurator } from './components/configurators/gi';
 import { getConfigurator } from './components/configurators/registry';
 import { MobileOverflowDiagnostic } from './components/mobile-overflow-diagnostic';
 import { TheLocker } from './components/locker/the-locker';
-import { AcademySignup } from './components/locker/academy-signup';
+import { AcademyApp } from './academy/academy-app';
 import { AdminLocker } from './components/locker/admin-locker';
 import { ProductionDashboard } from './components/production-dashboard';
 import { RashguardTechPackDownloadPage } from './components/rashguard-tech-pack-download-page';
@@ -40,7 +40,7 @@ export function App() {
       {path === '/admin-locker' ? (
         <AdminLocker />
       ) : isAcademySignup ? (
-        <AcademySignup />
+        <AcademyApp />
       ) : isLocker ? (
         <TheLocker />
       ) : path === '/tech-pack/gi' ? (
