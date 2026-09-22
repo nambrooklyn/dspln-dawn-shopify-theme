@@ -1,4 +1,5 @@
 import { getAuth } from '../lib/auth.mjs';
+import { ACADEMY_PLANS } from '../lib/academy-plans.mjs';
 import {
   CHANNELS, clean, cleanBrandColors, cleanShopDomain, slugify, summarizeAcademy, writeProfile,
 } from '../lib/academy.mjs';
@@ -122,6 +123,17 @@ export default async (request) => {
     if (data.name !== undefined) patch.name = data.name;
     if (data.logo !== undefined) patch.logo = data.logo;
     if (body.brandColors !== undefined) patch.brandColors = cleanBrandColors(body.brandColors);
+
+    // The plan step on a deploy with no Stripe keys: remember the choice so
+    // the funnel can move on. Production still requires a real subscription.
+    if (body.selectedPlan !== undefined) {
+      const chosen = clean(body.selectedPlan, 64);
+      if (!ACADEMY_PLANS.some((plan) => plan.name === chosen)) {
+        return json({ error: 'Pick one of the available plans.' }, 400);
+      }
+      patch.selectedPlan = chosen;
+      patch.selectedPlanAt = new Date().toISOString();
+    }
 
     // "Where will you sell?" — onboarding step 3. Skippable, and re-answerable.
     if (body.channel !== undefined) {

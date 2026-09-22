@@ -81,7 +81,7 @@ export async function readProfile(organizationId) {
   if (!db) return emptyProfile;
   try {
     const { rows } = await db.query(
-      `select logo, brand_colors, channel, shop_domain, hosted_site_interest
+      `select logo, brand_colors, channel, shop_domain, hosted_site_interest, selected_plan
          from academy_profile where organization_id = $1`,
       [organizationId],
     );
@@ -93,6 +93,7 @@ export async function readProfile(organizationId) {
       channel: row.channel ?? null,
       shopDomain: row.shop_domain ?? null,
       hostedSiteInterest: Boolean(row.hosted_site_interest),
+      selectedPlan: row.selected_plan ?? null,
     };
   } catch (error) {
     // A profile that cannot be read must not cost the academy its session —
@@ -114,6 +115,8 @@ export async function writeProfile(organizationId, patch) {
     shopDomain: 'shop_domain',
     hostedSiteInterest: 'hosted_site_interest',
     channelChosenAt: 'channel_chosen_at',
+    selectedPlan: 'selected_plan',
+    selectedPlanAt: 'selected_plan_at',
     ownerUserId: 'owner_user_id',
   };
 
@@ -190,6 +193,9 @@ export async function summarizeAcademy({ auth, headers, session }) {
     // Billing is only offered once Stripe is configured on this deploy.
     billingAvailable: stripeIsConfigured() && configuredPlans().length > 0,
     channel: CHANNELS.includes(profile.channel) ? profile.channel : null,
+    // What they picked at the plan step. On production the subscription is
+    // what counts; this is how a deploy without Stripe remembers the choice.
+    selectedPlan: profile.selectedPlan ?? null,
     shopDomain: profile.shopDomain ?? null,
     hostedSiteInterest: Boolean(profile.hostedSiteInterest),
     createdAt: organization.createdAt ?? null,

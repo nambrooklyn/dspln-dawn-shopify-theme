@@ -53,6 +53,9 @@ export interface AcademySummary {
   channel: AcademyChannel | null;
   shopDomain: string | null;
   hostedSiteInterest: boolean;
+  /** Recorded at the plan step. Only stands in for a subscription where
+   *  billing is not configured (the dev deploy). */
+  selectedPlan: string | null;
   createdAt?: string | null;
 }
 
@@ -65,6 +68,7 @@ export interface CreateAcademyInput {
 export interface UpdateAcademyInput extends Partial<CreateAcademyInput> {
   channel?: AcademyChannel | null;
   shopDomain?: string | null;
+  selectedPlan?: AcademyPlanId;
 }
 
 /**

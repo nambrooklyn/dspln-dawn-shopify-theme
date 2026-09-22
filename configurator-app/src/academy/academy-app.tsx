@@ -73,7 +73,12 @@ function pageFor(pathname: string): Page {
  */
 function onboardingTarget(academy: AcademySummary | null): Page {
   if (!academy) return 'create';
-  if (!academy.subscription) return 'choosePlan';
+  // A subscription is what clears the plan step. Where billing is not
+  // configured at all — the dev deploy — no subscription can exist, so the
+  // recorded choice clears it instead and the rest stays testable. On
+  // production billingAvailable is true, so only a real subscription counts.
+  const planDone = Boolean(academy.subscription) || (!academy.billingAvailable && Boolean(academy.selectedPlan));
+  if (!planDone) return 'choosePlan';
   if (!academy.channel) return 'connectStore';
   return 'complete';
 }
@@ -178,7 +183,13 @@ export function AcademyApp() {
         academy={academy}
         initial={plan}
         onPick={choosePlan}
-        onSkipBilling={() => navigate('connectStore')}
+        onSkipBilling={async (chosen) => {
+          // No Stripe on this deploy: remember the choice so the guard lets
+          // the academy through to the store step.
+          const next = await updateAcademy({ selectedPlan: chosen }).catch(() => null);
+          if (next) setAcademy(next);
+          navigate('connectStore');
+        }}
         // Picked a tier on the one-pager, so go straight to payment rather
         // than asking for the same choice twice. Coming back from a
         // cancelled checkout stops that, or they would bounce to Stripe
@@ -346,7 +357,7 @@ function ChoosePlanPage({
   academy: AcademySummary;
   initial: AcademyPlanId | null;
   onPick: (plan: AcademyPlanId) => void;
-  onSkipBilling: () => void;
+  onSkipBilling: (plan: AcademyPlanId) => void | Promise<void>;
   autoCheckout?: boolean;
 }) {
   const [selectedPlanId, setSelectedPlanId] = useState<AcademyPlanId>(initial ?? 'academy/custom');
@@ -424,7 +435,13 @@ function ChoosePlanPage({
                 </Button>
               ) : (
                 <>
-                  <Button className="px-10 py-3 font-semibold shadow-lg" size="lg" onClick={onSkipBilling}>
+                  <Button
+                    className="px-10 py-3 font-semibold shadow-lg"
+                    size="lg"
+                    disabled={pending}
+                    onClick={() => { setPending(true); void Promise.resolve(onSkipBilling(selectedPlanId)).finally(() => setPending(false)); }}
+                  >
+                    {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Continue with {selected?.name ?? 'this plan'}
                   </Button>
                   <p className="text-muted-foreground text-xs">
