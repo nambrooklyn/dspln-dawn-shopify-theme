@@ -169,7 +169,19 @@ export function AcademyApp() {
     );
   }
 
-  if (page === 'signup') return <SignupPage onDone={loadSession} academyName="" />;
+  if (page === 'signup') {
+    return (
+      <SignupPage
+        // Creating the academy already returns everything the plan step
+        // needs, so the screen advances on that rather than waiting on a
+        // third round trip. The authoritative read still follows.
+        onReady={(user, created) => {
+          setSession({ signedIn: true, user, academy: created });
+          void loadSession();
+        }}
+      />
+    );
+  }
   if (page === 'login') return <LoginPage onDone={loadSession} />;
   if (page === 'forgot') return <ForgotPage />;
 
@@ -218,7 +230,11 @@ function Loading() {
   );
 }
 
-function SignupPage({ onDone }: { onDone: () => Promise<LockerSession>; academyName: string }) {
+function SignupPage({
+  onReady,
+}: {
+  onReady: (user: NonNullable<LockerSession['user']>, academy: AcademySummary) => void;
+}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
 
@@ -226,14 +242,21 @@ function SignupPage({ onDone }: { onDone: () => Promise<LockerSession>; academyN
     setPending(true);
     setError('');
     try {
-      await signUp({ name: values.name, email: values.email, password: values.password });
+      const signedUp = await signUp({ name: values.name, email: values.email, password: values.password });
       // The academy is the organization; the signer becomes its owner.
       const created = await createAcademy({ name: values.academyName });
       if (!created) throw new Error('Your account was created but the academy was not. Sign in and try again.');
-      await onDone();
+      onReady(
+        {
+          id: signedUp.user?.id ?? '',
+          email: values.email,
+          name: values.name,
+          emailVerified: false,
+        },
+        created,
+      );
     } catch (cause) {
       setError((cause as Error).message);
-    } finally {
       setPending(false);
     }
   };
