@@ -1,6 +1,6 @@
 import { getAuth } from '../lib/auth.mjs';
 import {
-  CHANNELS, academyStore, clean, cleanBrandColors, cleanShopDomain, slugify, summarizeAcademy, writeProfile,
+  CHANNELS, clean, cleanBrandColors, cleanShopDomain, slugify, summarizeAcademy, writeProfile,
 } from '../lib/academy.mjs';
 
 // /api/academy — the signed-in member's academy.
@@ -44,15 +44,14 @@ export default async (request) => {
   const session = await auth.api.getSession({ headers }).catch(() => null);
   if (!session?.user) return json({ error: 'Sign in to continue.' }, 401);
 
-  const store = academyStore();
 
   if (request.method === 'GET') {
-    const academy = await summarizeAcademy({ auth, headers, session, store });
+    const academy = await summarizeAcademy({ auth, headers, session });
     return json({ data: { academy } });
   }
 
   if (request.method === 'POST') {
-    const existing = await summarizeAcademy({ auth, headers, session, store });
+    const existing = await summarizeAcademy({ auth, headers, session });
     if (existing) return json({ error: 'You already have an academy.', data: { academy: existing } }, 409);
 
     const body = await readBody(request);
@@ -80,19 +79,18 @@ export default async (request) => {
     }
     if (!organization?.id) return json({ error: 'Could not create your academy.' }, 500);
 
-    await writeProfile(store, organization.id, {
-      name,
+    await writeProfile(organization.id, {
       logo: logo || null,
       brandColors,
       ownerUserId: session.user.id,
     });
 
-    const academy = await summarizeAcademy({ auth, headers, session, store });
+    const academy = await summarizeAcademy({ auth, headers, session });
     return json({ data: { academy: academy ?? { id: organization.id, name, slug, logo: logo || null, brandColors, role: 'owner', memberCount: 1, plan: null } } }, 201);
   }
 
   if (request.method === 'PATCH') {
-    const current = await summarizeAcademy({ auth, headers, session, store });
+    const current = await summarizeAcademy({ auth, headers, session });
     if (!current) return json({ error: 'You do not have an academy yet.' }, 404);
     if (!['owner', 'admin'].includes(current.role)) {
       return json({ error: 'Only academy owners and admins can edit the academy.' }, 403);
@@ -139,9 +137,9 @@ export default async (request) => {
       if (raw && !shopDomain) return json({ error: 'That does not look like a myshopify.com address.' }, 400);
       patch.shopDomain = shopDomain || null;
     }
-    if (Object.keys(patch).length) await writeProfile(store, current.id, patch);
+    if (Object.keys(patch).length) await writeProfile(current.id, patch);
 
-    const academy = await summarizeAcademy({ auth, headers, session, store });
+    const academy = await summarizeAcademy({ auth, headers, session });
     return json({ data: { academy } });
   }
 

@@ -1,7 +1,7 @@
 import { connectLambda, getStore } from '@netlify/blobs';
 import pg from 'pg';
 
-import { academyStore, summarizeAcademy } from '../lib/academy.mjs';
+import { summarizeAcademy } from '../lib/academy.mjs';
 import { getAuth } from '../lib/auth.mjs';
 import { emailIndexKey, writeEmailIndex } from '../lib/design-ownership.mjs';
 import { findOrCreateCustomer } from '../lib/shopify-admin.mjs';
@@ -148,8 +148,7 @@ export const handler = async (event) => {
   // an academy lookup that fails leaves them in retail mode, never signed out.
   let academy = null;
   try {
-    const store = academyStore();
-    academy = await summarizeAcademy({ auth, headers, session, store });
+    academy = await summarizeAcademy({ auth, headers, session });
   } catch (error) {
     console.error('[locker-session] could not resolve the academy', error);
   }

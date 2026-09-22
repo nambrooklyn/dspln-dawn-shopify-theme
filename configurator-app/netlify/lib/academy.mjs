@@ -1,18 +1,21 @@
-import { getStore } from '@netlify/blobs';
+import pg from 'pg';
 
 import { ACADEMY_PLANS, configuredPlans, stripeIsConfigured } from './academy-plans.mjs';
 
 // An academy is a Better Auth organization (see auth.mjs, where the plugin is
-// enabled) plus a small profile DSPLN keeps beside it: brand colors and, later,
-// the plan, the connected store and the card on file.
+// enabled) plus a small profile DSPLN keeps beside it: logo, brand colors, and
+// where the academy sells.
 //
-// The profile lives in a blob rather than in the organization's `metadata`
-// column on purpose. That column is jsonb in platform.organization, while the
-// plugin stringifies metadata on the way in and only parses it back when it
-// reads a string — a jsonb round-trip could hand it an object and break every
-// organization read. Nothing about an academy needs to be in that column.
-
-const STORE_NAME = 'dspln-academies';
+// The profile lives in platform.academy_profile (migration 0004), not in the
+// organization's own `metadata` column: that column is jsonb, while the plugin
+// stringifies metadata on the way in and only parses it back when it reads a
+// string, so a jsonb round-trip could break every organization read.
+//
+// It also does not live in a Netlify blob, which is where it started. The two
+// functions that read it disagreed about which blob store they were in — one
+// is a v1 lambda-compat function, the other v2 — so the Locker's session read
+// an empty profile for an academy the API had just written to. Every function
+// already reaches this database reliably; that is why the profile is here.
 
 export const ACADEMY_ROLES = ['owner', 'admin', 'member'];
 
@@ -54,38 +57,90 @@ export function cleanBrandColors(input) {
   return colors;
 }
 
-/**
- * One store for every deploy context, on purpose.
- *
- * Academies live in the `platform` schema of a single Postgres database that
- * production and branch deploys already share, so an academy created on the
- * dev deploy is the same row as on production. Splitting only its profile
- * (brand colors, channel, shop domain) by context left the two halves of the
- * same academy in different places — and worse, the v1 and v2 functions
- * disagreed about which context they were in, so the Locker's session read an
- * empty profile for an academy the API had just written to. One name keeps
- * the profile with the row it belongs to and keeps every reader in agreement.
- */
-export function academyStore() {
-  return getStore({ name: STORE_NAME, consistency: 'strong' });
+// Nano compute allows 15 pooled connections across every function sharing
+// this database, so this one stays small on purpose (see auth.mjs).
+let pool = null;
+function getPool() {
+  if (pool) return pool;
+  if (!process.env.DATABASE_URL) return null;
+  pool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 2,
+    idleTimeoutMillis: 10_000,
+    options: '-c search_path=platform',
+  });
+  return pool;
 }
 
-const profileKey = (organizationId) => `academies/${encodeURIComponent(organizationId)}.json`;
+const emptyProfile = {};
 
-export async function readProfile(store, organizationId) {
+/** The academy's profile row, or {} when it has none yet. */
+export async function readProfile(organizationId) {
+  const db = getPool();
+  if (!db) return emptyProfile;
   try {
-    return (await store.get(profileKey(organizationId), { type: 'json' })) ?? {};
-  } catch {
-    return {};
+    const { rows } = await db.query(
+      `select logo, brand_colors, channel, shop_domain, hosted_site_interest
+         from academy_profile where organization_id = $1`,
+      [organizationId],
+    );
+    const row = rows[0];
+    if (!row) return emptyProfile;
+    return {
+      logo: row.logo ?? null,
+      brandColors: row.brand_colors ?? {},
+      channel: row.channel ?? null,
+      shopDomain: row.shop_domain ?? null,
+      hostedSiteInterest: Boolean(row.hosted_site_interest),
+    };
+  } catch (error) {
+    // A profile that cannot be read must not cost the academy its session —
+    // they simply see the defaults until the next read succeeds.
+    console.error('[academy] could not read the profile', error);
+    return emptyProfile;
   }
 }
 
-export async function writeProfile(store, organizationId, patch) {
-  const current = await readProfile(store, organizationId);
-  const now = new Date().toISOString();
-  const next = { ...current, ...patch, organizationId, createdAt: current.createdAt ?? now, updatedAt: now };
-  await store.setJSON(profileKey(organizationId), next);
-  return next;
+/** Insert or update only the fields in `patch`; anything absent is untouched. */
+export async function writeProfile(organizationId, patch) {
+  const db = getPool();
+  if (!db) throw new Error('DATABASE_URL is not configured');
+
+  const columns = {
+    logo: 'logo',
+    brandColors: 'brand_colors',
+    channel: 'channel',
+    shopDomain: 'shop_domain',
+    hostedSiteInterest: 'hosted_site_interest',
+    channelChosenAt: 'channel_chosen_at',
+    ownerUserId: 'owner_user_id',
+  };
+
+  const names = ['organization_id'];
+  const values = [organizationId];
+  for (const [key, column] of Object.entries(columns)) {
+    if (patch[key] === undefined) continue;
+    names.push(column);
+    values.push(key === 'brandColors' ? JSON.stringify(patch[key] ?? {}) : patch[key]);
+  }
+
+  const placeholders = values.map((_, index) => `$${index + 1}`);
+  // Everything but organization_id is updated on conflict, so a second write
+  // edits the row rather than failing on the primary key.
+  const updates = names
+    .slice(1)
+    .map((column) => `${column} = excluded.${column}`)
+    .concat('updated_at = now()')
+    .join(', ');
+
+  await db.query(
+    `insert into academy_profile (${names.join(', ')}) values (${placeholders.join(', ')})
+       on conflict (organization_id) do update set ${updates}`,
+    values,
+  );
+
+  return readProfile(organizationId);
 }
 
 /**
@@ -95,7 +150,7 @@ export async function writeProfile(store, organizationId, patch) {
  * session predates the academy, or was opened on another device) is switched
  * into it here, so "signed in" and "in Academy mode" never drift apart.
  */
-export async function summarizeAcademy({ auth, headers, session, store }) {
+export async function summarizeAcademy({ auth, headers, session }) {
   if (!session?.user) return null;
 
   let organizationId = session.session?.activeOrganizationId ?? null;
@@ -118,7 +173,7 @@ export async function summarizeAcademy({ auth, headers, session, store }) {
   if (!organization) return null;
 
   const me = (organization.members ?? []).find((member) => member.userId === session.user.id);
-  const profile = store ? await readProfile(store, organization.id) : {};
+  const profile = await readProfile(organization.id);
   const subscription = await readSubscription({ auth, headers, organizationId: organization.id });
 
   return {
