@@ -21,6 +21,7 @@ import {
 } from './gi-config';
 
 import { CUSTOM_MEASUREMENTS } from './part-sections/size-options';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 const PART_ORDER: GiPart[] = ['pants'];
 const ADD_ON_PRICE = 10;
@@ -335,7 +336,7 @@ export const PriceSidebar = memo(
             ) : (
               <ShoppingCart className="h-4 w-4" />
             )}
-            {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
+            {isAddingToCart ? cartActionLoadingLabel : <CartActionLabel label={cartActionLabel} />}
           </button>
         </div>
 

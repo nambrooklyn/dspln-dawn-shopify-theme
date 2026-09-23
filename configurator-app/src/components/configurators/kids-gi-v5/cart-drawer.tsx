@@ -21,6 +21,7 @@ import {
 } from '../kids-gi/gi-config';
 import { useGiState } from '../kids-gi/gi-state';
 import { formatUsd } from './money';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 /**
  * Order-summary drawer: tapping the bag opens this instead of adding to
@@ -261,7 +262,7 @@ export const GiV5CartDrawer = memo(
               disabled={isAddingToCart}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-black text-[12px] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-black/85 disabled:opacity-60"
             >
-              {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
+              {isAddingToCart ? cartActionLoadingLabel : <CartActionLabel label={cartActionLabel} />}
               <span className="text-white/50">·</span>
               {formatUsd(spec.price.total)}
             </button>

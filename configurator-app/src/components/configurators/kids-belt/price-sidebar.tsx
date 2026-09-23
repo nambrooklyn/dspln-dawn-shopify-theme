@@ -17,6 +17,7 @@ import {
   type GiPart,
   type KimonoLogoSlot,
 } from './gi-config';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 const PART_ORDER: GiPart[] = ['belt'];
 const ADD_ON_PRICE = 10;
@@ -292,7 +293,7 @@ export const PriceSidebar = memo(
             ) : (
               <ShoppingCart className="h-4 w-4" />
             )}
-            {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
+            {isAddingToCart ? cartActionLoadingLabel : <CartActionLabel label={cartActionLabel} />}
           </button>
         </div>
 

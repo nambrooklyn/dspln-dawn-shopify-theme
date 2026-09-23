@@ -1,6 +1,7 @@
 import { connectLambda, getStore } from '@netlify/blobs';
 import pg from 'pg';
 
+import { summarizeAcademy } from '../lib/academy.mjs';
 import { getAuth } from '../lib/auth.mjs';
 import { emailIndexKey, writeEmailIndex } from '../lib/design-ownership.mjs';
 import { findOrCreateCustomer } from '../lib/shopify-admin.mjs';
@@ -61,10 +62,11 @@ export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return json(200, { ok: true });
 
   let session = null;
+  let auth = null;
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(event.headers ?? {})) if (v != null) headers.set(k, String(v));
   try {
-    const auth = getAuth();
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(event.headers ?? {})) if (v != null) headers.set(k, String(v));
+    auth = getAuth();
     session = await auth.api.getSession({ headers });
   } catch (error) {
     console.error('[locker-session] auth unavailable', error);
@@ -141,8 +143,19 @@ export const handler = async (event) => {
     }
   }
 
+  // Academy mode: a member acting for an organization sees the Academy tabs
+  // and publishes products instead of adding them to a cart. Best effort —
+  // an academy lookup that fails leaves them in retail mode, never signed out.
+  let academy = null;
+  try {
+    academy = await summarizeAcademy({ auth, headers, session });
+  } catch (error) {
+    console.error('[locker-session] could not resolve the academy', error);
+  }
+
   return json(200, {
     signedIn: true,
+    academy,
     user: {
       id: user.id,
       email: user.email,

@@ -1,6 +1,10 @@
 # Bare domain → the real store. Forced (!) so it shadows index.html; the
 # store's iframe embeds use /configurator/* paths and fall through to the
 # SPA rule below. This file wins over netlify.toml redirects.
+# academy.dspln.com serves the academy app at its root, so it must match
+# before the bare-domain rule below. A host-qualified rule matches that host
+# only; every other host still goes to the store.
+https://academy.dspln.com/  /index.html  200!
 /  https://dspln.com  302!
 /api/customer-designs /.netlify/functions/customer-designs 200
 /api/design-assistant /.netlify/functions/design-assistant 200

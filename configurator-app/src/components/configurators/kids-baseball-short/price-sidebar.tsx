@@ -9,6 +9,7 @@ import {
   nameForHex,
 } from './rashguard-config';
 import { useRashguardState } from './rashguard-state';
+import { CartActionLabel } from '@/lib/academy-mode';
 
 const DetailLine = memo(
   ({ label, value }: { label: string; value: string }) => (
@@ -161,7 +162,7 @@ export const RashguardPriceSidebar = memo(
             ) : (
               <ShoppingCart className="h-4 w-4" />
             )}
-            {isAddingToCart ? cartActionLoadingLabel : cartActionLabel}
+            {isAddingToCart ? cartActionLoadingLabel : <CartActionLabel label={cartActionLabel} />}
           </button>
         </div>
 

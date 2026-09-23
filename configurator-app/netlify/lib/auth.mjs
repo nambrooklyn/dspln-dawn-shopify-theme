@@ -1,7 +1,10 @@
+import { stripe as stripePlugin } from '@better-auth/stripe';
 import { betterAuth } from 'better-auth';
 import { organization } from 'better-auth/plugins';
 import pg from 'pg';
+import Stripe from 'stripe';
 
+import { configuredPlans, stripeIsConfigured } from './academy-plans.mjs';
 import { mailIsConfigured, sendPasswordReset, sendVerification } from './mailer.mjs';
 
 // DSPLN's own identity service.
@@ -47,6 +50,8 @@ export function getAuth() {
     baseURL: process.env.AUTH_BASE_URL || 'https://dspln-dawn-shopify-theme.netlify.app',
     basePath: '/api/auth',
     trustedOrigins: [
+      'https://academy.dspln.com',
+      'https://locker.dspln.com',
       'https://dspln.com',
       'https://www.dspln.com',
       'https://dspln-dawn-shopify-theme.netlify.app',
@@ -141,6 +146,7 @@ export function getAuth() {
           },
         },
       }),
+      ...academyBilling(),
     ],
     advanced: {
       cookiePrefix: 'dspln',
@@ -162,4 +168,116 @@ export function getAuth() {
   });
 
   return cached;
+}
+
+/**
+ * Academy billing: the Stripe plugin, only once the keys exist.
+ *
+ * A subscription belongs to the academy's ORGANIZATION (referenceId = the
+ * organization id), which carries the Stripe customer. One customer per
+ * academy: the plan bills it monthly and, in Phase 3, every production order
+ * bills the same card off-session. That is why the card Checkout collects is
+ * promoted to the customer's default payment method the moment the
+ * subscription completes — the order charges look it up there.
+ *
+ * Endpoints this adds under /api/auth: /subscription/upgrade, /list, /cancel,
+ * /restore, /billing-portal, /success and the Stripe webhook at
+ * /stripe/webhook. Tables: platform.subscription plus stripe_customer_id on
+ * user and organization (b2b-platform migrations 0001 and 0003).
+ */
+function academyBilling() {
+  if (!stripeIsConfigured()) return [];
+  const plans = configuredPlans();
+  if (!plans.length) {
+    console.warn('[auth] Stripe keys are set but no STRIPE_PRICE_ACADEMY_* price id is — billing disabled');
+    return [];
+  }
+  const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+  const timestamps = { createdAt: 'created_at', updatedAt: 'updated_at' };
+  return [
+    stripePlugin({
+      stripeClient,
+      stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+      // Retail members never need a Stripe customer; the academy gets one
+      // the first time it picks a plan.
+      createCustomerOnSignUp: false,
+      organization: {
+        enabled: true,
+        getCustomerCreateParams: async (org) => ({
+          name: org.name,
+          metadata: { academyId: org.id, academySlug: org.slug ?? '' },
+        }),
+      },
+      subscription: {
+        enabled: true,
+        plans,
+        // Only an academy's owner or admin may change its plan or open the
+        // portal; any member may read it (the Billing tab shows the plan).
+        authorizeReference: async ({ user, referenceId, action }, ctx) => {
+          const member = await ctx.context.adapter.findOne({
+            model: 'member',
+            where: [
+              { field: 'organizationId', value: referenceId },
+              { field: 'userId', value: user.id },
+            ],
+          });
+          if (!member) return false;
+          if (action === 'list-subscription') return true;
+          return ['owner', 'admin'].includes(member.role);
+        },
+        getCheckoutSessionParams: async () => ({
+          params: {
+            // Always take a card, even during a trial or a $0 first invoice,
+            // because the same card pays for production orders.
+            payment_method_collection: 'always',
+            billing_address_collection: 'auto',
+            allow_promotion_codes: true,
+          },
+        }),
+        onSubscriptionComplete: async ({ stripeSubscription }) => {
+          const customerId = typeof stripeSubscription.customer === 'string'
+            ? stripeSubscription.customer
+            : stripeSubscription.customer?.id;
+          const paymentMethod = typeof stripeSubscription.default_payment_method === 'string'
+            ? stripeSubscription.default_payment_method
+            : stripeSubscription.default_payment_method?.id;
+          if (!customerId || !paymentMethod) return;
+          try {
+            await stripeClient.customers.update(customerId, {
+              invoice_settings: { default_payment_method: paymentMethod },
+            });
+          } catch (error) {
+            // The subscription itself is fine; only the off-session default
+            // is missing, and the next order charge can fall back to the
+            // subscription's payment method.
+            console.error('[auth] could not set the academy default payment method', error);
+          }
+        },
+      },
+      schema: {
+        user: { fields: { stripeCustomerId: 'stripe_customer_id' } },
+        organization: { fields: { stripeCustomerId: 'stripe_customer_id' } },
+        subscription: {
+          modelName: 'subscription',
+          fields: {
+            referenceId: 'reference_id',
+            stripeCustomerId: 'stripe_customer_id',
+            stripeSubscriptionId: 'stripe_subscription_id',
+            stripeScheduleId: 'stripe_schedule_id',
+            periodStart: 'period_start',
+            periodEnd: 'period_end',
+            cancelAtPeriodEnd: 'cancel_at_period_end',
+            cancelAt: 'cancel_at',
+            canceledAt: 'canceled_at',
+            endedAt: 'ended_at',
+            trialStart: 'trial_start',
+            trialEnd: 'trial_end',
+            billingInterval: 'billing_interval',
+            ...timestamps,
+          },
+        },
+      },
+    }),
+  ];
 }
