@@ -14,6 +14,15 @@
 # Anyone who lands on the bare domain belongs on the real store. The store
 # embeds use explicit /configurator/* paths, which the SPA fallback below
 # keeps serving as before.
+# academy.dspln.com is the academies' front door and serves the app at its
+# root. This must come before the bare-domain rule below, which would
+# otherwise send it to the Shopify store.
+[[redirects]]
+  from = "https://academy.dspln.com/"
+  to = "/index.html"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/"
   to = "https://dspln.com"

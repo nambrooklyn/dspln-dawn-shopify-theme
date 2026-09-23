@@ -25,14 +25,16 @@ interface LandingProps {
   loginHref: string;
   signedIn: boolean;
   continueHref: string;
+  /** Root of whichever host is serving this — academy.dspln.com or /academy. */
+  homeHref: string;
 }
 
-export default function Landing({ onChoosePlan, loginHref, signedIn, continueHref }: LandingProps) {
+export default function Landing({ onChoosePlan, loginHref, signedIn, continueHref, homeHref }: LandingProps) {
   return (
     <main className="bg-background text-foreground min-h-screen">
       <header className="bg-dark sticky top-0 z-40 border-b border-white/10">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <a href="/academy" className="flex items-center gap-3">
+          <a href={homeHref} className="flex items-center gap-3">
             <img src={LOGO_SRC} alt="DSPLN" className="h-8 w-auto" />
             <span className="text-secondary text-[10px] font-medium tracking-widest uppercase">Academy</span>
           </a>

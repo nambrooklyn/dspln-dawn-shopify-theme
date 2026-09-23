@@ -42,9 +42,34 @@ import ShopifyConnectForm from './shopify-connect-form';
 import SignupForm, { type SignupValues } from './signup-form';
 import { Button, FieldLabel, FieldMessage, Input, authInputClass } from './ui';
 
-const BASE = '/academy';
+/**
+ * The academies' front door is academy.dspln.com, where the flow lives at
+ * the root. The same app still answers on /academy of the Locker host, so
+ * links already sent out keep working and branch deploys stay testable.
+ */
+export const ACADEMY_HOST = 'academy.dspln.com';
+const LOCKER_ORIGIN = 'https://locker.dspln.com';
+
+const onAcademyHost = () => {
+  try {
+    return window.location.hostname === ACADEMY_HOST;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * The Locker lives on its own host, so a link to it from the academy host
+ * has to be absolute. Anywhere else it stays relative, which keeps branch
+ * deploys pointing at themselves rather than at production.
+ */
+function lockerHref(path: string): string {
+  return onAcademyHost() ? `${LOCKER_ORIGIN}${path}` : path;
+}
+
+const BASE = onAcademyHost() ? '' : '/academy';
 const P = {
-  landing: BASE,
+  landing: BASE || '/',
   signup: `${BASE}/signup`,
   login: `${BASE}/login`,
   forgot: `${BASE}/forgot-password`,
@@ -57,7 +82,7 @@ const P = {
 type Page = keyof typeof P;
 
 function pageFor(pathname: string): Page {
-  const clean = pathname.replace(/\/+$/, '') || BASE;
+  const clean = pathname.replace(/\/+$/, '') || (BASE || '/');
   const hit = (Object.entries(P) as Array<[Page, string]>).find(([, path]) => path === clean);
   return hit?.[0] ?? 'landing';
 }
@@ -161,6 +186,7 @@ export function AcademyApp() {
   if (page === 'landing') {
     return (
       <Landing
+        homeHref={P.landing}
         signedIn={signedIn}
         continueHref={P[onboardingTarget(academy)]}
         loginHref={P.login}
@@ -555,7 +581,7 @@ function CompletePage({ academy }: { academy: AcademySummary }) {
           <p className="font-albert text-muted-foreground mb-8 text-sm">
             Everything else happens in the Locker: design in the configurators, publish with the Publish Product button, and watch orders come in.
           </p>
-          <a href="/locker?page=designs">
+          <a href={lockerHref('/locker?page=designs')}>
             <Button size="lg" className="bg-primary hover:bg-primary-dark h-12 rounded-xl px-8 font-semibold shadow-lg">
               Open the Locker <ArrowRight className="ml-2 h-5 w-5" />
             </Button>

@@ -50,6 +50,7 @@ export function getAuth() {
     baseURL: process.env.AUTH_BASE_URL || 'https://dspln-dawn-shopify-theme.netlify.app',
     basePath: '/api/auth',
     trustedOrigins: [
+      'https://academy.dspln.com',
       'https://locker.dspln.com',
       'https://dspln.com',
       'https://www.dspln.com',
